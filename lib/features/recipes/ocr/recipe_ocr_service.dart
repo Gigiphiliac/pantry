@@ -5,6 +5,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/features/settings/settings_screen.dart';
 import '../models/recipe_draft.dart';
 
@@ -79,6 +80,7 @@ class RecipeOcrService {
         {'role': 'user', 'content': rawText},
       ],
       'temperature': 0.1,
+      'stream': false,
     });
 
     late http.Response response;
@@ -107,7 +109,22 @@ class RecipeOcrService {
           .trim();
 
       final json = jsonDecode(cleaned) as Map<String, dynamic>;
-      return RecipeDraft.fromJson(json);
+      final draft = RecipeDraft.fromJson(json);
+      // Normalise unit strings from LLM ("tablespoon" → "tbsp", etc.)
+      return RecipeDraft(
+        name: draft.name,
+        servings: draft.servings,
+        instructions: draft.instructions,
+        ingredients: draft.ingredients.map((ing) {
+          final parsed = UnitRegistry.parse(ing.unit);
+          return IngredientDraft(
+            qty: ing.qty,
+            unit: parsed?.id ?? ing.unit,
+            name: ing.name,
+            notes: ing.notes,
+          );
+        }).toList(),
+      );
     } catch (e) {
       throw LlmParseException('Failed to parse LLM response: $e');
     }

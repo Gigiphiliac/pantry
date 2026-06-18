@@ -218,8 +218,8 @@ class _AddToListSheet extends ConsumerWidget {
                                 await ops.addToShoppingList(
                                     recipe.id, list.id, recipe.name);
                                 // context is from the outer sheet builder,
-                                // which is no longer mounted after pop —
-                                // use ScaffoldMessenger via a root key instead.
+                                // which is no longer mounted after pop.
+                                // Use ScaffoldMessenger via a root key instead.
                                 // Snackbar is best-effort here.
                               },
                             ))

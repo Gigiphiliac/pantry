@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/settings/settings_screen.dart';
 
 import 'shopping_providers.dart';
 import 'prompt_utils.dart';
@@ -241,14 +243,17 @@ class _SectionTile extends ConsumerWidget {
   }
 }
 
-class _ItemTile extends StatelessWidget {
+class _ItemTile extends ConsumerWidget {
   final ShoppingListItem item;
   final ShoppingListOps ops;
 
   const _ItemTile({required this.item, required this.ops});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pref = ref.watch(unitPreferenceProvider).valueOrNull ??
+        UnitPreference.metric;
+
     return Slidable(
       endActionPane: ActionPane(
         motion: const DrawerMotion(),
@@ -274,15 +279,28 @@ class _ItemTile extends StatelessWidget {
                 )
               : null,
         ),
-        subtitle: item.qty != null
-            ? Text(
-                '${item.qty}${item.unit != null ? ' ${item.unit}' : ''}',
-              )
-            : null,
+        subtitle: _buildQtySubtitle(item, pref),
         controlAffinity: ListTileControlAffinity.leading,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 48, vertical: 0),
       ),
     );
+  }
+
+  Widget? _buildQtySubtitle(ShoppingListItem item, UnitPreference pref) {
+    if (item.qty == null) return null;
+    final unit = UnitRegistry.parse(item.unit);
+    if (unit != null) {
+      if (unit.family == UnitFamily.count) {
+        // Count units never convert — show their own abbreviation
+        return Text('${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}');
+      }
+      final display = UnitRegistry.preferredDisplayUnit(unit.family, pref);
+      final qty = UnitRegistry.convert(item.qty!, unit, display);
+      return Text('${UnitRegistry.formatQty(qty)} ${display.abbreviation}');
+    }
+    // Unrecognised unit — show as stored
+    final raw = UnitRegistry.formatQty(item.qty!);
+    return Text(item.unit != null ? '$raw ${item.unit}' : raw);
   }
 }

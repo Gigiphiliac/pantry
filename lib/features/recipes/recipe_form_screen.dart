@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
@@ -51,7 +52,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ? ing.qty!.toInt().toString()
                       : ing.qty.toString())
                   : ''),
-          unitCtrl: TextEditingController(text: ing.unit ?? ''),
+          selectedUnit: UnitRegistry.parse(ing.unit),
           notes: ing.notes,
         ));
       }
@@ -65,9 +66,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       for (final row in rows) {
         _ingredients.add(_IngredientEntry(
           nameCtrl: TextEditingController(text: row.ingredientName),
-          qtyCtrl: TextEditingController(
-              text: row.qty?.toString() ?? ''),
-          unitCtrl: TextEditingController(text: row.unit ?? ''),
+          qtyCtrl: TextEditingController(text: row.qty?.toString() ?? ''),
+          selectedUnit: UnitRegistry.parse(row.unit),
           resolvedIngredientId: row.ingredientId,
         ));
       }
@@ -147,11 +147,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           TextButton.icon(
             icon: const Icon(Icons.add),
             label: const Text('Add ingredient'),
-            onPressed: () => setState(() => _ingredients.add(_IngredientEntry(
-                  nameCtrl: TextEditingController(),
-                  qtyCtrl: TextEditingController(),
-                  unitCtrl: TextEditingController(),
-                ))),
+            onPressed: () => setState(
+                () => _ingredients.add(_IngredientEntry(
+                      nameCtrl: TextEditingController(),
+                      qtyCtrl: TextEditingController(),
+                    ))),
           ),
           const SizedBox(height: 24),
 
@@ -207,9 +207,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           .map((e) => RecipeIngredientDraft(
                 rawText: e.nameCtrl.text.trim(),
                 qty: double.tryParse(e.qtyCtrl.text.trim()),
-                unit: e.unitCtrl.text.trim().isEmpty
-                    ? null
-                    : e.unitCtrl.text.trim(),
+                unit: e.selectedUnit?.id,
                 notes: e.notes,
                 resolvedIngredientId: e.resolvedIngredientId,
               ))
@@ -247,7 +245,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 class _IngredientEntry {
   final TextEditingController nameCtrl;
   final TextEditingController qtyCtrl;
-  final TextEditingController unitCtrl;
+  Unit? selectedUnit;
   int? resolvedIngredientId;
   String? mergeCandidate;
   int? mergeCandidateId;
@@ -256,7 +254,7 @@ class _IngredientEntry {
   _IngredientEntry({
     required this.nameCtrl,
     required this.qtyCtrl,
-    required this.unitCtrl,
+    this.selectedUnit,
     this.resolvedIngredientId,
     this.notes,
   });
@@ -264,7 +262,6 @@ class _IngredientEntry {
   void dispose() {
     nameCtrl.dispose();
     qtyCtrl.dispose();
-    unitCtrl.dispose();
   }
 }
 
@@ -290,6 +287,16 @@ class _IngredientRow extends ConsumerStatefulWidget {
 class _IngredientRowState extends ConsumerState<_IngredientRow> {
   String? _mergeCandidate;
   int? _mergeCandidateId;
+
+  Future<void> _pickUnit(BuildContext context) async {
+    final result = await showModalBottomSheet<_PickResult>(
+      context: context,
+      builder: (_) => const _UnitPickerSheet(),
+    );
+    if (result != null) {
+      setState(() => widget.entry.selectedUnit = result.unit);
+    }
+  }
 
   Future<void> _runDedup() async {
     final text = widget.entry.nameCtrl.text.trim();
@@ -343,18 +350,28 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                 ),
               ),
               const SizedBox(width: 6),
-              // Unit
+              // Unit picker
               SizedBox(
                 width: 72,
-                child: TextField(
-                  controller: widget.entry.unitCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Unit',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                child: InkWell(
+                  onTap: () => _pickUnit(context),
+                  borderRadius: BorderRadius.circular(4),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    ),
+                    child: Text(
+                      widget.entry.selectedUnit?.abbreviation ?? 'Unit',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: widget.entry.selectedUnit != null
+                            ? null
+                            : Theme.of(context).hintColor,
+                      ),
+                    ),
                   ),
-                  textCapitalization: TextCapitalization.none,
                 ),
               ),
               const SizedBox(width: 6),
@@ -430,6 +447,85 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
               ],
             ),
           ),
+      ],
+    );
+  }
+}
+
+// ── Unit picker sheet ─────────────────────────────────────────────────────────
+
+/// Wraps the selected Unit so null ("None") can be distinguished from dismissal.
+class _PickResult {
+  final Unit? unit;
+  const _PickResult(this.unit);
+}
+
+class _UnitPickerSheet extends StatelessWidget {
+  const _UnitPickerSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            ListTile(
+              title: const Text('None'),
+              onTap: () => Navigator.pop(context, const _PickResult(null)),
+            ),
+            const Divider(height: 1),
+            _familySection(context, 'Weight', UnitFamily.weight),
+            _familySection(context, 'Volume', UnitFamily.volume),
+            _familySection(context, 'Count', UnitFamily.count),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _familySection(
+      BuildContext context, String title, UnitFamily family) {
+    final units = UnitRegistry.unitsForFamily(family);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+          child: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        ...units.map(
+          (u) => ListTile(
+            title: Text(u.displayName),
+            trailing: Text(
+              u.abbreviation,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            onTap: () => Navigator.pop(context, _PickResult(u)),
+          ),
+        ),
       ],
     );
   }

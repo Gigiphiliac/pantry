@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
@@ -202,11 +203,23 @@ class RecipeOps {
     }
 
     for (final ing in ingredients) {
+      final unit = UnitRegistry.parse(ing.unit);
+      // Convert weight/volume to canonical (g, ml) for cross-unit stacking.
+      // Count units preserve their own ID — cans stay cans, not pieces.
+      final needsConversion =
+          unit != null && unit.family != UnitFamily.count && ing.qty != null;
+      final canonicalQty = needsConversion
+          ? UnitRegistry.convertToCanonical(ing.qty!, unit)
+          : ing.qty;
+      final canonicalUnitId = needsConversion
+          ? UnitRegistry.canonicalUnit(unit.family).id
+          : ing.unit;
       await shoppingOps.addItem(
         sectionId,
         ing.ingredientName,
-        qty: ing.qty,
-        unit: ing.unit,
+        qty: canonicalQty,
+        unit: canonicalUnitId,
+        ingredientId: ing.ingredientId,
       );
     }
   }

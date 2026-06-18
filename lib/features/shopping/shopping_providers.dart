@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 
@@ -153,16 +154,86 @@ class ShoppingListOps {
         .go();
   }
 
-  Future<int> addItem(int sectionId, String rawText,
-      {double? qty, String? unit}) =>
-      db.into(db.shoppingListItems).insert(
-            ShoppingListItemsCompanion.insert(
-              sectionId: sectionId,
-              rawText: rawText,
-              qty: Value(qty),
-              unit: Value(unit),
-            ),
-          );
+  Future<void> addItem(
+    int sectionId,
+    String rawText, {
+    double? qty,
+    String? unit,
+    int? ingredientId,
+  }) async {
+    final normalised = rawText.toLowerCase().trim();
+
+    // Look for an existing unchecked match in this section
+    final query = db.select(db.shoppingListItems)
+      ..where((t) {
+        final base = t.sectionId.equals(sectionId) & t.checked.equals(false);
+        if (ingredientId != null) {
+          return base &
+              (t.ingredientId.equals(ingredientId) |
+                  t.rawText.lower().equals(normalised));
+        }
+        return base & t.rawText.lower().equals(normalised);
+      })
+      ..limit(1);
+
+    final existing = await query.getSingleOrNull();
+
+    if (existing != null && existing.qty != null && qty != null) {
+      final existingUnit = UnitRegistry.parse(existing.unit);
+      final newUnit = UnitRegistry.parse(unit);
+
+      // Case A: exact same unit ID — preserve unit, add qty directly
+      final sameId = existingUnit != null &&
+          newUnit != null &&
+          existingUnit.id == newUnit.id;
+      // Case B: cross-unit within weight or volume (never for count)
+      final crossConvertible = existingUnit != null &&
+          newUnit != null &&
+          existingUnit.id != newUnit.id &&
+          existingUnit.family == newUnit.family &&
+          existingUnit.family != UnitFamily.count;
+      // Case C: both truly unitless (null string, not just unrecognised)
+      final bothUnitless = existing.unit == null && unit == null;
+
+      if (sameId) {
+        await (db.update(db.shoppingListItems)
+              ..where((t) => t.id.equals(existing.id)))
+            .write(ShoppingListItemsCompanion(
+          qty: Value(existing.qty! + qty),
+        ));
+        return;
+      } else if (crossConvertible) {
+        final canonical = UnitRegistry.canonicalUnit(existingUnit.family);
+        final stacked =
+            UnitRegistry.convert(existing.qty!, existingUnit, canonical) +
+                UnitRegistry.convert(qty, newUnit, canonical);
+        await (db.update(db.shoppingListItems)
+              ..where((t) => t.id.equals(existing.id)))
+            .write(ShoppingListItemsCompanion(
+          qty: Value(stacked),
+          unit: Value(canonical.id),
+        ));
+        return;
+      } else if (bothUnitless) {
+        await (db.update(db.shoppingListItems)
+              ..where((t) => t.id.equals(existing.id)))
+            .write(ShoppingListItemsCompanion(
+          qty: Value(existing.qty! + qty),
+        ));
+        return;
+      }
+    }
+
+    await db.into(db.shoppingListItems).insert(
+          ShoppingListItemsCompanion.insert(
+            sectionId: sectionId,
+            rawText: rawText,
+            qty: Value(qty),
+            unit: Value(unit),
+            ingredientId: Value(ingredientId),
+          ),
+        );
+  }
 
   Future<void> toggleItem(int itemId, bool checked) =>
       (db.update(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
