@@ -1,0 +1,6 @@
+- [ ] 'Add to shopping list' should strip notes from the ingredient names (e.g. eggs, whisked or cooked day old white rice)
+- [ ] Improve parsing to remove alternative measurements (e.g. 120g/4oz bacon)
+- [ ] Rethink alternative ingredients (e.g. 1 cup beer, or beef stock). Perhaps a
+- [ ] tsp and tbsp should be default measurements over 14.79 ml or 187.5 ml...
+- [ ] Improve ingredient name resolution and storage. 
+- [ ] Create a list of non-shopping items such as water, herbs, spices, etc.

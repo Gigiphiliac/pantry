@@ -1,13 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import 'package:pantry/core/llm/llm_client.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/features/settings/settings_screen.dart';
 import '../models/recipe_draft.dart';
+import 'ocr_text_parser.dart';
 
 class OcrException implements Exception {
   final String message;
@@ -23,24 +23,26 @@ class LlmParseException implements Exception {
   String toString() => message;
 }
 
-const _systemPrompt = '''You are a recipe extraction assistant. Extract the recipe from the provided OCR text and return ONLY valid JSON — no markdown fences, no explanation.
+const _systemPrompt =
+    '''You are a recipe extraction assistant. You will receive raw OCR text and a pre-parsed structure as hints. Clean up errors, fill in missing fields, and return ONLY valid JSON — no markdown fences, no explanation.
 
 JSON format:
 {
   "name": "string or null",
   "servings": integer or null,
-  "instructions": "string or null",
+  "steps": ["step one text", "step two text"],
   "ingredients": [
     { "qty": number or null, "unit": "string or null", "name": "string", "notes": "string or null" }
   ]
 }
 
 Rules:
+- Use the raw text as the source of truth; treat pre-parsed hints as guidance only
 - "name" is the recipe title
 - "servings" is a whole number or null
+- "steps" is an ordered list of instruction steps — each step is a separate string
 - "ingredients" must always be an array, even if empty
-- "notes" captures modifiers like "finely chopped", "at room temperature", "sifted"
-- "instructions" is the full method as a single string with newlines between steps''';
+- "notes" captures modifiers like "finely chopped", "at room temperature", "sifted"''';
 
 class RecipeOcrService {
   Future<String> extractText(XFile image) async {
@@ -65,44 +67,33 @@ class RecipeOcrService {
 
   Future<RecipeDraft> structureRecipe(
       String rawText, LlmConfig config) async {
-    final uri = Uri.parse('${config.endpoint}/chat/completions');
+    final prestructured = _prestructure(rawText);
+    return _cleanupWithLlm(prestructured, config);
+  }
 
-    final headers = <String, String>{
-      HttpHeaders.contentTypeHeader: 'application/json',
-      if (config.apiKey.isNotEmpty)
-        HttpHeaders.authorizationHeader: 'Bearer ${config.apiKey}',
-    };
+  PrestructuredRecipe _prestructure(String rawText) {
+    return OcrTextParser.parse(rawText);
+  }
 
-    final body = jsonEncode({
-      'model': config.model.isNotEmpty ? config.model : 'llama3.2',
-      'messages': [
-        {'role': 'system', 'content': _systemPrompt},
-        {'role': 'user', 'content': rawText},
-      ],
-      'temperature': 0.1,
-      'stream': false,
-    });
+  Future<RecipeDraft> _cleanupWithLlm(
+      PrestructuredRecipe prestructured, LlmConfig config) async {
+    final hintsJson = const JsonEncoder.withIndent('  ').convert(
+      prestructured.toJson()..remove('rawText'),
+    );
 
-    late http.Response response;
+    final userMessage = 'RAW OCR TEXT:\n'
+        '${prestructured.rawText}\n\n'
+        'PRE-PARSED HINTS:\n'
+        '$hintsJson';
+
+    late String content;
     try {
-      response = await http
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 90));
+      content = await LlmClient.complete(_systemPrompt, userMessage, config);
     } catch (e) {
-      throw LlmParseException('Could not reach LLM endpoint: $e');
-    }
-
-    if (response.statusCode != 200) {
-      throw LlmParseException(
-          'LLM returned status ${response.statusCode}: ${response.body}');
+      throw LlmParseException(e.toString());
     }
 
     try {
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final content =
-          decoded['choices'][0]['message']['content'] as String;
-
-      // Strip potential markdown code fences
       final cleaned = content
           .replaceAll(RegExp(r'```json\s*', multiLine: true), '')
           .replaceAll(RegExp(r'```\s*', multiLine: true), '')
@@ -110,11 +101,10 @@ class RecipeOcrService {
 
       final json = jsonDecode(cleaned) as Map<String, dynamic>;
       final draft = RecipeDraft.fromJson(json);
-      // Normalise unit strings from LLM ("tablespoon" → "tbsp", etc.)
       return RecipeDraft(
         name: draft.name,
         servings: draft.servings,
-        instructions: draft.instructions,
+        steps: draft.steps,
         ingredients: draft.ingredients.map((ing) {
           final parsed = UnitRegistry.parse(ing.unit);
           return IngredientDraft(

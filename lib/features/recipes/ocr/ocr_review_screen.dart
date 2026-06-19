@@ -67,7 +67,8 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final llmAsync = ref.watch(llmConfigProvider);
-    final config = llmAsync.valueOrNull;
+    final providerConfig = llmAsync.valueOrNull;
+    final config = providerConfig?.activeLlmConfig;
 
     return Scaffold(
       appBar: AppBar(
@@ -81,7 +82,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // LLM not configured banner
-                if (config != null && !config.isConfigured)
+                if (providerConfig != null && !providerConfig.isConfigured)
                   Container(
                     color: Colors.orange.shade900,
                     padding: const EdgeInsets.symmetric(
@@ -134,7 +135,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: FilledButton(
-                      onPressed: config?.isConfigured == true
+                      onPressed: providerConfig?.isConfigured == true
                           ? () => _analyse(config!)
                           : null,
                       style: FilledButton.styleFrom(

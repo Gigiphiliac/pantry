@@ -11,8 +11,16 @@ import 'recipe_providers.dart';
 class RecipeFormScreen extends ConsumerStatefulWidget {
   final Recipe? recipe;
   final RecipeDraft? initialDraft;
+  final String? sourceUrl;
+  final String? sourceType;
 
-  const RecipeFormScreen({super.key, this.recipe, this.initialDraft});
+  const RecipeFormScreen({
+    super.key,
+    this.recipe,
+    this.initialDraft,
+    this.sourceUrl,
+    this.sourceType,
+  });
 
   @override
   ConsumerState<RecipeFormScreen> createState() => _RecipeFormScreenState();
@@ -21,8 +29,8 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
 class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _nameCtrl = TextEditingController();
   final _servingsCtrl = TextEditingController();
-  final _instructionsCtrl = TextEditingController();
   final _sourceUrlCtrl = TextEditingController();
+  final List<TextEditingController> _stepControllers = [];
 
   final List<_IngredientEntry> _ingredients = [];
 
@@ -36,13 +44,19 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     if (r != null) {
       _nameCtrl.text = r.name;
       _servingsCtrl.text = r.servings?.toString() ?? '';
-      _instructionsCtrl.text = r.instructions ?? '';
       _sourceUrlCtrl.text = r.sourceUrl ?? '';
       _loadExistingIngredients();
+      _loadExistingSteps();
     } else if (d != null) {
       _nameCtrl.text = d.name ?? '';
       _servingsCtrl.text = d.servings?.toString() ?? '';
-      _instructionsCtrl.text = d.instructions ?? '';
+      _sourceUrlCtrl.text = widget.sourceUrl ?? '';
+      for (final step in d.steps) {
+        _stepControllers.add(TextEditingController(text: step));
+      }
+      if (_stepControllers.isEmpty) {
+        _stepControllers.add(TextEditingController());
+      }
       for (final ing in d.ingredients) {
         _ingredients.add(_IngredientEntry(
           nameCtrl: TextEditingController(text: ing.name),
@@ -56,7 +70,26 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           notes: ing.notes,
         ));
       }
+    } else {
+      _stepControllers.add(TextEditingController());
     }
+  }
+
+  Future<void> _loadExistingSteps() async {
+    final ops = ref.read(recipeOpsProvider);
+    final steps = await ops.getSteps(widget.recipe!.id);
+    setState(() {
+      for (final c in _stepControllers) {
+        c.dispose();
+      }
+      _stepControllers.clear();
+      for (final s in steps) {
+        _stepControllers.add(TextEditingController(text: s));
+      }
+      if (_stepControllers.isEmpty) {
+        _stepControllers.add(TextEditingController());
+      }
+    });
   }
 
   Future<void> _loadExistingIngredients() async {
@@ -78,8 +111,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _servingsCtrl.dispose();
-    _instructionsCtrl.dispose();
     _sourceUrlCtrl.dispose();
+    for (final c in _stepControllers) {
+      c.dispose();
+    }
     for (final e in _ingredients) {
       e.dispose();
     }
@@ -155,19 +190,59 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Instructions
-          Text('Instructions',
-              style: Theme.of(context).textTheme.titleMedium),
+          // Method
+          Text('Method', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          TextField(
-            controller: _instructionsCtrl,
-            decoration: const InputDecoration(
-              hintText: 'Steps, notes, method…',
-              border: OutlineInputBorder(),
+          ..._stepControllers.asMap().entries.map((e) {
+            final i = e.key;
+            final ctrl = e.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, right: 8),
+                    child: SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${i + 1}.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: ctrl,
+                      decoration: InputDecoration(
+                        hintText: 'Step ${i + 1}',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                  ),
+                  if (_stepControllers.length > 1)
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(() {
+                        _stepControllers[i].dispose();
+                        _stepControllers.removeAt(i);
+                      }),
+                    ),
+                ],
+              ),
+            );
+          }),
+          TextButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Add step'),
+            onPressed: () => setState(
+              () => _stepControllers.add(TextEditingController()),
             ),
-            maxLines: null,
-            minLines: 4,
-            textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 24),
 
@@ -213,17 +288,21 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               ))
           .toList();
 
+      final steps = _stepControllers
+          .map((c) => c.text.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
       final id = await ops.saveRecipe(
         id: widget.recipe?.id,
         name: name,
         servings: servings,
-        instructions: _instructionsCtrl.text.trim().isEmpty
-            ? null
-            : _instructionsCtrl.text.trim(),
+        steps: steps,
         sourceUrl: _sourceUrlCtrl.text.trim().isEmpty
             ? null
             : _sourceUrlCtrl.text.trim(),
-        sourceType: widget.initialDraft != null ? 'ocr' : 'manual',
+        sourceType: widget.sourceType ??
+            (widget.initialDraft != null ? 'ocr' : 'manual'),
         ingredients: drafts,
       );
 

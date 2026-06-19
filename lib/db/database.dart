@@ -59,6 +59,13 @@ class Recipes extends Table {
   TextColumn get nutritionJson => text().nullable()();
 }
 
+class RecipeSteps extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get recipeId => integer().references(Recipes, #id)();
+  IntColumn get stepNumber => integer()();
+  TextColumn get content => text()();
+}
+
 class RecipeIngredients extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get recipeId => integer().references(Recipes, #id)();
@@ -99,6 +106,7 @@ class MealSlots extends Table {
   ShoppingListSections,
   ShoppingListItems,
   Recipes,
+  RecipeSteps,
   RecipeIngredients,
   MealPlans,
   MealPlanDays,
@@ -108,11 +116,47 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from == 1) {
+            await customStatement(
+              'CREATE TABLE IF NOT EXISTS recipe_steps ('
+              'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+              'recipe_id INTEGER NOT NULL REFERENCES recipes(id), '
+              'step_number INTEGER NOT NULL, '
+              'content TEXT NOT NULL'
+              ')',
+            );
+            // Migrate existing instruction blobs into discrete steps
+            final rows = await customSelect(
+              'SELECT id, instructions FROM recipes '
+              "WHERE instructions IS NOT NULL AND TRIM(instructions) != ''",
+            ).get();
+            for (final row in rows) {
+              final recipeId = row.read<int>('id');
+              final blob = row.read<String>('instructions');
+              final steps = blob
+                  .split('\n')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+              for (var i = 0; i < steps.length; i++) {
+                await customInsert(
+                  'INSERT INTO recipe_steps (recipe_id, step_number, content) VALUES (?, ?, ?)',
+                  variables: [
+                    Variable.withInt(recipeId),
+                    Variable.withInt(i + 1),
+                    Variable.withString(steps[i]),
+                  ],
+                );
+              }
+            }
+          }
+        },
       );
 }
 

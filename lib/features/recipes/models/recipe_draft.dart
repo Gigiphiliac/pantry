@@ -1,3 +1,34 @@
+class ParsedIngredientLine {
+  final double? qty;
+  final String? unit;
+  final String name;
+
+  const ParsedIngredientLine({this.qty, this.unit, required this.name});
+
+  Map<String, dynamic> toJson() => {'qty': qty, 'unit': unit, 'name': name};
+}
+
+class PrestructuredRecipe {
+  final String rawText;
+  final String? title;
+  final List<ParsedIngredientLine> parsedIngredients;
+  final List<String> instructionLines;
+
+  const PrestructuredRecipe({
+    required this.rawText,
+    this.title,
+    this.parsedIngredients = const [],
+    this.instructionLines = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'parsedIngredients':
+            parsedIngredients.map((i) => i.toJson()).toList(),
+        'instructionLines': instructionLines,
+      };
+}
+
 class IngredientDraft {
   final double? qty;
   final String? unit;
@@ -28,13 +59,13 @@ class RecipeDraft {
   final String? name;
   final int? servings;
   final List<IngredientDraft> ingredients;
-  final String? instructions;
+  final List<String> steps;
 
   const RecipeDraft({
     this.name,
     this.servings,
     this.ingredients = const [],
-    this.instructions,
+    this.steps = const [],
   });
 
   factory RecipeDraft.fromJson(Map<String, dynamic> json) {
@@ -46,11 +77,32 @@ class RecipeDraft {
             .toList()
         : <IngredientDraft>[];
 
+    // Support both 'steps' (new) and 'instructions' (legacy LLM output)
+    List<String> steps;
+    final rawSteps = json['steps'];
+    if (rawSteps is List) {
+      steps = rawSteps
+          .whereType<String>()
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else {
+      final blob = json['instructions'] as String?;
+      steps = (blob == null || blob.trim().isEmpty)
+          ? const []
+          : blob
+              .trim()
+              .split('\n')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+    }
+
     return RecipeDraft(
       name: _nullIfEmpty(json['name'] as String?),
       servings: (json['servings'] as num?)?.toInt(),
       ingredients: ingredients,
-      instructions: _nullIfEmpty(json['instructions'] as String?),
+      steps: steps,
     );
   }
 

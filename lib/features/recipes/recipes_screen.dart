@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pantry/db/database.dart';
-
 import 'recipe_providers.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_form_screen.dart';
+import 'models/recipe_draft.dart';
 import 'ocr/ocr_scan_screen.dart';
+import 'url_import/recipe_url_providers.dart';
+import 'url_import/recipe_url_service.dart';
 
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
@@ -121,8 +124,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             ListTile(
               leading: const Icon(Icons.link),
               title: const Text('Import from URL'),
-              subtitle: const Text('Coming soon'),
-              enabled: false,
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _importFromUrl();
+              },
             ),
           ],
         ),
@@ -138,6 +143,152 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => OcrScanScreen(image: file)),
+    );
+  }
+
+  Future<void> _importFromUrl() async {
+    // Pre-fill from clipboard if it looks like a URL
+    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+    final initial = _looksLikeUrl(clip?.text) ? clip!.text!.trim() : '';
+
+    if (!mounted) return;
+    final url = await _promptUrl(context, initial: initial);
+    if (url == null || url.isEmpty || !mounted) return;
+
+    final service = ref.read(recipeUrlServiceProvider);
+
+    RecipeDraft? draft;
+    Object? error;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _UrlImportDialog(
+        url: url,
+        service: service,
+        onDone: (d) {
+          draft = d;
+          Navigator.pop(ctx);
+        },
+        onError: (e) {
+          error = e;
+          Navigator.pop(ctx);
+        },
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+      return;
+    }
+
+    if (draft != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RecipeFormScreen(
+            initialDraft: draft,
+            sourceUrl: url,
+            sourceType: 'url',
+          ),
+        ),
+      );
+    }
+  }
+
+  bool _looksLikeUrl(String? s) =>
+      s != null &&
+      (s.startsWith('http://') || s.startsWith('https://'));
+
+  Future<String?> _promptUrl(BuildContext context,
+      {String initial = ''}) async {
+    final ctrl = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import from URL'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'https://…'),
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          onSubmitted: (_) => Navigator.pop(ctx, ctrl.text.trim()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UrlImportDialog extends StatefulWidget {
+  final String url;
+  final RecipeUrlService service;
+  final void Function(RecipeDraft) onDone;
+  final void Function(Object) onError;
+
+  const _UrlImportDialog({
+    required this.url,
+    required this.service,
+    required this.onDone,
+    required this.onError,
+  });
+
+  @override
+  State<_UrlImportDialog> createState() => _UrlImportDialogState();
+}
+
+class _UrlImportDialogState extends State<_UrlImportDialog> {
+  bool _cancelled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _run();
+  }
+
+  Future<void> _run() async {
+    try {
+      final draft = await widget.service.fetchAndParse(widget.url);
+      if (!_cancelled && mounted) widget.onDone(draft);
+    } catch (e) {
+      if (!_cancelled && mounted) widget.onError(e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 30),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 20),
+          const Text('Fetching recipe…'),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            _cancelled = true;
+            Navigator.pop(context);
+          },
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

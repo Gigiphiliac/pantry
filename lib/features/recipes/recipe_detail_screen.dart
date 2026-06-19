@@ -32,6 +32,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final ops = ref.watch(recipeOpsProvider);
     final ingredientsFuture = ops.getIngredients(_recipe.id);
+    final steps = ref.watch(recipeStepsProvider(_recipe.id));
 
     return Scaffold(
       appBar: AppBar(
@@ -72,12 +73,42 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 const SizedBox(height: 8),
                 ...ingredients.map((ing) => _ingredientRow(ing)),
               ],
-              if (_recipe.instructions?.isNotEmpty == true) ...[
-                const SizedBox(height: 20),
-                Text('Instructions', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(_recipe.instructions!),
-              ],
+              ...steps.when(
+                loading: () => const [],
+                error: (_, _) => const [],
+                data: (stepList) => stepList.isEmpty
+                    ? const []
+                    : [
+                        const SizedBox(height: 20),
+                        Text('Method',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        ...stepList.asMap().entries.map(
+                              (e) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      width: 28,
+                                      child: Text(
+                                        '${e.key + 1}.',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                        textAlign: TextAlign.right,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(e.value)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                      ],
+              ),
               if (_recipe.sourceUrl?.isNotEmpty == true) ...[
                 const SizedBox(height: 20),
                 Text('Source', style: Theme.of(context).textTheme.titleMedium),

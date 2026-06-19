@@ -74,6 +74,16 @@ final recipeIngredientCountProvider =
   return query.map((row) => row.read(db.recipeIngredients.id.count()) ?? 0).watchSingle();
 });
 
+final recipeStepsProvider =
+    StreamProvider.family<List<String>, int>((ref, recipeId) {
+  final db = ref.watch(dbProvider);
+  return (db.select(db.recipeSteps)
+        ..where((t) => t.recipeId.equals(recipeId))
+        ..orderBy([(t) => OrderingTerm.asc(t.stepNumber)]))
+      .watch()
+      .map((rows) => rows.map((r) => r.content).toList());
+});
+
 // ── RecipeOps ─────────────────────────────────────────────────────────────────
 
 class RecipeOps {
@@ -84,7 +94,7 @@ class RecipeOps {
     int? id,
     required String name,
     int? servings,
-    String? instructions,
+    List<String> steps = const [],
     String? sourceUrl,
     String sourceType = 'manual',
     required List<RecipeIngredientDraft> ingredients,
@@ -96,7 +106,6 @@ class RecipeOps {
               RecipesCompanion.insert(
                 name: name,
                 servings: Value(servings),
-                instructions: Value(instructions),
                 sourceUrl: Value(sourceUrl),
                 sourceType: Value(sourceType),
               ),
@@ -107,13 +116,28 @@ class RecipeOps {
           RecipesCompanion(
             name: Value(name),
             servings: Value(servings),
-            instructions: Value(instructions),
             sourceUrl: Value(sourceUrl),
           ),
         );
         await (db.delete(db.recipeIngredients)
               ..where((t) => t.recipeId.equals(id)))
             .go();
+        await (db.delete(db.recipeSteps)
+              ..where((t) => t.recipeId.equals(id)))
+            .go();
+      }
+
+      // Insert steps
+      for (var i = 0; i < steps.length; i++) {
+        final content = steps[i].trim();
+        if (content.isEmpty) continue;
+        await db.into(db.recipeSteps).insert(
+              RecipeStepsCompanion.insert(
+                recipeId: recipeId,
+                stepNumber: i + 1,
+                content: content,
+              ),
+            );
       }
 
       for (final draft in ingredients) {
@@ -136,10 +160,20 @@ class RecipeOps {
   }
 
   Future<void> deleteRecipe(int id) async {
+    await (db.delete(db.recipeSteps)..where((t) => t.recipeId.equals(id)))
+        .go();
     await (db.delete(db.recipeIngredients)
           ..where((t) => t.recipeId.equals(id)))
         .go();
     await (db.delete(db.recipes)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<List<String>> getSteps(int recipeId) async {
+    final rows = await (db.select(db.recipeSteps)
+          ..where((t) => t.recipeId.equals(recipeId))
+          ..orderBy([(t) => OrderingTerm.asc(t.stepNumber)]))
+        .get();
+    return rows.map((r) => r.content).toList();
   }
 
   Future<List<RecipeIngredientRow>> getIngredients(int recipeId) async {
