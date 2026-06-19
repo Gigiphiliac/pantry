@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'shopping_providers.dart';
 import 'shopping_list_detail_screen.dart';
 import 'prompt_utils.dart';
-import '../settings/settings_screen.dart';
 
 class ShoppingListsScreen extends ConsumerWidget {
   const ShoppingListsScreen({super.key});
@@ -22,14 +21,6 @@ class ShoppingListsScreen extends ConsumerWidget {
             icon: const Icon(Icons.archive_outlined),
             tooltip: 'Archived lists',
             onPressed: () => _showArchived(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
           ),
         ],
       ),

@@ -108,6 +108,19 @@ class MealSlots extends Table {
   TextColumn get notes => text().nullable()();
 }
 
+class PantryItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get ingredientId => integer().references(Ingredients, #id)();
+  // 1 = always available, 2 = bulk staple, 3 = per-recipe
+  IntColumn get tier => integer().withDefault(const Constant(3))();
+  BoolColumn get userConfirmed => boolean().withDefault(const Constant(false))();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {ingredientId}
+      ];
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 
 @DriftDatabase(tables: [
@@ -124,12 +137,13 @@ class MealSlots extends Table {
   MealPlans,
   MealPlanDays,
   MealSlots,
+  PantryItems,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

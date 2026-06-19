@@ -4,6 +4,7 @@ import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
 import 'package:pantry/features/shopping/shopping_providers.dart';
+import 'package:pantry/features/pantry/pantry_ops.dart';
 
 // ── Data classes ──────────────────────────────────────────────────────────────
 
@@ -251,10 +252,13 @@ class RecipeOps {
             );
       }
 
+      final pantryOps = PantryOps(db);
+
       for (final draft in ingredients) {
         if (draft.rawText.trim().isEmpty) continue;
         final ingredientId = draft.resolvedIngredientId ??
             await getOrCreateIngredient(db, draft.rawText);
+        await pantryOps.autoCreatePantryItem(ingredientId);
         final riId = await db.into(db.recipeIngredients).insert(
               RecipeIngredientsCompanion.insert(
                 recipeId: recipeId,
@@ -270,6 +274,7 @@ class RecipeOps {
           if (alt.rawText.trim().isEmpty) continue;
           final altIngredientId = alt.resolvedIngredientId ??
               await getOrCreateIngredient(db, alt.rawText);
+          await pantryOps.autoCreatePantryItem(altIngredientId);
           await db.into(db.recipeIngredientAlternatives).insert(
                 RecipeIngredientAlternativesCompanion.insert(
                   recipeIngredientId: riId,
@@ -443,11 +448,19 @@ class RecipeOps {
 
     for (final ing in ingredients) {
       final effective = await getEffectiveIngredient(ing);
+
+      final pantryItem = await (db.select(db.pantryItems)
+            ..where((t) => t.ingredientId.equals(effective.ingredientId)))
+          .getSingleOrNull();
+      final tier = pantryItem?.tier ?? 3;
+
+      if (tier == 1) continue; // always available — never needs buying
+
       await shoppingOps.stackOrAddItem(
         listId,
         effective.name,
-        qty: effective.qty,
-        unit: effective.unit,
+        qty: tier == 2 ? null : effective.qty,
+        unit: tier == 2 ? null : effective.unit,
         ingredientId: effective.ingredientId,
       );
     }

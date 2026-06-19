@@ -7,6 +7,7 @@ import 'package:pantry/features/settings/settings_screen.dart';
 
 import 'shopping_providers.dart';
 import 'prompt_utils.dart';
+import '../pantry/pantry_providers.dart';
 
 class ShoppingListDetailScreen extends ConsumerWidget {
   final int listId;
@@ -159,6 +160,7 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(itemsProvider(widget.section.id));
+    final tierMap = ref.watch(pantryTierMapProvider).valueOrNull ?? {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +268,7 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
               itemCount: itemList.length,
               itemBuilder: (context, index) {
                 final item = itemList[index];
-                return _buildReorderableItem(context, item, index);
+                return _buildReorderableItem(context, item, index, tierMap);
               },
               onReorderItem: (oldIndex, newIndex) {
                 widget.ops.reorderItemInSection(
@@ -286,9 +288,12 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
     BuildContext context,
     ShoppingListItem item,
     int index,
+    Map<int, int> tierMap,
   ) {
     final pref = ref.watch(unitPreferenceProvider).valueOrNull ??
         UnitPreference.metric;
+    final pantryTier =
+        item.ingredientId != null ? tierMap[item.ingredientId] : null;
 
     return KeyedSubtree(
       key: ValueKey(item.id),
@@ -307,6 +312,7 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
                     item: item,
                     ops: widget.ops,
                     pref: pref,
+                    pantryTier: pantryTier,
                   ),
                 ),
               ),
@@ -316,12 +322,14 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
                   item: item,
                   ops: widget.ops,
                   pref: pref,
+                  pantryTier: pantryTier,
                 ),
               ),
               child: _ItemContent(
                 item: item,
                 ops: widget.ops,
                 pref: pref,
+                pantryTier: pantryTier,
               ),
             ),
           ),
@@ -355,11 +363,13 @@ class _ItemContent extends StatelessWidget {
   final ShoppingListItem item;
   final ShoppingListOps ops;
   final UnitPreference pref;
+  final int? pantryTier;
 
   const _ItemContent({
     required this.item,
     required this.ops,
     required this.pref,
+    this.pantryTier,
   });
 
   @override
@@ -389,7 +399,7 @@ class _ItemContent extends StatelessWidget {
                 )
               : null,
         ),
-        subtitle: _buildQtySubtitle(item, pref),
+        subtitle: pantryTier == 2 ? null : _buildQtySubtitle(item, pref),
         controlAffinity: ListTileControlAffinity.leading,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 48, vertical: 0),

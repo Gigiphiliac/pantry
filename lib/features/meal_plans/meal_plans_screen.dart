@@ -5,7 +5,8 @@ class MealPlansScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meal Plans'), actions: []),
       body: Center(child: Text('Meal Plans coming in Phase 3')),
     );
   }
