@@ -28,26 +28,11 @@ class ShoppingListDetailScreen extends ConsumerWidget {
       body: stores.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (storeList) => storeList.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('No stores yet.'),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add store'),
-                      onPressed: () => _addStore(context, ops),
-                    ),
-                  ],
-                ),
-              )
-            : ListView.builder(
-                itemCount: storeList.length,
-                itemBuilder: (context, i) =>
-                    _StoreSection(store: storeList[i], ops: ops),
-              ),
+        data: (storeList) => ListView.builder(
+          itemCount: storeList.length,
+          itemBuilder: (context, i) =>
+              _StoreSection(store: storeList[i], ops: ops),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.store),
@@ -58,7 +43,8 @@ class ShoppingListDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _addStore(BuildContext context, ShoppingListOps ops) async {
-    final name = await promptText(context, title: 'New store', hint: 'Store name');
+    final name =
+        await promptText(context, title: 'New store', hint: 'Store name');
     if (name != null && name.isNotEmpty) await ops.addStore(listId, name);
   }
 }
@@ -108,7 +94,8 @@ class _StoreSection extends ConsumerWidget {
           ),
           child: Container(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             width: double.infinity,
             child: Row(
               children: [
@@ -156,104 +143,227 @@ class _StoreSection extends ConsumerWidget {
   }
 }
 
-class _SectionTile extends ConsumerWidget {
+class _SectionTile extends ConsumerStatefulWidget {
   final ShoppingListSection section;
   final ShoppingListOps ops;
 
   const _SectionTile({required this.section, required this.ops});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(itemsProvider(section.id));
+  ConsumerState<_SectionTile> createState() => _SectionTileState();
+}
+
+class _SectionTileState extends ConsumerState<_SectionTile> {
+  bool _isDropTarget = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ref.watch(itemsProvider(widget.section.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Slidable(
-          endActionPane: ActionPane(
-            motion: const DrawerMotion(),
-            children: [
-              SlidableAction(
-                onPressed: (_) async {
-                  final newName = await promptText(
-                    context,
-                    title: 'Rename section',
-                    hint: 'Section name',
-                    initial: section.sectionName,
-                  );
-                  if (newName != null && newName.isNotEmpty) {
-                    await ops.renameSection(section.id, newName);
-                  }
-                },
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                icon: Icons.edit,
-                label: 'Rename',
+        DragTarget<ShoppingListItem>(
+          onWillAcceptWithDetails: (_) {
+            setState(() => _isDropTarget = true);
+            return true;
+          },
+          onLeave: (_) => setState(() => _isDropTarget = false),
+          onAcceptWithDetails: (details) async {
+            setState(() => _isDropTarget = false);
+            final item = details.data;
+            if (item.sectionId == widget.section.id) return;
+            final currentItems =
+                await ref.read(itemsProvider(widget.section.id).future);
+            await widget.ops.moveItem(
+              item.id,
+              widget.section.id,
+              currentItems.length,
+            );
+          },
+          builder: (context, candidates, rejected) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              decoration: BoxDecoration(
+                color: _isDropTarget
+                    ? Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.4)
+                    : null,
               ),
-              SlidableAction(
-                onPressed: (_) => ops.deleteSection(section.id),
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                icon: Icons.delete,
-                label: 'Delete',
-              ),
-            ],
-          ),
-          child: Container(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            padding: const EdgeInsets.fromLTRB(32, 6, 16, 6),
-            width: double.infinity,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    section.sectionName,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
+              child: Slidable(
+                endActionPane: ActionPane(
+                  motion: const DrawerMotion(),
+                  children: [
+                    SlidableAction(
+                      onPressed: (_) async {
+                        final newName = await promptText(
+                          context,
+                          title: 'Rename section',
+                          hint: 'Section name',
+                          initial: widget.section.sectionName,
+                        );
+                        if (newName != null && newName.isNotEmpty) {
+                          await widget.ops
+                              .renameSection(widget.section.id, newName);
+                        }
+                      },
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      icon: Icons.edit,
+                      label: 'Rename',
+                    ),
+                    SlidableAction(
+                      onPressed: (_) =>
+                          widget.ops.deleteSection(widget.section.id),
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      icon: Icons.delete,
+                      label: 'Delete',
+                    ),
+                  ],
+                ),
+                child: Container(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  padding: const EdgeInsets.fromLTRB(32, 6, 16, 6),
+                  width: double.infinity,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.section.sectionName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.add, size: 14),
+                        label: const Text('Item'),
+                        onPressed: () => _addItem(context),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton.icon(
-                  icon: const Icon(Icons.add, size: 14),
-                  label: const Text('Item'),
-                  onPressed: () => _addItem(context),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
         items.when(
           loading: () => const SizedBox.shrink(),
           error: (e, _) => Text('Error: $e'),
-          data: (itemList) => Column(
-            children: itemList
-                .map((item) => _ItemTile(item: item, ops: ops))
-                .toList(),
-          ),
+          data: (itemList) {
+            if (itemList.isEmpty) return const SizedBox.shrink();
+            return ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: itemList.length,
+              itemBuilder: (context, index) {
+                final item = itemList[index];
+                return _buildReorderableItem(context, item, index);
+              },
+              onReorderItem: (oldIndex, newIndex) {
+                widget.ops.reorderItemInSection(
+                  widget.section.id,
+                  itemList[oldIndex].id,
+                  newIndex,
+                );
+              },
+            );
+          },
         ),
       ],
+    );
+  }
+
+  Widget _buildReorderableItem(
+    BuildContext context,
+    ShoppingListItem item,
+    int index,
+  ) {
+    final pref = ref.watch(unitPreferenceProvider).valueOrNull ??
+        UnitPreference.metric;
+
+    return KeyedSubtree(
+      key: ValueKey(item.id),
+      child: Row(
+        children: [
+          Expanded(
+            child: LongPressDraggable<ShoppingListItem>(
+              data: item,
+              delay: const Duration(milliseconds: 400),
+              feedback: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width - 64,
+                  child: _ItemContent(
+                    item: item,
+                    ops: widget.ops,
+                    pref: pref,
+                  ),
+                ),
+              ),
+              childWhenDragging: Opacity(
+                opacity: 0.3,
+                child: _ItemContent(
+                  item: item,
+                  ops: widget.ops,
+                  pref: pref,
+                ),
+              ),
+              child: _ItemContent(
+                item: item,
+                ops: widget.ops,
+                pref: pref,
+              ),
+            ),
+          ),
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Icon(
+                Icons.drag_handle,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _addItem(BuildContext context) async {
     final text =
         await promptText(context, title: 'Add item', hint: 'Item name');
-    if (text != null && text.isNotEmpty) await ops.addItem(section.id, text);
+    if (text != null && text.isNotEmpty) {
+      await widget.ops.addItem(widget.section.id, text);
+    }
   }
 }
 
-class _ItemTile extends ConsumerWidget {
+// ── Item content (used in both normal and dragging feedback) ─────────────────
+
+class _ItemContent extends StatelessWidget {
   final ShoppingListItem item;
   final ShoppingListOps ops;
+  final UnitPreference pref;
 
-  const _ItemTile({required this.item, required this.ops});
+  const _ItemContent({
+    required this.item,
+    required this.ops,
+    required this.pref,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pref = ref.watch(unitPreferenceProvider).valueOrNull ??
-        UnitPreference.metric;
-
+  Widget build(BuildContext context) {
     return Slidable(
       endActionPane: ActionPane(
         motion: const DrawerMotion(),
@@ -292,14 +402,13 @@ class _ItemTile extends ConsumerWidget {
     final unit = UnitRegistry.parse(item.unit);
     if (unit != null) {
       if (unit.family == UnitFamily.count) {
-        // Count units never convert — show their own abbreviation
-        return Text('${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}');
+        return Text(
+            '${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}');
       }
       final display = UnitRegistry.preferredDisplayUnit(unit.family, pref);
       final qty = UnitRegistry.convert(item.qty!, unit, display);
       return Text('${UnitRegistry.formatQty(qty)} ${display.abbreviation}');
     }
-    // Unrecognised unit — show as stored
     final raw = UnitRegistry.formatQty(item.qty!);
     return Text(item.unit != null ? '$raw ${item.unit}' : raw);
   }

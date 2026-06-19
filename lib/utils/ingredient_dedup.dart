@@ -55,6 +55,20 @@ double jaroWinkler(String a, String b) {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
+// ── Name sanitisation ─────────────────────────────────────────────────────────
+
+String _sanitiseIngredientName(String raw) {
+  var s = raw.trim();
+  // Strip trailing commas
+  s = s.replaceAll(RegExp(r'\s*,+\s*$'), '').trim();
+  // Strip trailing orphaned closing paren (no matching open paren present)
+  if (s.endsWith(')') && !s.contains('(')) {
+    s = s.substring(0, s.length - 1).trim();
+  }
+  // Collapse internal whitespace
+  return s.replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
 // ── Dedup ─────────────────────────────────────────────────────────────────────
 
 class DedupResult {
@@ -125,7 +139,7 @@ Future<DedupResult> resolveIngredient(AppDatabase db, String rawText) async {
 }
 
 Future<int> getOrCreateIngredient(AppDatabase db, String rawName) async {
-  final normalised = rawName.trim().toLowerCase();
+  final normalised = _sanitiseIngredientName(rawName).toLowerCase();
 
   // Check alias first
   final existing = await (db.select(db.ingredientAliases)

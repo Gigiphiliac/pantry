@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/ingredients/ingredient_name_parser.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
@@ -58,6 +59,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _stepControllers.add(TextEditingController());
       }
       for (final ing in d.ingredients) {
+        final altEntries = ing.alternatives.map((alt) => _IngredientEntry(
+              nameCtrl: TextEditingController(text: alt.name),
+              qtyCtrl: TextEditingController(
+                  text: alt.qty != null
+                      ? (alt.qty! % 1 == 0
+                          ? alt.qty!.toInt().toString()
+                          : alt.qty.toString())
+                      : ''),
+              notesCtrl: TextEditingController(text: alt.notes ?? ''),
+              selectedUnit: UnitRegistry.parse(alt.unit),
+            )).toList();
         _ingredients.add(_IngredientEntry(
           nameCtrl: TextEditingController(text: ing.name),
           qtyCtrl: TextEditingController(
@@ -66,8 +78,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ? ing.qty!.toInt().toString()
                       : ing.qty.toString())
                   : ''),
+          notesCtrl: TextEditingController(text: ing.notes ?? ''),
           selectedUnit: UnitRegistry.parse(ing.unit),
-          notes: ing.notes,
+          alternatives: altEntries,
+        ));
+      }
+      if (_ingredients.isEmpty) {
+        _ingredients.add(_IngredientEntry(
+          nameCtrl: TextEditingController(),
+          qtyCtrl: TextEditingController(),
+          notesCtrl: TextEditingController(),
         ));
       }
     } else {
@@ -95,16 +115,38 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Future<void> _loadExistingIngredients() async {
     final ops = ref.read(recipeOpsProvider);
     final rows = await ops.getIngredients(widget.recipe!.id);
-    setState(() {
-      for (final row in rows) {
-        _ingredients.add(_IngredientEntry(
-          nameCtrl: TextEditingController(text: row.ingredientName),
-          qtyCtrl: TextEditingController(text: row.qty?.toString() ?? ''),
-          selectedUnit: UnitRegistry.parse(row.unit),
-          resolvedIngredientId: row.ingredientId,
-        ));
-      }
-    });
+    final entries = <_IngredientEntry>[];
+    for (final row in rows) {
+      final alts = await ops.getAlternatives(row.id);
+      final altEntries = alts
+          .map((alt) => _IngredientEntry(
+                nameCtrl: TextEditingController(text: alt.ingredientName),
+                qtyCtrl: TextEditingController(
+                    text: alt.qty != null
+                        ? (alt.qty! % 1 == 0
+                            ? alt.qty!.toInt().toString()
+                            : alt.qty.toString())
+                        : ''),
+                notesCtrl: TextEditingController(),
+                selectedUnit: UnitRegistry.parse(alt.unit),
+                resolvedIngredientId: alt.ingredientId,
+              ))
+          .toList();
+      entries.add(_IngredientEntry(
+        nameCtrl: TextEditingController(text: row.ingredientName),
+        qtyCtrl: TextEditingController(
+            text: row.qty != null
+                ? (row.qty! % 1 == 0
+                    ? row.qty!.toInt().toString()
+                    : row.qty.toString())
+                : ''),
+        notesCtrl: TextEditingController(text: row.notes ?? ''),
+        selectedUnit: UnitRegistry.parse(row.unit),
+        resolvedIngredientId: row.ingredientId,
+        alternatives: altEntries,
+      ));
+    }
+    setState(() => _ingredients.addAll(entries));
   }
 
   @override
@@ -171,22 +213,26 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           Text('Ingredients',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          ..._ingredients.asMap().entries.map((e) =>
-              _IngredientRow(
+          ..._ingredients.asMap().entries.map((e) => _IngredientRow(
+                key: ObjectKey(e.value),
                 entry: e.value,
                 index: e.key,
-                onRemove: () => setState(() => _ingredients.removeAt(e.key)),
+                onRemove: () => setState(() {
+                  _ingredients[e.key].dispose();
+                  _ingredients.removeAt(e.key);
+                }),
                 onResolved: (id) => setState(
                     () => _ingredients[e.key].resolvedIngredientId = id),
+                onAlternativesChanged: () => setState(() {}),
               )),
           TextButton.icon(
             icon: const Icon(Icons.add),
             label: const Text('Add ingredient'),
-            onPressed: () => setState(
-                () => _ingredients.add(_IngredientEntry(
-                      nameCtrl: TextEditingController(),
-                      qtyCtrl: TextEditingController(),
-                    ))),
+            onPressed: () => setState(() => _ingredients.add(_IngredientEntry(
+                  nameCtrl: TextEditingController(),
+                  qtyCtrl: TextEditingController(),
+                  notesCtrl: TextEditingController(),
+                ))),
           ),
           const SizedBox(height: 24),
 
@@ -283,8 +329,22 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 rawText: e.nameCtrl.text.trim(),
                 qty: double.tryParse(e.qtyCtrl.text.trim()),
                 unit: e.selectedUnit?.id,
-                notes: e.notes,
+                notes: e.notesCtrl.text.trim().isEmpty
+                    ? null
+                    : e.notesCtrl.text.trim(),
                 resolvedIngredientId: e.resolvedIngredientId,
+                alternatives: e.alternatives
+                    .where((a) => a.nameCtrl.text.trim().isNotEmpty)
+                    .map((a) => RecipeIngredientDraft(
+                          rawText: a.nameCtrl.text.trim(),
+                          qty: double.tryParse(a.qtyCtrl.text.trim()),
+                          unit: a.selectedUnit?.id,
+                          notes: a.notesCtrl.text.trim().isEmpty
+                              ? null
+                              : a.notesCtrl.text.trim(),
+                          resolvedIngredientId: a.resolvedIngredientId,
+                        ))
+                    .toList(),
               ))
           .toList();
 
@@ -324,23 +384,27 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 class _IngredientEntry {
   final TextEditingController nameCtrl;
   final TextEditingController qtyCtrl;
+  final TextEditingController notesCtrl;
   Unit? selectedUnit;
   int? resolvedIngredientId;
-  String? mergeCandidate;
-  int? mergeCandidateId;
-  String? notes;
+  List<_IngredientEntry> alternatives;
 
   _IngredientEntry({
     required this.nameCtrl,
     required this.qtyCtrl,
+    required this.notesCtrl,
     this.selectedUnit,
     this.resolvedIngredientId,
-    this.notes,
-  });
+    List<_IngredientEntry>? alternatives,
+  }) : alternatives = alternatives ?? [];
 
   void dispose() {
     nameCtrl.dispose();
     qtyCtrl.dispose();
+    notesCtrl.dispose();
+    for (final a in alternatives) {
+      a.dispose();
+    }
   }
 }
 
@@ -351,12 +415,15 @@ class _IngredientRow extends ConsumerStatefulWidget {
   final int index;
   final VoidCallback onRemove;
   final ValueChanged<int?> onResolved;
+  final VoidCallback onAlternativesChanged;
 
   const _IngredientRow({
+    super.key,
     required this.entry,
     required this.index,
     required this.onRemove,
     required this.onResolved,
+    required this.onAlternativesChanged,
   });
 
   @override
@@ -367,13 +434,15 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
   String? _mergeCandidate;
   int? _mergeCandidateId;
 
-  Future<void> _pickUnit(BuildContext context) async {
+  Future<void> _pickUnit(BuildContext context,
+      {_IngredientEntry? entry}) async {
+    final target = entry ?? widget.entry;
     final result = await showModalBottomSheet<_PickResult>(
       context: context,
       builder: (_) => const _UnitPickerSheet(),
     );
     if (result != null) {
-      setState(() => widget.entry.selectedUnit = result.unit);
+      setState(() => target.selectedUnit = result.unit);
     }
   }
 
@@ -381,8 +450,23 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
     final text = widget.entry.nameCtrl.text.trim();
     if (text.isEmpty) return;
 
+    // Heuristic name/notes split — only fires if notes is currently empty.
+    if (widget.entry.notesCtrl.text.trim().isEmpty) {
+      final split = IngredientNameParser.splitHeuristic(text);
+      if (split.notes != null) {
+        setState(() {
+          widget.entry.nameCtrl.text = split.name;
+          widget.entry.nameCtrl.selection = TextSelection.collapsed(
+              offset: split.name.length);
+          widget.entry.notesCtrl.text = split.notes!;
+        });
+      }
+    }
+
     final db = ref.read(dbProvider);
-    final result = await resolveIngredient(db, text);
+    final dedupText = widget.entry.nameCtrl.text.trim();
+    if (dedupText.isEmpty) return;
+    final result = await resolveIngredient(db, dedupText);
 
     if (result.autoLinked) {
       widget.onResolved(result.ingredientId);
@@ -410,7 +494,7 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: 4),
           child: Row(
             children: [
               // Qty
@@ -479,6 +563,135 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
             ],
           ),
         ),
+
+        // Notes field (auto-populated by heuristic on blur, always editable)
+        Padding(
+          padding: const EdgeInsets.only(left: 138, right: 48, bottom: 4),
+          child: TextField(
+            controller: widget.entry.notesCtrl,
+            decoration: const InputDecoration(
+              hintText: 'Prep notes (e.g. whisked, finely chopped)',
+              border: OutlineInputBorder(),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              isDense: true,
+            ),
+            style: const TextStyle(fontSize: 13),
+            textCapitalization: TextCapitalization.none,
+          ),
+        ),
+
+        // Alternative ingredient rows
+        ...widget.entry.alternatives.asMap().entries.map((e) {
+          final i = e.key;
+          final alt = e.value;
+          return Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.subdirectory_arrow_right,
+                    size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                // Qty
+                SizedBox(
+                  width: 56,
+                  child: TextField(
+                    controller: alt.qtyCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Qty',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Unit picker
+                SizedBox(
+                  width: 64,
+                  child: InkWell(
+                    onTap: () => _pickUnit(context, entry: alt),
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        isDense: true,
+                      ),
+                      child: Text(
+                        alt.selectedUnit?.abbreviation ?? 'Unit',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: alt.selectedUnit != null
+                              ? null
+                              : Theme.of(context).hintColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Name
+                Expanded(
+                  child: TextField(
+                    controller: alt.nameCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Alternative ingredient',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    textCapitalization: TextCapitalization.none,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      widget.entry.alternatives[i].dispose();
+                      widget.entry.alternatives.removeAt(i);
+                    });
+                    widget.onAlternativesChanged();
+                  },
+                ),
+              ],
+            ),
+          );
+        }),
+
+        // Add alternative button
+        Padding(
+          padding: const EdgeInsets.only(left: 138, bottom: 8),
+          child: TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text('Add alternative',
+                style: TextStyle(fontSize: 12)),
+            onPressed: () {
+              setState(() {
+                widget.entry.alternatives.add(_IngredientEntry(
+                  nameCtrl: TextEditingController(),
+                  qtyCtrl: TextEditingController(),
+                  notesCtrl: TextEditingController(),
+                ));
+              });
+              widget.onAlternativesChanged();
+            },
+          ),
+        ),
+
         // Merge prompt
         if (_mergeCandidate != null)
           Padding(
@@ -600,7 +813,8 @@ class _UnitPickerSheet extends StatelessWidget {
             title: Text(u.displayName),
             trailing: Text(
               u.abbreviation,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             onTap: () => Navigator.pop(context, _PickResult(u)),
           ),

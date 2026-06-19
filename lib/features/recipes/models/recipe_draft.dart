@@ -34,20 +34,31 @@ class IngredientDraft {
   final String? unit;
   final String name;
   final String? notes;
+  final List<IngredientDraft> alternatives;
 
   const IngredientDraft({
     this.qty,
     this.unit,
     required this.name,
     this.notes,
+    this.alternatives = const [],
   });
 
   factory IngredientDraft.fromJson(Map<String, dynamic> json) {
+    final rawAlts = json['alternatives'];
+    final alternatives = rawAlts is List
+        ? rawAlts
+            .whereType<Map<String, dynamic>>()
+            .map(IngredientDraft.fromJson)
+            .toList()
+        : <IngredientDraft>[];
+
     return IngredientDraft(
       qty: (json['qty'] as num?)?.toDouble(),
       unit: _nullIfEmpty(json['unit'] as String?),
       name: json['name'] as String? ?? '',
       notes: _nullIfEmpty(json['notes'] as String?),
+      alternatives: alternatives,
     );
   }
 

@@ -1557,6 +1557,18 @@ class $ShoppingListItemsTable extends ShoppingListItems
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1566,6 +1578,7 @@ class $ShoppingListItemsTable extends ShoppingListItems
     qty,
     unit,
     checked,
+    sortOrder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1625,6 +1638,12 @@ class $ShoppingListItemsTable extends ShoppingListItems
         checked.isAcceptableOrUnknown(data['checked']!, _checkedMeta),
       );
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
     return context;
   }
 
@@ -1662,6 +1681,10 @@ class $ShoppingListItemsTable extends ShoppingListItems
         DriftSqlType.bool,
         data['${effectivePrefix}checked'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
     );
   }
 
@@ -1680,6 +1703,7 @@ class ShoppingListItem extends DataClass
   final double? qty;
   final String? unit;
   final bool checked;
+  final int sortOrder;
   const ShoppingListItem({
     required this.id,
     required this.sectionId,
@@ -1688,6 +1712,7 @@ class ShoppingListItem extends DataClass
     this.qty,
     this.unit,
     required this.checked,
+    required this.sortOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1705,6 +1730,7 @@ class ShoppingListItem extends DataClass
       map['unit'] = Variable<String>(unit);
     }
     map['checked'] = Variable<bool>(checked);
+    map['sort_order'] = Variable<int>(sortOrder);
     return map;
   }
 
@@ -1719,6 +1745,7 @@ class ShoppingListItem extends DataClass
       qty: qty == null && nullToAbsent ? const Value.absent() : Value(qty),
       unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
       checked: Value(checked),
+      sortOrder: Value(sortOrder),
     );
   }
 
@@ -1735,6 +1762,7 @@ class ShoppingListItem extends DataClass
       qty: serializer.fromJson<double?>(json['qty']),
       unit: serializer.fromJson<String?>(json['unit']),
       checked: serializer.fromJson<bool>(json['checked']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
   }
   @override
@@ -1748,6 +1776,7 @@ class ShoppingListItem extends DataClass
       'qty': serializer.toJson<double?>(qty),
       'unit': serializer.toJson<String?>(unit),
       'checked': serializer.toJson<bool>(checked),
+      'sortOrder': serializer.toJson<int>(sortOrder),
     };
   }
 
@@ -1759,6 +1788,7 @@ class ShoppingListItem extends DataClass
     Value<double?> qty = const Value.absent(),
     Value<String?> unit = const Value.absent(),
     bool? checked,
+    int? sortOrder,
   }) => ShoppingListItem(
     id: id ?? this.id,
     sectionId: sectionId ?? this.sectionId,
@@ -1767,6 +1797,7 @@ class ShoppingListItem extends DataClass
     qty: qty.present ? qty.value : this.qty,
     unit: unit.present ? unit.value : this.unit,
     checked: checked ?? this.checked,
+    sortOrder: sortOrder ?? this.sortOrder,
   );
   ShoppingListItem copyWithCompanion(ShoppingListItemsCompanion data) {
     return ShoppingListItem(
@@ -1779,6 +1810,7 @@ class ShoppingListItem extends DataClass
       qty: data.qty.present ? data.qty.value : this.qty,
       unit: data.unit.present ? data.unit.value : this.unit,
       checked: data.checked.present ? data.checked.value : this.checked,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
 
@@ -1791,14 +1823,23 @@ class ShoppingListItem extends DataClass
           ..write('rawText: $rawText, ')
           ..write('qty: $qty, ')
           ..write('unit: $unit, ')
-          ..write('checked: $checked')
+          ..write('checked: $checked, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, sectionId, ingredientId, rawText, qty, unit, checked);
+  int get hashCode => Object.hash(
+    id,
+    sectionId,
+    ingredientId,
+    rawText,
+    qty,
+    unit,
+    checked,
+    sortOrder,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1809,7 +1850,8 @@ class ShoppingListItem extends DataClass
           other.rawText == this.rawText &&
           other.qty == this.qty &&
           other.unit == this.unit &&
-          other.checked == this.checked);
+          other.checked == this.checked &&
+          other.sortOrder == this.sortOrder);
 }
 
 class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
@@ -1820,6 +1862,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
   final Value<double?> qty;
   final Value<String?> unit;
   final Value<bool> checked;
+  final Value<int> sortOrder;
   const ShoppingListItemsCompanion({
     this.id = const Value.absent(),
     this.sectionId = const Value.absent(),
@@ -1828,6 +1871,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
     this.qty = const Value.absent(),
     this.unit = const Value.absent(),
     this.checked = const Value.absent(),
+    this.sortOrder = const Value.absent(),
   });
   ShoppingListItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -1837,6 +1881,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
     this.qty = const Value.absent(),
     this.unit = const Value.absent(),
     this.checked = const Value.absent(),
+    this.sortOrder = const Value.absent(),
   }) : sectionId = Value(sectionId),
        rawText = Value(rawText);
   static Insertable<ShoppingListItem> custom({
@@ -1847,6 +1892,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
     Expression<double>? qty,
     Expression<String>? unit,
     Expression<bool>? checked,
+    Expression<int>? sortOrder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1856,6 +1902,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
       if (qty != null) 'qty': qty,
       if (unit != null) 'unit': unit,
       if (checked != null) 'checked': checked,
+      if (sortOrder != null) 'sort_order': sortOrder,
     });
   }
 
@@ -1867,6 +1914,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
     Value<double?>? qty,
     Value<String?>? unit,
     Value<bool>? checked,
+    Value<int>? sortOrder,
   }) {
     return ShoppingListItemsCompanion(
       id: id ?? this.id,
@@ -1876,6 +1924,7 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
       qty: qty ?? this.qty,
       unit: unit ?? this.unit,
       checked: checked ?? this.checked,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -1903,6 +1952,9 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
     if (checked.present) {
       map['checked'] = Variable<bool>(checked.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     return map;
   }
 
@@ -1915,7 +1967,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItem> {
           ..write('rawText: $rawText, ')
           ..write('qty: $qty, ')
           ..write('unit: $unit, ')
-          ..write('checked: $checked')
+          ..write('checked: $checked, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -1982,17 +2035,6 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _instructionsMeta = const VerificationMeta(
-    'instructions',
-  );
-  @override
-  late final GeneratedColumn<String> instructions = GeneratedColumn<String>(
-    'instructions',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _nutritionJsonMeta = const VerificationMeta(
     'nutritionJson',
   );
@@ -2011,7 +2053,6 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     sourceUrl,
     sourceType,
     servings,
-    instructions,
     nutritionJson,
   ];
   @override
@@ -2055,15 +2096,6 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
         servings.isAcceptableOrUnknown(data['servings']!, _servingsMeta),
       );
     }
-    if (data.containsKey('instructions')) {
-      context.handle(
-        _instructionsMeta,
-        instructions.isAcceptableOrUnknown(
-          data['instructions']!,
-          _instructionsMeta,
-        ),
-      );
-    }
     if (data.containsKey('nutrition_json')) {
       context.handle(
         _nutritionJsonMeta,
@@ -2102,10 +2134,6 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
         DriftSqlType.int,
         data['${effectivePrefix}servings'],
       ),
-      instructions: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}instructions'],
-      ),
       nutritionJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}nutrition_json'],
@@ -2125,7 +2153,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   final String? sourceUrl;
   final String sourceType;
   final int? servings;
-  final String? instructions;
   final String? nutritionJson;
   const Recipe({
     required this.id,
@@ -2133,7 +2160,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     this.sourceUrl,
     required this.sourceType,
     this.servings,
-    this.instructions,
     this.nutritionJson,
   });
   @override
@@ -2147,9 +2173,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     map['source_type'] = Variable<String>(sourceType);
     if (!nullToAbsent || servings != null) {
       map['servings'] = Variable<int>(servings);
-    }
-    if (!nullToAbsent || instructions != null) {
-      map['instructions'] = Variable<String>(instructions);
     }
     if (!nullToAbsent || nutritionJson != null) {
       map['nutrition_json'] = Variable<String>(nutritionJson);
@@ -2168,9 +2191,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       servings: servings == null && nullToAbsent
           ? const Value.absent()
           : Value(servings),
-      instructions: instructions == null && nullToAbsent
-          ? const Value.absent()
-          : Value(instructions),
       nutritionJson: nutritionJson == null && nullToAbsent
           ? const Value.absent()
           : Value(nutritionJson),
@@ -2188,7 +2208,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       sourceUrl: serializer.fromJson<String?>(json['sourceUrl']),
       sourceType: serializer.fromJson<String>(json['sourceType']),
       servings: serializer.fromJson<int?>(json['servings']),
-      instructions: serializer.fromJson<String?>(json['instructions']),
       nutritionJson: serializer.fromJson<String?>(json['nutritionJson']),
     );
   }
@@ -2201,7 +2220,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       'sourceUrl': serializer.toJson<String?>(sourceUrl),
       'sourceType': serializer.toJson<String>(sourceType),
       'servings': serializer.toJson<int?>(servings),
-      'instructions': serializer.toJson<String?>(instructions),
       'nutritionJson': serializer.toJson<String?>(nutritionJson),
     };
   }
@@ -2212,7 +2230,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     Value<String?> sourceUrl = const Value.absent(),
     String? sourceType,
     Value<int?> servings = const Value.absent(),
-    Value<String?> instructions = const Value.absent(),
     Value<String?> nutritionJson = const Value.absent(),
   }) => Recipe(
     id: id ?? this.id,
@@ -2220,7 +2237,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     sourceUrl: sourceUrl.present ? sourceUrl.value : this.sourceUrl,
     sourceType: sourceType ?? this.sourceType,
     servings: servings.present ? servings.value : this.servings,
-    instructions: instructions.present ? instructions.value : this.instructions,
     nutritionJson: nutritionJson.present
         ? nutritionJson.value
         : this.nutritionJson,
@@ -2234,9 +2250,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
           ? data.sourceType.value
           : this.sourceType,
       servings: data.servings.present ? data.servings.value : this.servings,
-      instructions: data.instructions.present
-          ? data.instructions.value
-          : this.instructions,
       nutritionJson: data.nutritionJson.present
           ? data.nutritionJson.value
           : this.nutritionJson,
@@ -2251,22 +2264,14 @@ class Recipe extends DataClass implements Insertable<Recipe> {
           ..write('sourceUrl: $sourceUrl, ')
           ..write('sourceType: $sourceType, ')
           ..write('servings: $servings, ')
-          ..write('instructions: $instructions, ')
           ..write('nutritionJson: $nutritionJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    sourceUrl,
-    sourceType,
-    servings,
-    instructions,
-    nutritionJson,
-  );
+  int get hashCode =>
+      Object.hash(id, name, sourceUrl, sourceType, servings, nutritionJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2276,7 +2281,6 @@ class Recipe extends DataClass implements Insertable<Recipe> {
           other.sourceUrl == this.sourceUrl &&
           other.sourceType == this.sourceType &&
           other.servings == this.servings &&
-          other.instructions == this.instructions &&
           other.nutritionJson == this.nutritionJson);
 }
 
@@ -2286,7 +2290,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   final Value<String?> sourceUrl;
   final Value<String> sourceType;
   final Value<int?> servings;
-  final Value<String?> instructions;
   final Value<String?> nutritionJson;
   const RecipesCompanion({
     this.id = const Value.absent(),
@@ -2294,7 +2297,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     this.sourceUrl = const Value.absent(),
     this.sourceType = const Value.absent(),
     this.servings = const Value.absent(),
-    this.instructions = const Value.absent(),
     this.nutritionJson = const Value.absent(),
   });
   RecipesCompanion.insert({
@@ -2303,7 +2305,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     this.sourceUrl = const Value.absent(),
     this.sourceType = const Value.absent(),
     this.servings = const Value.absent(),
-    this.instructions = const Value.absent(),
     this.nutritionJson = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Recipe> custom({
@@ -2312,7 +2313,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Expression<String>? sourceUrl,
     Expression<String>? sourceType,
     Expression<int>? servings,
-    Expression<String>? instructions,
     Expression<String>? nutritionJson,
   }) {
     return RawValuesInsertable({
@@ -2321,7 +2321,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
       if (sourceUrl != null) 'source_url': sourceUrl,
       if (sourceType != null) 'source_type': sourceType,
       if (servings != null) 'servings': servings,
-      if (instructions != null) 'instructions': instructions,
       if (nutritionJson != null) 'nutrition_json': nutritionJson,
     });
   }
@@ -2332,7 +2331,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Value<String?>? sourceUrl,
     Value<String>? sourceType,
     Value<int?>? servings,
-    Value<String?>? instructions,
     Value<String?>? nutritionJson,
   }) {
     return RecipesCompanion(
@@ -2341,7 +2339,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
       sourceUrl: sourceUrl ?? this.sourceUrl,
       sourceType: sourceType ?? this.sourceType,
       servings: servings ?? this.servings,
-      instructions: instructions ?? this.instructions,
       nutritionJson: nutritionJson ?? this.nutritionJson,
     );
   }
@@ -2364,9 +2361,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     if (servings.present) {
       map['servings'] = Variable<int>(servings.value);
     }
-    if (instructions.present) {
-      map['instructions'] = Variable<String>(instructions.value);
-    }
     if (nutritionJson.present) {
       map['nutrition_json'] = Variable<String>(nutritionJson.value);
     }
@@ -2381,7 +2375,6 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
           ..write('sourceUrl: $sourceUrl, ')
           ..write('sourceType: $sourceType, ')
           ..write('servings: $servings, ')
-          ..write('instructions: $instructions, ')
           ..write('nutritionJson: $nutritionJson')
           ..write(')'))
         .toString();
@@ -2758,6 +2751,16 @@ class $RecipeIngredientsTable extends RecipeIngredients
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _activeAlternativeIndexMeta =
+      const VerificationMeta('activeAlternativeIndex');
+  @override
+  late final GeneratedColumn<int> activeAlternativeIndex = GeneratedColumn<int>(
+    'active_alternative_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2766,6 +2769,7 @@ class $RecipeIngredientsTable extends RecipeIngredients
     qty,
     unit,
     notes,
+    activeAlternativeIndex,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2819,6 +2823,15 @@ class $RecipeIngredientsTable extends RecipeIngredients
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('active_alternative_index')) {
+      context.handle(
+        _activeAlternativeIndexMeta,
+        activeAlternativeIndex.isAcceptableOrUnknown(
+          data['active_alternative_index']!,
+          _activeAlternativeIndexMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2852,6 +2865,10 @@ class $RecipeIngredientsTable extends RecipeIngredients
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      activeAlternativeIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}active_alternative_index'],
+      ),
     );
   }
 
@@ -2869,6 +2886,7 @@ class RecipeIngredient extends DataClass
   final double? qty;
   final String? unit;
   final String? notes;
+  final int? activeAlternativeIndex;
   const RecipeIngredient({
     required this.id,
     required this.recipeId,
@@ -2876,6 +2894,7 @@ class RecipeIngredient extends DataClass
     this.qty,
     this.unit,
     this.notes,
+    this.activeAlternativeIndex,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2892,6 +2911,9 @@ class RecipeIngredient extends DataClass
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || activeAlternativeIndex != null) {
+      map['active_alternative_index'] = Variable<int>(activeAlternativeIndex);
+    }
     return map;
   }
 
@@ -2905,6 +2927,9 @@ class RecipeIngredient extends DataClass
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      activeAlternativeIndex: activeAlternativeIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(activeAlternativeIndex),
     );
   }
 
@@ -2920,6 +2945,9 @@ class RecipeIngredient extends DataClass
       qty: serializer.fromJson<double?>(json['qty']),
       unit: serializer.fromJson<String?>(json['unit']),
       notes: serializer.fromJson<String?>(json['notes']),
+      activeAlternativeIndex: serializer.fromJson<int?>(
+        json['activeAlternativeIndex'],
+      ),
     );
   }
   @override
@@ -2932,6 +2960,7 @@ class RecipeIngredient extends DataClass
       'qty': serializer.toJson<double?>(qty),
       'unit': serializer.toJson<String?>(unit),
       'notes': serializer.toJson<String?>(notes),
+      'activeAlternativeIndex': serializer.toJson<int?>(activeAlternativeIndex),
     };
   }
 
@@ -2942,6 +2971,7 @@ class RecipeIngredient extends DataClass
     Value<double?> qty = const Value.absent(),
     Value<String?> unit = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<int?> activeAlternativeIndex = const Value.absent(),
   }) => RecipeIngredient(
     id: id ?? this.id,
     recipeId: recipeId ?? this.recipeId,
@@ -2949,6 +2979,9 @@ class RecipeIngredient extends DataClass
     qty: qty.present ? qty.value : this.qty,
     unit: unit.present ? unit.value : this.unit,
     notes: notes.present ? notes.value : this.notes,
+    activeAlternativeIndex: activeAlternativeIndex.present
+        ? activeAlternativeIndex.value
+        : this.activeAlternativeIndex,
   );
   RecipeIngredient copyWithCompanion(RecipeIngredientsCompanion data) {
     return RecipeIngredient(
@@ -2960,6 +2993,9 @@ class RecipeIngredient extends DataClass
       qty: data.qty.present ? data.qty.value : this.qty,
       unit: data.unit.present ? data.unit.value : this.unit,
       notes: data.notes.present ? data.notes.value : this.notes,
+      activeAlternativeIndex: data.activeAlternativeIndex.present
+          ? data.activeAlternativeIndex.value
+          : this.activeAlternativeIndex,
     );
   }
 
@@ -2971,13 +3007,22 @@ class RecipeIngredient extends DataClass
           ..write('ingredientId: $ingredientId, ')
           ..write('qty: $qty, ')
           ..write('unit: $unit, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('activeAlternativeIndex: $activeAlternativeIndex')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, recipeId, ingredientId, qty, unit, notes);
+  int get hashCode => Object.hash(
+    id,
+    recipeId,
+    ingredientId,
+    qty,
+    unit,
+    notes,
+    activeAlternativeIndex,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2987,7 +3032,8 @@ class RecipeIngredient extends DataClass
           other.ingredientId == this.ingredientId &&
           other.qty == this.qty &&
           other.unit == this.unit &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.activeAlternativeIndex == this.activeAlternativeIndex);
 }
 
 class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
@@ -2997,6 +3043,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
   final Value<double?> qty;
   final Value<String?> unit;
   final Value<String?> notes;
+  final Value<int?> activeAlternativeIndex;
   const RecipeIngredientsCompanion({
     this.id = const Value.absent(),
     this.recipeId = const Value.absent(),
@@ -3004,6 +3051,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
     this.qty = const Value.absent(),
     this.unit = const Value.absent(),
     this.notes = const Value.absent(),
+    this.activeAlternativeIndex = const Value.absent(),
   });
   RecipeIngredientsCompanion.insert({
     this.id = const Value.absent(),
@@ -3012,6 +3060,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
     this.qty = const Value.absent(),
     this.unit = const Value.absent(),
     this.notes = const Value.absent(),
+    this.activeAlternativeIndex = const Value.absent(),
   }) : recipeId = Value(recipeId),
        ingredientId = Value(ingredientId);
   static Insertable<RecipeIngredient> custom({
@@ -3021,6 +3070,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
     Expression<double>? qty,
     Expression<String>? unit,
     Expression<String>? notes,
+    Expression<int>? activeAlternativeIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3029,6 +3079,8 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
       if (qty != null) 'qty': qty,
       if (unit != null) 'unit': unit,
       if (notes != null) 'notes': notes,
+      if (activeAlternativeIndex != null)
+        'active_alternative_index': activeAlternativeIndex,
     });
   }
 
@@ -3039,6 +3091,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
     Value<double?>? qty,
     Value<String?>? unit,
     Value<String?>? notes,
+    Value<int?>? activeAlternativeIndex,
   }) {
     return RecipeIngredientsCompanion(
       id: id ?? this.id,
@@ -3047,6 +3100,8 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
       qty: qty ?? this.qty,
       unit: unit ?? this.unit,
       notes: notes ?? this.notes,
+      activeAlternativeIndex:
+          activeAlternativeIndex ?? this.activeAlternativeIndex,
     );
   }
 
@@ -3071,6 +3126,11 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (activeAlternativeIndex.present) {
+      map['active_alternative_index'] = Variable<int>(
+        activeAlternativeIndex.value,
+      );
+    }
     return map;
   }
 
@@ -3082,7 +3142,423 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
           ..write('ingredientId: $ingredientId, ')
           ..write('qty: $qty, ')
           ..write('unit: $unit, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('activeAlternativeIndex: $activeAlternativeIndex')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RecipeIngredientAlternativesTable extends RecipeIngredientAlternatives
+    with
+        TableInfo<
+          $RecipeIngredientAlternativesTable,
+          RecipeIngredientAlternative
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecipeIngredientAlternativesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _recipeIngredientIdMeta =
+      const VerificationMeta('recipeIngredientId');
+  @override
+  late final GeneratedColumn<int> recipeIngredientId = GeneratedColumn<int>(
+    'recipe_ingredient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ingredientIdMeta = const VerificationMeta(
+    'ingredientId',
+  );
+  @override
+  late final GeneratedColumn<int> ingredientId = GeneratedColumn<int>(
+    'ingredient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<double> qty = GeneratedColumn<double>(
+    'qty',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    recipeIngredientId,
+    ingredientId,
+    qty,
+    unit,
+    sortOrder,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recipe_ingredient_alternatives';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecipeIngredientAlternative> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('recipe_ingredient_id')) {
+      context.handle(
+        _recipeIngredientIdMeta,
+        recipeIngredientId.isAcceptableOrUnknown(
+          data['recipe_ingredient_id']!,
+          _recipeIngredientIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recipeIngredientIdMeta);
+    }
+    if (data.containsKey('ingredient_id')) {
+      context.handle(
+        _ingredientIdMeta,
+        ingredientId.isAcceptableOrUnknown(
+          data['ingredient_id']!,
+          _ingredientIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ingredientIdMeta);
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+        _qtyMeta,
+        qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta),
+      );
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sortOrderMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecipeIngredientAlternative map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecipeIngredientAlternative(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      recipeIngredientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recipe_ingredient_id'],
+      )!,
+      ingredientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ingredient_id'],
+      )!,
+      qty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}qty'],
+      ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $RecipeIngredientAlternativesTable createAlias(String alias) {
+    return $RecipeIngredientAlternativesTable(attachedDatabase, alias);
+  }
+}
+
+class RecipeIngredientAlternative extends DataClass
+    implements Insertable<RecipeIngredientAlternative> {
+  final int id;
+  final int recipeIngredientId;
+  final int ingredientId;
+  final double? qty;
+  final String? unit;
+  final int sortOrder;
+  const RecipeIngredientAlternative({
+    required this.id,
+    required this.recipeIngredientId,
+    required this.ingredientId,
+    this.qty,
+    this.unit,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['recipe_ingredient_id'] = Variable<int>(recipeIngredientId);
+    map['ingredient_id'] = Variable<int>(ingredientId);
+    if (!nullToAbsent || qty != null) {
+      map['qty'] = Variable<double>(qty);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  RecipeIngredientAlternativesCompanion toCompanion(bool nullToAbsent) {
+    return RecipeIngredientAlternativesCompanion(
+      id: Value(id),
+      recipeIngredientId: Value(recipeIngredientId),
+      ingredientId: Value(ingredientId),
+      qty: qty == null && nullToAbsent ? const Value.absent() : Value(qty),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory RecipeIngredientAlternative.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecipeIngredientAlternative(
+      id: serializer.fromJson<int>(json['id']),
+      recipeIngredientId: serializer.fromJson<int>(json['recipeIngredientId']),
+      ingredientId: serializer.fromJson<int>(json['ingredientId']),
+      qty: serializer.fromJson<double?>(json['qty']),
+      unit: serializer.fromJson<String?>(json['unit']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'recipeIngredientId': serializer.toJson<int>(recipeIngredientId),
+      'ingredientId': serializer.toJson<int>(ingredientId),
+      'qty': serializer.toJson<double?>(qty),
+      'unit': serializer.toJson<String?>(unit),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  RecipeIngredientAlternative copyWith({
+    int? id,
+    int? recipeIngredientId,
+    int? ingredientId,
+    Value<double?> qty = const Value.absent(),
+    Value<String?> unit = const Value.absent(),
+    int? sortOrder,
+  }) => RecipeIngredientAlternative(
+    id: id ?? this.id,
+    recipeIngredientId: recipeIngredientId ?? this.recipeIngredientId,
+    ingredientId: ingredientId ?? this.ingredientId,
+    qty: qty.present ? qty.value : this.qty,
+    unit: unit.present ? unit.value : this.unit,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  RecipeIngredientAlternative copyWithCompanion(
+    RecipeIngredientAlternativesCompanion data,
+  ) {
+    return RecipeIngredientAlternative(
+      id: data.id.present ? data.id.value : this.id,
+      recipeIngredientId: data.recipeIngredientId.present
+          ? data.recipeIngredientId.value
+          : this.recipeIngredientId,
+      ingredientId: data.ingredientId.present
+          ? data.ingredientId.value
+          : this.ingredientId,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecipeIngredientAlternative(')
+          ..write('id: $id, ')
+          ..write('recipeIngredientId: $recipeIngredientId, ')
+          ..write('ingredientId: $ingredientId, ')
+          ..write('qty: $qty, ')
+          ..write('unit: $unit, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, recipeIngredientId, ingredientId, qty, unit, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecipeIngredientAlternative &&
+          other.id == this.id &&
+          other.recipeIngredientId == this.recipeIngredientId &&
+          other.ingredientId == this.ingredientId &&
+          other.qty == this.qty &&
+          other.unit == this.unit &&
+          other.sortOrder == this.sortOrder);
+}
+
+class RecipeIngredientAlternativesCompanion
+    extends UpdateCompanion<RecipeIngredientAlternative> {
+  final Value<int> id;
+  final Value<int> recipeIngredientId;
+  final Value<int> ingredientId;
+  final Value<double?> qty;
+  final Value<String?> unit;
+  final Value<int> sortOrder;
+  const RecipeIngredientAlternativesCompanion({
+    this.id = const Value.absent(),
+    this.recipeIngredientId = const Value.absent(),
+    this.ingredientId = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  RecipeIngredientAlternativesCompanion.insert({
+    this.id = const Value.absent(),
+    required int recipeIngredientId,
+    required int ingredientId,
+    this.qty = const Value.absent(),
+    this.unit = const Value.absent(),
+    required int sortOrder,
+  }) : recipeIngredientId = Value(recipeIngredientId),
+       ingredientId = Value(ingredientId),
+       sortOrder = Value(sortOrder);
+  static Insertable<RecipeIngredientAlternative> custom({
+    Expression<int>? id,
+    Expression<int>? recipeIngredientId,
+    Expression<int>? ingredientId,
+    Expression<double>? qty,
+    Expression<String>? unit,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (recipeIngredientId != null)
+        'recipe_ingredient_id': recipeIngredientId,
+      if (ingredientId != null) 'ingredient_id': ingredientId,
+      if (qty != null) 'qty': qty,
+      if (unit != null) 'unit': unit,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  RecipeIngredientAlternativesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? recipeIngredientId,
+    Value<int>? ingredientId,
+    Value<double?>? qty,
+    Value<String?>? unit,
+    Value<int>? sortOrder,
+  }) {
+    return RecipeIngredientAlternativesCompanion(
+      id: id ?? this.id,
+      recipeIngredientId: recipeIngredientId ?? this.recipeIngredientId,
+      ingredientId: ingredientId ?? this.ingredientId,
+      qty: qty ?? this.qty,
+      unit: unit ?? this.unit,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (recipeIngredientId.present) {
+      map['recipe_ingredient_id'] = Variable<int>(recipeIngredientId.value);
+    }
+    if (ingredientId.present) {
+      map['ingredient_id'] = Variable<int>(ingredientId.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<double>(qty.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecipeIngredientAlternativesCompanion(')
+          ..write('id: $id, ')
+          ..write('recipeIngredientId: $recipeIngredientId, ')
+          ..write('ingredientId: $ingredientId, ')
+          ..write('qty: $qty, ')
+          ..write('unit: $unit, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -3993,6 +4469,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RecipeStepsTable recipeSteps = $RecipeStepsTable(this);
   late final $RecipeIngredientsTable recipeIngredients =
       $RecipeIngredientsTable(this);
+  late final $RecipeIngredientAlternativesTable recipeIngredientAlternatives =
+      $RecipeIngredientAlternativesTable(this);
   late final $MealPlansTable mealPlans = $MealPlansTable(this);
   late final $MealPlanDaysTable mealPlanDays = $MealPlanDaysTable(this);
   late final $MealSlotsTable mealSlots = $MealSlotsTable(this);
@@ -4010,6 +4488,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     recipes,
     recipeSteps,
     recipeIngredients,
+    recipeIngredientAlternatives,
     mealPlans,
     mealPlanDays,
     mealSlots,
@@ -4933,6 +5412,7 @@ typedef $$ShoppingListItemsTableCreateCompanionBuilder =
       Value<double?> qty,
       Value<String?> unit,
       Value<bool> checked,
+      Value<int> sortOrder,
     });
 typedef $$ShoppingListItemsTableUpdateCompanionBuilder =
     ShoppingListItemsCompanion Function({
@@ -4943,6 +5423,7 @@ typedef $$ShoppingListItemsTableUpdateCompanionBuilder =
       Value<double?> qty,
       Value<String?> unit,
       Value<bool> checked,
+      Value<int> sortOrder,
     });
 
 class $$ShoppingListItemsTableFilterComposer
@@ -4986,6 +5467,11 @@ class $$ShoppingListItemsTableFilterComposer
 
   ColumnFilters<bool> get checked => $composableBuilder(
     column: $table.checked,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5033,6 +5519,11 @@ class $$ShoppingListItemsTableOrderingComposer
     column: $table.checked,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ShoppingListItemsTableAnnotationComposer
@@ -5066,6 +5557,9 @@ class $$ShoppingListItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get checked =>
       $composableBuilder(column: $table.checked, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 }
 
 class $$ShoppingListItemsTableTableManager
@@ -5115,6 +5609,7 @@ class $$ShoppingListItemsTableTableManager
                 Value<double?> qty = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<bool> checked = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
               }) => ShoppingListItemsCompanion(
                 id: id,
                 sectionId: sectionId,
@@ -5123,6 +5618,7 @@ class $$ShoppingListItemsTableTableManager
                 qty: qty,
                 unit: unit,
                 checked: checked,
+                sortOrder: sortOrder,
               ),
           createCompanionCallback:
               ({
@@ -5133,6 +5629,7 @@ class $$ShoppingListItemsTableTableManager
                 Value<double?> qty = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<bool> checked = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
               }) => ShoppingListItemsCompanion.insert(
                 id: id,
                 sectionId: sectionId,
@@ -5141,6 +5638,7 @@ class $$ShoppingListItemsTableTableManager
                 qty: qty,
                 unit: unit,
                 checked: checked,
+                sortOrder: sortOrder,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -5178,7 +5676,6 @@ typedef $$RecipesTableCreateCompanionBuilder =
       Value<String?> sourceUrl,
       Value<String> sourceType,
       Value<int?> servings,
-      Value<String?> instructions,
       Value<String?> nutritionJson,
     });
 typedef $$RecipesTableUpdateCompanionBuilder =
@@ -5188,7 +5685,6 @@ typedef $$RecipesTableUpdateCompanionBuilder =
       Value<String?> sourceUrl,
       Value<String> sourceType,
       Value<int?> servings,
-      Value<String?> instructions,
       Value<String?> nutritionJson,
     });
 
@@ -5223,11 +5719,6 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<int> get servings => $composableBuilder(
     column: $table.servings,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get instructions => $composableBuilder(
-    column: $table.instructions,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5271,11 +5762,6 @@ class $$RecipesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get instructions => $composableBuilder(
-    column: $table.instructions,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get nutritionJson => $composableBuilder(
     column: $table.nutritionJson,
     builder: (column) => ColumnOrderings(column),
@@ -5307,11 +5793,6 @@ class $$RecipesTableAnnotationComposer
 
   GeneratedColumn<int> get servings =>
       $composableBuilder(column: $table.servings, builder: (column) => column);
-
-  GeneratedColumn<String> get instructions => $composableBuilder(
-    column: $table.instructions,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<String> get nutritionJson => $composableBuilder(
     column: $table.nutritionJson,
@@ -5352,7 +5833,6 @@ class $$RecipesTableTableManager
                 Value<String?> sourceUrl = const Value.absent(),
                 Value<String> sourceType = const Value.absent(),
                 Value<int?> servings = const Value.absent(),
-                Value<String?> instructions = const Value.absent(),
                 Value<String?> nutritionJson = const Value.absent(),
               }) => RecipesCompanion(
                 id: id,
@@ -5360,7 +5840,6 @@ class $$RecipesTableTableManager
                 sourceUrl: sourceUrl,
                 sourceType: sourceType,
                 servings: servings,
-                instructions: instructions,
                 nutritionJson: nutritionJson,
               ),
           createCompanionCallback:
@@ -5370,7 +5849,6 @@ class $$RecipesTableTableManager
                 Value<String?> sourceUrl = const Value.absent(),
                 Value<String> sourceType = const Value.absent(),
                 Value<int?> servings = const Value.absent(),
-                Value<String?> instructions = const Value.absent(),
                 Value<String?> nutritionJson = const Value.absent(),
               }) => RecipesCompanion.insert(
                 id: id,
@@ -5378,7 +5856,6 @@ class $$RecipesTableTableManager
                 sourceUrl: sourceUrl,
                 sourceType: sourceType,
                 servings: servings,
-                instructions: instructions,
                 nutritionJson: nutritionJson,
               ),
           withReferenceMapper: (p0) => p0
@@ -5588,6 +6065,7 @@ typedef $$RecipeIngredientsTableCreateCompanionBuilder =
       Value<double?> qty,
       Value<String?> unit,
       Value<String?> notes,
+      Value<int?> activeAlternativeIndex,
     });
 typedef $$RecipeIngredientsTableUpdateCompanionBuilder =
     RecipeIngredientsCompanion Function({
@@ -5597,6 +6075,7 @@ typedef $$RecipeIngredientsTableUpdateCompanionBuilder =
       Value<double?> qty,
       Value<String?> unit,
       Value<String?> notes,
+      Value<int?> activeAlternativeIndex,
     });
 
 class $$RecipeIngredientsTableFilterComposer
@@ -5635,6 +6114,11 @@ class $$RecipeIngredientsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activeAlternativeIndex => $composableBuilder(
+    column: $table.activeAlternativeIndex,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5677,6 +6161,11 @@ class $$RecipeIngredientsTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get activeAlternativeIndex => $composableBuilder(
+    column: $table.activeAlternativeIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecipeIngredientsTableAnnotationComposer
@@ -5707,6 +6196,11 @@ class $$RecipeIngredientsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get activeAlternativeIndex => $composableBuilder(
+    column: $table.activeAlternativeIndex,
+    builder: (column) => column,
+  );
 }
 
 class $$RecipeIngredientsTableTableManager
@@ -5755,6 +6249,7 @@ class $$RecipeIngredientsTableTableManager
                 Value<double?> qty = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<int?> activeAlternativeIndex = const Value.absent(),
               }) => RecipeIngredientsCompanion(
                 id: id,
                 recipeId: recipeId,
@@ -5762,6 +6257,7 @@ class $$RecipeIngredientsTableTableManager
                 qty: qty,
                 unit: unit,
                 notes: notes,
+                activeAlternativeIndex: activeAlternativeIndex,
               ),
           createCompanionCallback:
               ({
@@ -5771,6 +6267,7 @@ class $$RecipeIngredientsTableTableManager
                 Value<double?> qty = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<int?> activeAlternativeIndex = const Value.absent(),
               }) => RecipeIngredientsCompanion.insert(
                 id: id,
                 recipeId: recipeId,
@@ -5778,6 +6275,7 @@ class $$RecipeIngredientsTableTableManager
                 qty: qty,
                 unit: unit,
                 notes: notes,
+                activeAlternativeIndex: activeAlternativeIndex,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -5806,6 +6304,242 @@ typedef $$RecipeIngredientsTableProcessedTableManager =
         >,
       ),
       RecipeIngredient,
+      PrefetchHooks Function()
+    >;
+typedef $$RecipeIngredientAlternativesTableCreateCompanionBuilder =
+    RecipeIngredientAlternativesCompanion Function({
+      Value<int> id,
+      required int recipeIngredientId,
+      required int ingredientId,
+      Value<double?> qty,
+      Value<String?> unit,
+      required int sortOrder,
+    });
+typedef $$RecipeIngredientAlternativesTableUpdateCompanionBuilder =
+    RecipeIngredientAlternativesCompanion Function({
+      Value<int> id,
+      Value<int> recipeIngredientId,
+      Value<int> ingredientId,
+      Value<double?> qty,
+      Value<String?> unit,
+      Value<int> sortOrder,
+    });
+
+class $$RecipeIngredientAlternativesTableFilterComposer
+    extends Composer<_$AppDatabase, $RecipeIngredientAlternativesTable> {
+  $$RecipeIngredientAlternativesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get recipeIngredientId => $composableBuilder(
+    column: $table.recipeIngredientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ingredientId => $composableBuilder(
+    column: $table.ingredientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecipeIngredientAlternativesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecipeIngredientAlternativesTable> {
+  $$RecipeIngredientAlternativesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get recipeIngredientId => $composableBuilder(
+    column: $table.recipeIngredientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ingredientId => $composableBuilder(
+    column: $table.ingredientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecipeIngredientAlternativesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecipeIngredientAlternativesTable> {
+  $$RecipeIngredientAlternativesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get recipeIngredientId => $composableBuilder(
+    column: $table.recipeIngredientId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get ingredientId => $composableBuilder(
+    column: $table.ingredientId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$RecipeIngredientAlternativesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecipeIngredientAlternativesTable,
+          RecipeIngredientAlternative,
+          $$RecipeIngredientAlternativesTableFilterComposer,
+          $$RecipeIngredientAlternativesTableOrderingComposer,
+          $$RecipeIngredientAlternativesTableAnnotationComposer,
+          $$RecipeIngredientAlternativesTableCreateCompanionBuilder,
+          $$RecipeIngredientAlternativesTableUpdateCompanionBuilder,
+          (
+            RecipeIngredientAlternative,
+            BaseReferences<
+              _$AppDatabase,
+              $RecipeIngredientAlternativesTable,
+              RecipeIngredientAlternative
+            >,
+          ),
+          RecipeIngredientAlternative,
+          PrefetchHooks Function()
+        > {
+  $$RecipeIngredientAlternativesTableTableManager(
+    _$AppDatabase db,
+    $RecipeIngredientAlternativesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecipeIngredientAlternativesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RecipeIngredientAlternativesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RecipeIngredientAlternativesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> recipeIngredientId = const Value.absent(),
+                Value<int> ingredientId = const Value.absent(),
+                Value<double?> qty = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => RecipeIngredientAlternativesCompanion(
+                id: id,
+                recipeIngredientId: recipeIngredientId,
+                ingredientId: ingredientId,
+                qty: qty,
+                unit: unit,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int recipeIngredientId,
+                required int ingredientId,
+                Value<double?> qty = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
+                required int sortOrder,
+              }) => RecipeIngredientAlternativesCompanion.insert(
+                id: id,
+                recipeIngredientId: recipeIngredientId,
+                ingredientId: ingredientId,
+                qty: qty,
+                unit: unit,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecipeIngredientAlternativesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecipeIngredientAlternativesTable,
+      RecipeIngredientAlternative,
+      $$RecipeIngredientAlternativesTableFilterComposer,
+      $$RecipeIngredientAlternativesTableOrderingComposer,
+      $$RecipeIngredientAlternativesTableAnnotationComposer,
+      $$RecipeIngredientAlternativesTableCreateCompanionBuilder,
+      $$RecipeIngredientAlternativesTableUpdateCompanionBuilder,
+      (
+        RecipeIngredientAlternative,
+        BaseReferences<
+          _$AppDatabase,
+          $RecipeIngredientAlternativesTable,
+          RecipeIngredientAlternative
+        >,
+      ),
+      RecipeIngredientAlternative,
       PrefetchHooks Function()
     >;
 typedef $$MealPlansTableCreateCompanionBuilder =
@@ -6339,6 +7073,12 @@ class $AppDatabaseManager {
       $$RecipeStepsTableTableManager(_db, _db.recipeSteps);
   $$RecipeIngredientsTableTableManager get recipeIngredients =>
       $$RecipeIngredientsTableTableManager(_db, _db.recipeIngredients);
+  $$RecipeIngredientAlternativesTableTableManager
+  get recipeIngredientAlternatives =>
+      $$RecipeIngredientAlternativesTableTableManager(
+        _db,
+        _db.recipeIngredientAlternatives,
+      );
   $$MealPlansTableTableManager get mealPlans =>
       $$MealPlansTableTableManager(_db, _db.mealPlans);
   $$MealPlanDaysTableTableManager get mealPlanDays =>

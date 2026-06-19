@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
@@ -14,6 +13,7 @@ class RecipeIngredientDraft {
   String? unit;
   String? notes;
   int? resolvedIngredientId;
+  List<RecipeIngredientDraft> alternatives;
 
   RecipeIngredientDraft({
     required this.rawText,
@@ -21,6 +21,7 @@ class RecipeIngredientDraft {
     this.unit,
     this.notes,
     this.resolvedIngredientId,
+    this.alternatives = const [],
   });
 }
 
@@ -31,6 +32,7 @@ class RecipeIngredientRow {
   final String? unit;
   final String? notes;
   final int ingredientId;
+  final int? activeAlternativeIndex;
 
   const RecipeIngredientRow({
     required this.id,
@@ -38,6 +40,43 @@ class RecipeIngredientRow {
     this.qty,
     this.unit,
     this.notes,
+    required this.ingredientId,
+    this.activeAlternativeIndex,
+  });
+}
+
+class RecipeIngredientAlternativeRow {
+  final int id;
+  final int recipeIngredientId;
+  final String ingredientName;
+  final double? qty;
+  final String? unit;
+  final int ingredientId;
+  final int sortOrder;
+
+  const RecipeIngredientAlternativeRow({
+    required this.id,
+    required this.recipeIngredientId,
+    required this.ingredientName,
+    this.qty,
+    this.unit,
+    required this.ingredientId,
+    required this.sortOrder,
+  });
+}
+
+/// The resolved ingredient to show/add for a given recipe_ingredient row.
+/// Either the primary or the active alternative, depending on activeAlternativeIndex.
+class EffectiveIngredient {
+  final String name;
+  final double? qty;
+  final String? unit;
+  final int ingredientId;
+
+  const EffectiveIngredient({
+    required this.name,
+    this.qty,
+    this.unit,
     required this.ingredientId,
   });
 }
@@ -71,7 +110,9 @@ final recipeIngredientCountProvider =
   final query = db.selectOnly(db.recipeIngredients)
     ..addColumns([db.recipeIngredients.id.count()])
     ..where(db.recipeIngredients.recipeId.equals(recipeId));
-  return query.map((row) => row.read(db.recipeIngredients.id.count()) ?? 0).watchSingle();
+  return query
+      .map((row) => row.read(db.recipeIngredients.id.count()) ?? 0)
+      .watchSingle();
 });
 
 final recipeStepsProvider =
@@ -82,6 +123,65 @@ final recipeStepsProvider =
         ..orderBy([(t) => OrderingTerm.asc(t.stepNumber)]))
       .watch()
       .map((rows) => rows.map((r) => r.content).toList());
+});
+
+final recipeIngredientsProvider =
+    StreamProvider.family<List<RecipeIngredientRow>, int>((ref, recipeId) {
+  final db = ref.watch(dbProvider);
+  return (db.select(db.recipeIngredients).join([
+    innerJoin(
+      db.ingredients,
+      db.ingredients.id.equalsExp(db.recipeIngredients.ingredientId),
+    ),
+  ])
+        ..where(db.recipeIngredients.recipeId.equals(recipeId)))
+      .watch()
+      .map((rows) => rows
+          .map((row) {
+            final ri = row.readTable(db.recipeIngredients);
+            final ing = row.readTable(db.ingredients);
+            return RecipeIngredientRow(
+              id: ri.id,
+              ingredientName: ing.name,
+              qty: ri.qty,
+              unit: ri.unit,
+              notes: ri.notes,
+              ingredientId: ing.id,
+              activeAlternativeIndex: ri.activeAlternativeIndex,
+            );
+          })
+          .toList());
+});
+
+final recipeIngredientAlternativesProvider =
+    StreamProvider.family<List<RecipeIngredientAlternativeRow>, int>(
+        (ref, recipeIngredientId) {
+  final db = ref.watch(dbProvider);
+  final query = db.select(db.recipeIngredientAlternatives).join([
+    innerJoin(
+      db.ingredients,
+      db.ingredients.id
+          .equalsExp(db.recipeIngredientAlternatives.ingredientId),
+    ),
+  ])
+    ..where(db.recipeIngredientAlternatives.recipeIngredientId
+        .equals(recipeIngredientId))
+    ..orderBy([
+      OrderingTerm.asc(db.recipeIngredientAlternatives.sortOrder),
+    ]);
+  return query.watch().map((rows) => rows.map((row) {
+        final alt = row.readTable(db.recipeIngredientAlternatives);
+        final ing = row.readTable(db.ingredients);
+        return RecipeIngredientAlternativeRow(
+          id: alt.id,
+          recipeIngredientId: alt.recipeIngredientId,
+          ingredientName: ing.name,
+          qty: alt.qty,
+          unit: alt.unit,
+          ingredientId: ing.id,
+          sortOrder: alt.sortOrder,
+        );
+      }).toList());
 });
 
 // ── RecipeOps ─────────────────────────────────────────────────────────────────
@@ -119,6 +219,17 @@ class RecipeOps {
             sourceUrl: Value(sourceUrl),
           ),
         );
+        // Delete alternatives before ingredients (FK constraint)
+        final existingIds = await (db.selectOnly(db.recipeIngredients)
+              ..addColumns([db.recipeIngredients.id])
+              ..where(db.recipeIngredients.recipeId.equals(id)))
+            .map((row) => row.read(db.recipeIngredients.id)!)
+            .get();
+        for (final riId in existingIds) {
+          await (db.delete(db.recipeIngredientAlternatives)
+                ..where((t) => t.recipeIngredientId.equals(riId)))
+              .go();
+        }
         await (db.delete(db.recipeIngredients)
               ..where((t) => t.recipeId.equals(id)))
             .go();
@@ -144,7 +255,7 @@ class RecipeOps {
         if (draft.rawText.trim().isEmpty) continue;
         final ingredientId = draft.resolvedIngredientId ??
             await getOrCreateIngredient(db, draft.rawText);
-        await db.into(db.recipeIngredients).insert(
+        final riId = await db.into(db.recipeIngredients).insert(
               RecipeIngredientsCompanion.insert(
                 recipeId: recipeId,
                 ingredientId: ingredientId,
@@ -153,6 +264,22 @@ class RecipeOps {
                 notes: Value(draft.notes),
               ),
             );
+
+        for (var i = 0; i < draft.alternatives.length; i++) {
+          final alt = draft.alternatives[i];
+          if (alt.rawText.trim().isEmpty) continue;
+          final altIngredientId = alt.resolvedIngredientId ??
+              await getOrCreateIngredient(db, alt.rawText);
+          await db.into(db.recipeIngredientAlternatives).insert(
+                RecipeIngredientAlternativesCompanion.insert(
+                  recipeIngredientId: riId,
+                  ingredientId: altIngredientId,
+                  qty: Value(alt.qty),
+                  unit: Value(alt.unit),
+                  sortOrder: i,
+                ),
+              );
+        }
       }
 
       return recipeId;
@@ -160,6 +287,17 @@ class RecipeOps {
   }
 
   Future<void> deleteRecipe(int id) async {
+    // Delete alternatives before ingredients (FK constraint)
+    final existingIds = await (db.selectOnly(db.recipeIngredients)
+          ..addColumns([db.recipeIngredients.id])
+          ..where(db.recipeIngredients.recipeId.equals(id)))
+        .map((row) => row.read(db.recipeIngredients.id)!)
+        .get();
+    for (final riId in existingIds) {
+      await (db.delete(db.recipeIngredientAlternatives)
+            ..where((t) => t.recipeIngredientId.equals(riId)))
+          .go();
+    }
     await (db.delete(db.recipeSteps)..where((t) => t.recipeId.equals(id)))
         .go();
     await (db.delete(db.recipeIngredients)
@@ -196,8 +334,101 @@ class RecipeOps {
         unit: ri.unit,
         notes: ri.notes,
         ingredientId: ing.id,
+        activeAlternativeIndex: ri.activeAlternativeIndex,
       );
     }).toList();
+  }
+
+  Future<List<RecipeIngredientAlternativeRow>> getAlternatives(
+      int recipeIngredientId) async {
+    final query = db.select(db.recipeIngredientAlternatives).join([
+      innerJoin(
+        db.ingredients,
+        db.ingredients.id
+            .equalsExp(db.recipeIngredientAlternatives.ingredientId),
+      ),
+    ])
+      ..where(db.recipeIngredientAlternatives.recipeIngredientId
+          .equals(recipeIngredientId))
+      ..orderBy([
+        OrderingTerm.asc(db.recipeIngredientAlternatives.sortOrder),
+      ]);
+    final rows = await query.get();
+    return rows.map((row) {
+      final alt = row.readTable(db.recipeIngredientAlternatives);
+      final ing = row.readTable(db.ingredients);
+      return RecipeIngredientAlternativeRow(
+        id: alt.id,
+        recipeIngredientId: alt.recipeIngredientId,
+        ingredientName: ing.name,
+        qty: alt.qty,
+        unit: alt.unit,
+        ingredientId: ing.id,
+        sortOrder: alt.sortOrder,
+      );
+    }).toList();
+  }
+
+  /// Cycles the active alternative for a recipe ingredient row.
+  /// null (primary) → 0 (first alt) → 1 → ... → null
+  Future<void> cycleAlternative(int recipeIngredientId) async {
+    final row = await (db.select(db.recipeIngredients)
+          ..where((t) => t.id.equals(recipeIngredientId)))
+        .getSingle();
+
+    final altCount = await (db.selectOnly(db.recipeIngredientAlternatives)
+          ..addColumns([db.recipeIngredientAlternatives.id.count()])
+          ..where(db.recipeIngredientAlternatives.recipeIngredientId
+              .equals(recipeIngredientId)))
+        .map((r) => r.read(db.recipeIngredientAlternatives.id.count()) ?? 0)
+        .getSingle();
+
+    if (altCount == 0) return;
+
+    final current = row.activeAlternativeIndex;
+    final next = (current == null)
+        ? 0
+        : (current + 1 >= altCount ? null : current + 1);
+
+    await (db.update(db.recipeIngredients)
+          ..where((t) => t.id.equals(recipeIngredientId)))
+        .write(RecipeIngredientsCompanion(
+      activeAlternativeIndex: Value(next),
+    ));
+  }
+
+  /// Returns the effective ingredient (primary or active alternative) for display
+  /// and shopping list purposes.
+  Future<EffectiveIngredient> getEffectiveIngredient(
+      RecipeIngredientRow row) async {
+    final idx = row.activeAlternativeIndex;
+    if (idx == null) {
+      return EffectiveIngredient(
+        name: row.ingredientName,
+        qty: row.qty,
+        unit: row.unit,
+        ingredientId: row.ingredientId,
+      );
+    }
+
+    final alts = await getAlternatives(row.id);
+    if (idx < alts.length) {
+      final alt = alts[idx];
+      return EffectiveIngredient(
+        name: alt.ingredientName,
+        qty: alt.qty ?? row.qty,
+        unit: alt.unit ?? row.unit,
+        ingredientId: alt.ingredientId,
+      );
+    }
+
+    // Index out of range (e.g. alternative was deleted) — fall back to primary.
+    return EffectiveIngredient(
+      name: row.ingredientName,
+      qty: row.qty,
+      unit: row.unit,
+      ingredientId: row.ingredientId,
+    );
   }
 
   Future<void> addToShoppingList(
@@ -210,50 +441,14 @@ class RecipeOps {
 
     final shoppingOps = ShoppingListOps(db);
 
-    // Find first store's General section, or create store named after recipe
-    final stores = await (db.select(db.shoppingListStores)
-          ..where((t) => t.listId.equals(listId))
-          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-        .get();
-
-    final int sectionId;
-    if (stores.isNotEmpty) {
-      final sections = await (db.select(db.shoppingListSections)
-            ..where((t) => t.storeId.equals(stores.first.id))
-            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-          .get();
-      sectionId = sections.isNotEmpty
-          ? sections.first.id
-          : await shoppingOps.addSection(stores.first.id, 'General');
-    } else {
-      final storeId = await db.into(db.shoppingListStores).insert(
-            ShoppingListStoresCompanion.insert(
-              listId: listId,
-              storeName: recipeName,
-              sortOrder: const Value(0),
-            ),
-          );
-      sectionId = await shoppingOps.addSection(storeId, 'General');
-    }
-
     for (final ing in ingredients) {
-      final unit = UnitRegistry.parse(ing.unit);
-      // Convert weight/volume to canonical (g, ml) for cross-unit stacking.
-      // Count units preserve their own ID — cans stay cans, not pieces.
-      final needsConversion =
-          unit != null && unit.family != UnitFamily.count && ing.qty != null;
-      final canonicalQty = needsConversion
-          ? UnitRegistry.convertToCanonical(ing.qty!, unit)
-          : ing.qty;
-      final canonicalUnitId = needsConversion
-          ? UnitRegistry.canonicalUnit(unit.family).id
-          : ing.unit;
-      await shoppingOps.addItem(
-        sectionId,
-        ing.ingredientName,
-        qty: canonicalQty,
-        unit: canonicalUnitId,
-        ingredientId: ing.ingredientId,
+      final effective = await getEffectiveIngredient(ing);
+      await shoppingOps.stackOrAddItem(
+        listId,
+        effective.name,
+        qty: effective.qty,
+        unit: effective.unit,
+        ingredientId: effective.ingredientId,
       );
     }
   }

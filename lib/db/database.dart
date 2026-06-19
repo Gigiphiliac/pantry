@@ -47,6 +47,7 @@ class ShoppingListItems extends Table {
   RealColumn get qty => real().nullable()();
   TextColumn get unit => text().nullable()();
   BoolColumn get checked => boolean().withDefault(const Constant(false))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 class Recipes extends Table {
@@ -55,7 +56,6 @@ class Recipes extends Table {
   TextColumn get sourceUrl => text().nullable()();
   TextColumn get sourceType => text().withDefault(const Constant('manual'))();
   IntColumn get servings => integer().nullable()();
-  TextColumn get instructions => text().nullable()();
   TextColumn get nutritionJson => text().nullable()();
 }
 
@@ -73,6 +73,18 @@ class RecipeIngredients extends Table {
   RealColumn get qty => real().nullable()();
   TextColumn get unit => text().nullable()();
   TextColumn get notes => text().nullable()();
+  // null = primary; 0 = first alternative; 1 = second; etc.
+  IntColumn get activeAlternativeIndex => integer().nullable()();
+}
+
+class RecipeIngredientAlternatives extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get recipeIngredientId =>
+      integer().references(RecipeIngredients, #id)();
+  IntColumn get ingredientId => integer().references(Ingredients, #id)();
+  RealColumn get qty => real().nullable()();
+  TextColumn get unit => text().nullable()();
+  IntColumn get sortOrder => integer()();
 }
 
 class MealPlans extends Table {
@@ -108,6 +120,7 @@ class MealSlots extends Table {
   Recipes,
   RecipeSteps,
   RecipeIngredients,
+  RecipeIngredientAlternatives,
   MealPlans,
   MealPlanDays,
   MealSlots,
@@ -116,46 +129,25 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          if (from == 1) {
-            await customStatement(
-              'CREATE TABLE IF NOT EXISTS recipe_steps ('
-              'id INTEGER PRIMARY KEY AUTOINCREMENT, '
-              'recipe_id INTEGER NOT NULL REFERENCES recipes(id), '
-              'step_number INTEGER NOT NULL, '
-              'content TEXT NOT NULL'
-              ')',
-            );
-            // Migrate existing instruction blobs into discrete steps
-            final rows = await customSelect(
-              'SELECT id, instructions FROM recipes '
-              "WHERE instructions IS NOT NULL AND TRIM(instructions) != ''",
-            ).get();
-            for (final row in rows) {
-              final recipeId = row.read<int>('id');
-              final blob = row.read<String>('instructions');
-              final steps = blob
-                  .split('\n')
-                  .map((s) => s.trim())
-                  .where((s) => s.isNotEmpty)
-                  .toList();
-              for (var i = 0; i < steps.length; i++) {
-                await customInsert(
-                  'INSERT INTO recipe_steps (recipe_id, step_number, content) VALUES (?, ?, ?)',
-                  variables: [
-                    Variable.withInt(recipeId),
-                    Variable.withInt(i + 1),
-                    Variable.withString(steps[i]),
-                  ],
-                );
-              }
-            }
+          // Destructive reset — wipe all tables and recreate from scratch.
+          // Safe for dev: no production data exists.
+          final tables = (await customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'",
+          ).get())
+              .map((r) => r.read<String>('name'))
+              .toList();
+          await customStatement('PRAGMA foreign_keys = OFF');
+          for (final t in tables) {
+            await customStatement('DROP TABLE IF EXISTS "$t"');
           }
+          await customStatement('PRAGMA foreign_keys = ON');
+          await m.createAll();
         },
       );
 }

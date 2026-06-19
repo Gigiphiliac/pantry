@@ -93,6 +93,18 @@ class OcrTextParser {
 
     if (remaining.isEmpty) return null;
 
+    // Strip inline unit conversion alternatives: "g/4oz" or "g / 4oz" → "g"
+    // Right side must start with a digit/fraction; preserves word/word slashes.
+    remaining = remaining
+        .replaceAll(
+          RegExp(
+              r'\s*/\s*(?=[¼½¾⅓⅔⅛⅜⅝⅞\d])[\d¼½¾⅓⅔⅛⅜⅝⅞][^\s,()]*(?:\s+[a-zA-Z]+)?'),
+          '',
+        )
+        .trim();
+
+    if (remaining.isEmpty) return null;
+
     String? unitId;
     String name = remaining;
     final words = remaining.split(RegExp(r'\s+'));

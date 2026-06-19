@@ -32,7 +32,15 @@ JSON format:
   "servings": integer or null,
   "steps": ["step one text", "step two text"],
   "ingredients": [
-    { "qty": number or null, "unit": "string or null", "name": "string", "notes": "string or null" }
+    {
+      "qty": number or null,
+      "unit": "string or null",
+      "name": "string",
+      "notes": "string or null",
+      "alternatives": [
+        { "qty": number or null, "unit": "string or null", "name": "string" }
+      ]
+    }
   ]
 }
 
@@ -42,7 +50,11 @@ Rules:
 - "servings" is a whole number or null
 - "steps" is an ordered list of instruction steps — each step is a separate string
 - "ingredients" must always be an array, even if empty
-- "notes" captures modifiers like "finely chopped", "at room temperature", "sifted"''';
+- CRITICAL — ingredient "name" must be the bare ingredient ONLY: no prep instructions, no cooking state, no descriptors. Examples: "eggs" not "whisked eggs", "white rice" not "cooked day old white rice", "butter" not "melted butter"
+- "notes" captures ALL prep instructions, cooking states, and descriptors that were stripped from the name. Examples: "whisked", "cooked, day old", "melted", "finely chopped, at room temperature"
+- When an ingredient offers alternatives (e.g. "1 cup beer or beef stock", "olive oil / vegetable oil"), set "name" to the first option and list the others in "alternatives". Each alternative may include its own "qty" and "unit"; omit them if the same as the parent
+- "alternatives" may be an empty array or omitted when there are no alternatives''';
+
 
 class RecipeOcrService {
   Future<String> extractText(XFile image) async {
@@ -112,6 +124,15 @@ class RecipeOcrService {
             unit: parsed?.id ?? ing.unit,
             name: ing.name,
             notes: ing.notes,
+            alternatives: ing.alternatives.map((alt) {
+              final altParsed = UnitRegistry.parse(alt.unit);
+              return IngredientDraft(
+                qty: alt.qty,
+                unit: altParsed?.id ?? alt.unit,
+                name: alt.name,
+                notes: alt.notes,
+              );
+            }).toList(),
           );
         }).toList(),
       );

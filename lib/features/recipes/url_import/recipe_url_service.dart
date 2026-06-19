@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import 'package:pantry/core/ingredients/ingredient_name_parser.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/features/recipes/models/recipe_draft.dart';
 
@@ -140,11 +141,12 @@ class RecipeUrlService {
           .trim();
     }
 
-    // Strip inline unit conversion alternatives: "120g / 4oz" → "120g"
-    // Only fires when there's whitespace before "/", preserving "bacon/eggs".
+    // Strip inline unit conversion alternatives: "120g / 4oz" or "120g/4oz" → "120g"
+    // Right side must start with a digit/fraction; preserves word/word slashes.
     remaining = remaining
         .replaceAll(
-          RegExp(r'\s+/\s+[\d¼½¾⅓⅔⅛⅜⅝⅞][^\s,()]*(?:\s+[a-zA-Z]+)?'),
+          RegExp(
+              r'\s*/\s*(?=[¼½¾⅓⅔⅛⅜⅝⅞\d])[\d¼½¾⅓⅔⅛⅜⅝⅞][^\s,()]*(?:\s+[a-zA-Z]+)?'),
           '',
         )
         .trim();
@@ -184,13 +186,103 @@ class RecipeUrlService {
           .join(' ');
     }
     name = iterName;
-    final notes = notesParts.isNotEmpty ? notesParts.join(', ') : null;
+    String? notes = notesParts.isNotEmpty ? notesParts.join(', ') : null;
+
+    // Split prep notes from ingredient name (heuristic: comma or known prep words).
+    // Only applies when notes aren't already populated from parentheticals.
+    if (notes == null) {
+      final split = IngredientNameParser.splitHeuristic(name);
+      if (split.notes != null) {
+        name = split.name;
+        notes = split.notes;
+      }
+    }
+
+    // Detect "or" alternatives: "beer or beef stock" → primary + alternatives.
+    // Also handles word/word slash: "beer/wine" (right side has no leading digit).
+    final alternatives = <IngredientDraft>[];
+    if (name.contains(' or ')) {
+      final parts = name.split(' or ');
+      name = parts.first.trim();
+      for (final alt in parts.skip(1)) {
+        if (alt.trim().isNotEmpty) {
+          alternatives.add(_parseAlternative(alt.trim(), qty, unit?.id));
+        }
+      }
+    } else {
+      final slashIdx = name.indexOf('/');
+      if (slashIdx > 0) {
+        final left = name.substring(0, slashIdx).trim();
+        final right = name.substring(slashIdx + 1).trim();
+        // Word/word slash = alternative (digit-starting right side was already stripped above).
+        if (right.isNotEmpty &&
+            left.isNotEmpty &&
+            !RegExp(r'^[\d¼½¾⅓⅔⅛⅜⅝⅞]').hasMatch(right)) {
+          name = left;
+          alternatives.add(_parseAlternative(right, qty, unit?.id));
+        }
+      }
+    }
 
     return IngredientDraft(
       qty: qty,
       unit: unit?.id,
       name: name.isEmpty ? s : name,
       notes: notes,
+      alternatives: alternatives,
+    );
+  }
+
+  /// Parses an alternative ingredient string, inheriting qty/unit from the
+  /// primary when the alternative has none of its own.
+  IngredientDraft _parseAlternative(String raw, double? primaryQty, String? primaryUnit) {
+    final numPattern = RegExp(
+        r'^(\d+(?:\.\d+)?)\s+(\d+)/(\d+)|'
+        r'^(\d+)/(\d+)|'
+        r'^(\d+(?:\.\d+)?)');
+    final numMatch = numPattern.firstMatch(raw);
+    double? altQty;
+    String remaining = raw;
+
+    if (numMatch != null) {
+      if (numMatch.group(1) != null) {
+        altQty = double.parse(numMatch.group(1)!) +
+            double.parse(numMatch.group(2)!) / double.parse(numMatch.group(3)!);
+      } else if (numMatch.group(4) != null) {
+        altQty = double.parse(numMatch.group(4)!) / double.parse(numMatch.group(5)!);
+      } else {
+        altQty = double.tryParse(numMatch.group(6)!);
+      }
+      remaining = raw.substring(numMatch.end).trim();
+    }
+
+    Unit? altUnit;
+    String altName = remaining;
+    if (remaining.isNotEmpty) {
+      final words = remaining.split(RegExp(r'\s+'));
+      if (words.length >= 2) {
+        final parsed = UnitRegistry.parse('${words[0]} ${words[1]}');
+        if (parsed != null) {
+          altUnit = parsed;
+          altName = words.sublist(2).join(' ');
+        }
+      }
+      if (altUnit == null) {
+        final parsed = UnitRegistry.parse(words[0]);
+        if (parsed != null) {
+          altUnit = parsed;
+          altName = words.sublist(1).join(' ');
+        }
+      }
+    }
+
+    final split = IngredientNameParser.splitHeuristic(altName);
+
+    return IngredientDraft(
+      qty: altQty ?? primaryQty,
+      unit: altUnit?.id ?? primaryUnit,
+      name: split.name.isEmpty ? raw : split.name,
+      notes: split.notes,
     );
   }
 

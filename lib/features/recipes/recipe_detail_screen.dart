@@ -31,7 +31,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final ops = ref.watch(recipeOpsProvider);
-    final ingredientsFuture = ops.getIngredients(_recipe.id);
+    final ingredientsAsync = ref.watch(recipeIngredientsProvider(_recipe.id));
     final steps = ref.watch(recipeStepsProvider(_recipe.id));
 
     return Scaffold(
@@ -56,75 +56,77 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<RecipeIngredientRow>>(
-        future: ingredientsFuture,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final ingredients = snap.data ?? [];
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (_recipe.servings != null) _servingsRow(),
-              if (ingredients.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text('Ingredients', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                ...ingredients.map((ing) => _ingredientRow(ing)),
-              ],
-              ...steps.when(
-                loading: () => const [],
-                error: (_, _) => const [],
-                data: (stepList) => stepList.isEmpty
-                    ? const []
-                    : [
-                        const SizedBox(height: 20),
-                        Text('Method',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 8),
-                        ...stepList.asMap().entries.map(
-                              (e) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      width: 28,
-                                      child: Text(
-                                        '${e.key + 1}.',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium
-                                            ?.copyWith(
-                                                fontWeight: FontWeight.bold),
-                                        textAlign: TextAlign.right,
-                                      ),
+      body: ingredientsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (ingredients) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (_recipe.servings != null) _servingsRow(),
+            if (ingredients.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text('Ingredients',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...ingredients.map((ing) => _IngredientTile(
+                    key: ValueKey(ing.id),
+                    ing: ing,
+                    baseServings: _baseServings,
+                    servingScale: _servingScale,
+                  )),
+            ],
+            ...steps.when(
+              loading: () => const [],
+              error: (_, _) => const [],
+              data: (stepList) => stepList.isEmpty
+                  ? const []
+                  : [
+                      const SizedBox(height: 20),
+                      Text('Method',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      ...stepList.asMap().entries.map(
+                            (e) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 28,
+                                    child: Text(
+                                      '${e.key + 1}.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.right,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(e.value)),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(e.value)),
+                                ],
                               ),
                             ),
-                      ],
-              ),
-              if (_recipe.sourceUrl?.isNotEmpty == true) ...[
-                const SizedBox(height: 20),
-                Text('Source', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Text(
-                  _recipe.sourceUrl!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    decoration: TextDecoration.underline,
-                  ),
+                          ),
+                    ],
+            ),
+            if (_recipe.sourceUrl?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Source',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                _recipe.sourceUrl!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
                 ),
-              ],
-              const SizedBox(height: 80),
+              ),
             ],
-          );
-        },
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -160,28 +162,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  Widget _ingredientRow(RecipeIngredientRow ing) {
-    final scale = _baseServings > 0 ? _servingScale / _baseServings : 1.0;
-    final scaledQty = ing.qty != null ? ing.qty! * scale : null;
-    final qtyStr = scaledQty != null
-        ? (scaledQty == scaledQty.roundToDouble()
-            ? scaledQty.toInt().toString()
-            : scaledQty.toStringAsFixed(1))
-        : '';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          const Text('• '),
-          if (qtyStr.isNotEmpty) Text('$qtyStr '),
-          if (ing.unit?.isNotEmpty == true) Text('${ing.unit} '),
-          Expanded(child: Text(ing.ingredientName)),
-        ],
-      ),
-    );
-  }
-
   void _showAddToList(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -202,7 +182,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -213,6 +194,128 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
   }
 }
+
+// ── Ingredient tile with cycle button ─────────────────────────────────────────
+
+class _IngredientTile extends ConsumerWidget {
+  final RecipeIngredientRow ing;
+  final int baseServings;
+  final int servingScale;
+
+  const _IngredientTile({
+    super.key,
+    required this.ing,
+    required this.baseServings,
+    required this.servingScale,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final altsAsync =
+        ref.watch(recipeIngredientAlternativesProvider(ing.id));
+    final ops = ref.watch(recipeOpsProvider);
+
+    return altsAsync.when(
+      loading: () => _buildRow(context, ing.ingredientName, ing.qty,
+          ing.unit, hasAlts: false, onCycle: null),
+      error: (_, _) => _buildRow(context, ing.ingredientName, ing.qty,
+          ing.unit, hasAlts: false, onCycle: null),
+      data: (alts) {
+        final hasAlts = alts.isNotEmpty;
+
+        // Resolve effective name/qty/unit from activeAlternativeIndex
+        final idx = ing.activeAlternativeIndex;
+        final String displayName;
+        final double? displayQty;
+        final String? displayUnit;
+
+        if (idx == null || idx >= alts.length) {
+          displayName = ing.ingredientName;
+          displayQty = ing.qty;
+          displayUnit = ing.unit;
+        } else {
+          final alt = alts[idx];
+          displayName = alt.ingredientName;
+          displayQty = alt.qty ?? ing.qty;
+          displayUnit = alt.unit ?? ing.unit;
+        }
+
+        return _buildRow(
+          context,
+          displayName,
+          displayQty,
+          displayUnit,
+          hasAlts: hasAlts,
+          activeIdx: idx,
+          totalOptions: alts.length + 1,
+          onCycle: hasAlts
+              ? () => ops.cycleAlternative(ing.id)
+              : null,
+        );
+      },
+    );
+  }
+
+  Widget _buildRow(
+    BuildContext context,
+    String name,
+    double? qty,
+    String? unit, {
+    required bool hasAlts,
+    required VoidCallback? onCycle,
+    int? activeIdx,
+    int totalOptions = 1,
+  }) {
+    final scale = baseServings > 0 ? servingScale / baseServings : 1.0;
+    final scaledQty = qty != null ? qty * scale : null;
+    final qtyStr = scaledQty != null
+        ? (scaledQty == scaledQty.roundToDouble()
+            ? scaledQty.toInt().toString()
+            : scaledQty.toStringAsFixed(1))
+        : '';
+
+    // Dot indicator: which option is active (e.g. "2/3")
+    final indicatorLabel = hasAlts
+        ? '${(activeIdx ?? -1) + 2}/$totalOptions'
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          const Text('• '),
+          if (qtyStr.isNotEmpty) Text('$qtyStr '),
+          if (unit?.isNotEmpty == true) Text('$unit '),
+          Expanded(child: Text(name)),
+          if (hasAlts) ...[
+            if (indicatorLabel != null)
+              Text(
+                indicatorLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(width: 2),
+            GestureDetector(
+              onTap: onCycle,
+              child: Tooltip(
+                message: 'Cycle alternative',
+                child: Icon(
+                  Icons.swap_horiz,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Add to list sheet ─────────────────────────────────────────────────────────
 
 class _AddToListSheet extends ConsumerWidget {
   final Recipe recipe;
@@ -248,10 +351,6 @@ class _AddToListSheet extends ConsumerWidget {
                                 Navigator.pop(context);
                                 await ops.addToShoppingList(
                                     recipe.id, list.id, recipe.name);
-                                // context is from the outer sheet builder,
-                                // which is no longer mounted after pop.
-                                // Use ScaffoldMessenger via a root key instead.
-                                // Snackbar is best-effort here.
                               },
                             ))
                         .toList(),
