@@ -64,6 +64,11 @@ class OcrTextParser {
     return true;
   }
 
+  // Matches a leading range/conversion suffix: "- 1kg" or "/ 2lb" or "- 1.5 kg"
+  static final _rangeSuffix = RegExp(
+    r'^\s*[-/]\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*',
+  );
+
   static ParsedIngredientLine? _parseIngredientLine(String line) {
     double? qty;
     String remaining = line;
@@ -81,8 +86,7 @@ class OcrTextParser {
               double.parse(m.group(2)!) / double.parse(m.group(3)!);
         } else if (m.group(4) != null) {
           // simple fraction: "1/2"
-          qty =
-              double.parse(m.group(4)!) / double.parse(m.group(5)!);
+          qty = double.parse(m.group(4)!) / double.parse(m.group(5)!);
         } else {
           // decimal or integer
           qty = double.tryParse(m.group(6)!);
@@ -93,7 +97,7 @@ class OcrTextParser {
 
     if (remaining.isEmpty) return null;
 
-    // Strip inline unit conversion alternatives: "g/4oz" or "g / 4oz" → "g"
+    // Strip slash-prefixed unit conversions: "g/4oz" or "g / 4oz" → "g"
     // Right side must start with a digit/fraction; preserves word/word slashes.
     remaining = remaining
         .replaceAll(
@@ -125,6 +129,73 @@ class OcrTextParser {
     }
 
     if (name.isEmpty) name = remaining;
-    return ParsedIngredientLine(qty: qty, unit: unitId, name: name);
+
+    // Strip range/conversion suffixes at start of name: "- 1kg - 2lb ground beef"
+    // Only strips tokens where the unit is recognisable, taking the lower bound already captured.
+    name = _stripRangeSuffixes(name);
+
+    // Detect alternative ingredient separators.
+    final parts = _splitAlternatives(name);
+    final primaryName = parts.first;
+    final altLines = parts.length > 1
+        ? parts.sublist(1).map((n) => ParsedIngredientLine(name: n)).toList()
+        : <ParsedIngredientLine>[];
+
+    if (primaryName.isEmpty) return null;
+    return ParsedIngredientLine(
+      qty: qty,
+      unit: unitId,
+      name: primaryName,
+      alternatives: altLines,
+    );
+  }
+
+  /// Strips leading range/conversion tokens from an ingredient name.
+  /// e.g. "- 1kg - 2lb ground beef" → "ground beef" (lower bound already captured).
+  static String _stripRangeSuffixes(String name) {
+    String result = name;
+    while (true) {
+      final m = _rangeSuffix.firstMatch(result);
+      if (m == null) break;
+      if (UnitRegistry.parse(m.group(2)!) == null) break;
+      result = result.substring(m.end).trim();
+      if (result.isEmpty) break;
+    }
+    return result;
+  }
+
+  /// Splits a name on alternative separators in precedence order.
+  /// Returns a list with at least one element.
+  static List<String> _splitAlternatives(String name) {
+    // " or " — unambiguous
+    if (name.contains(' or ')) {
+      final parts =
+          name.split(' or ').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      if (parts.length > 1) return parts;
+    }
+
+    // " / " or "/" — alternative only when neither side starts with a digit
+    for (final sep in [' / ', '/']) {
+      if (name.contains(sep)) {
+        final parts =
+            name.split(sep).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        if (parts.length > 1 &&
+            parts.every((p) => !RegExp(r'^\d').hasMatch(p))) {
+          return parts;
+        }
+      }
+    }
+
+    // " - " — alternative only when neither side starts with a digit
+    if (name.contains(' - ')) {
+      final parts =
+          name.split(' - ').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      if (parts.length > 1 &&
+          parts.every((p) => !RegExp(r'^\d').hasMatch(p))) {
+        return parts;
+      }
+    }
+
+    return [name];
   }
 }

@@ -15,6 +15,8 @@ class RecipeIngredientDraft {
   String? notes;
   int? resolvedIngredientId;
   List<RecipeIngredientDraft> alternatives;
+  // Index into the sections list passed to saveRecipe(); null = unsectioned.
+  int? sectionIndex;
 
   RecipeIngredientDraft({
     required this.rawText,
@@ -23,6 +25,7 @@ class RecipeIngredientDraft {
     this.notes,
     this.resolvedIngredientId,
     this.alternatives = const [],
+    this.sectionIndex,
   });
 }
 
@@ -34,6 +37,7 @@ class RecipeIngredientRow {
   final String? notes;
   final int ingredientId;
   final int? activeAlternativeIndex;
+  final int? sectionId;
 
   const RecipeIngredientRow({
     required this.id,
@@ -43,6 +47,7 @@ class RecipeIngredientRow {
     this.notes,
     required this.ingredientId,
     this.activeAlternativeIndex,
+    this.sectionId,
   });
 }
 
@@ -126,6 +131,15 @@ final recipeStepsProvider =
       .map((rows) => rows.map((r) => r.content).toList());
 });
 
+final recipeSectionsProvider =
+    StreamProvider.family<List<RecipeIngredientSection>, int>((ref, recipeId) {
+  final db = ref.watch(dbProvider);
+  return (db.select(db.recipeIngredientSections)
+        ..where((t) => t.recipeId.equals(recipeId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+      .watch();
+});
+
 final recipeIngredientsProvider =
     StreamProvider.family<List<RecipeIngredientRow>, int>((ref, recipeId) {
   final db = ref.watch(dbProvider);
@@ -134,8 +148,17 @@ final recipeIngredientsProvider =
       db.ingredients,
       db.ingredients.id.equalsExp(db.recipeIngredients.ingredientId),
     ),
+    leftOuterJoin(
+      db.recipeIngredientSections,
+      db.recipeIngredientSections.id
+          .equalsExp(db.recipeIngredients.sectionId),
+    ),
   ])
-        ..where(db.recipeIngredients.recipeId.equals(recipeId)))
+        ..where(db.recipeIngredients.recipeId.equals(recipeId))
+        ..orderBy([
+          OrderingTerm.asc(db.recipeIngredientSections.sortOrder),
+          OrderingTerm.asc(db.recipeIngredients.id),
+        ]))
       .watch()
       .map((rows) => rows
           .map((row) {
@@ -149,6 +172,7 @@ final recipeIngredientsProvider =
               notes: ri.notes,
               ingredientId: ing.id,
               activeAlternativeIndex: ri.activeAlternativeIndex,
+              sectionId: ri.sectionId,
             );
           })
           .toList());
@@ -198,6 +222,7 @@ class RecipeOps {
     List<String> steps = const [],
     String? sourceUrl,
     String sourceType = 'manual',
+    List<String> sections = const [],
     required List<RecipeIngredientDraft> ingredients,
   }) async {
     return db.transaction(() async {
@@ -220,7 +245,7 @@ class RecipeOps {
             sourceUrl: Value(sourceUrl),
           ),
         );
-        // Delete alternatives before ingredients (FK constraint)
+        // Delete alternatives → ingredients → sections (FK order)
         final existingIds = await (db.selectOnly(db.recipeIngredients)
               ..addColumns([db.recipeIngredients.id])
               ..where(db.recipeIngredients.recipeId.equals(id)))
@@ -232,6 +257,9 @@ class RecipeOps {
               .go();
         }
         await (db.delete(db.recipeIngredients)
+              ..where((t) => t.recipeId.equals(id)))
+            .go();
+        await (db.delete(db.recipeIngredientSections)
               ..where((t) => t.recipeId.equals(id)))
             .go();
         await (db.delete(db.recipeSteps)
@@ -252,6 +280,21 @@ class RecipeOps {
             );
       }
 
+      // Insert sections; build index→id map for ingredient FK resolution.
+      final sectionIdMap = <int, int>{};
+      for (var i = 0; i < sections.length; i++) {
+        final sectionName = sections[i].trim();
+        if (sectionName.isEmpty) continue;
+        final sectionId = await db.into(db.recipeIngredientSections).insert(
+              RecipeIngredientSectionsCompanion.insert(
+                recipeId: recipeId,
+                name: sectionName,
+                sortOrder: Value(i),
+              ),
+            );
+        sectionIdMap[i] = sectionId;
+      }
+
       final pantryOps = PantryOps(db);
 
       for (final draft in ingredients) {
@@ -259,10 +302,14 @@ class RecipeOps {
         final ingredientId = draft.resolvedIngredientId ??
             await getOrCreateIngredient(db, draft.rawText);
         await pantryOps.autoCreatePantryItem(ingredientId);
+        final sectionId = draft.sectionIndex != null
+            ? sectionIdMap[draft.sectionIndex]
+            : null;
         final riId = await db.into(db.recipeIngredients).insert(
               RecipeIngredientsCompanion.insert(
                 recipeId: recipeId,
                 ingredientId: ingredientId,
+                sectionId: Value(sectionId),
                 qty: Value(draft.qty),
                 unit: Value(draft.unit),
                 notes: Value(draft.notes),
@@ -292,7 +339,7 @@ class RecipeOps {
   }
 
   Future<void> deleteRecipe(int id) async {
-    // Delete alternatives before ingredients (FK constraint)
+    // Delete in FK order: alternatives → ingredients → sections → steps → recipe
     final existingIds = await (db.selectOnly(db.recipeIngredients)
           ..addColumns([db.recipeIngredients.id])
           ..where(db.recipeIngredients.recipeId.equals(id)))
@@ -303,10 +350,13 @@ class RecipeOps {
             ..where((t) => t.recipeIngredientId.equals(riId)))
           .go();
     }
-    await (db.delete(db.recipeSteps)..where((t) => t.recipeId.equals(id)))
-        .go();
     await (db.delete(db.recipeIngredients)
           ..where((t) => t.recipeId.equals(id)))
+        .go();
+    await (db.delete(db.recipeIngredientSections)
+          ..where((t) => t.recipeId.equals(id)))
+        .go();
+    await (db.delete(db.recipeSteps)..where((t) => t.recipeId.equals(id)))
         .go();
     await (db.delete(db.recipes)..where((t) => t.id.equals(id))).go();
   }
@@ -325,8 +375,17 @@ class RecipeOps {
         db.ingredients,
         db.ingredients.id.equalsExp(db.recipeIngredients.ingredientId),
       ),
+      leftOuterJoin(
+        db.recipeIngredientSections,
+        db.recipeIngredientSections.id
+            .equalsExp(db.recipeIngredients.sectionId),
+      ),
     ])
-      ..where(db.recipeIngredients.recipeId.equals(recipeId));
+      ..where(db.recipeIngredients.recipeId.equals(recipeId))
+      ..orderBy([
+        OrderingTerm.asc(db.recipeIngredientSections.sortOrder),
+        OrderingTerm.asc(db.recipeIngredients.id),
+      ]);
 
     final rows = await query.get();
     return rows.map((row) {
@@ -340,6 +399,7 @@ class RecipeOps {
         notes: ri.notes,
         ingredientId: ing.id,
         activeAlternativeIndex: ri.activeAlternativeIndex,
+        sectionId: ri.sectionId,
       );
     }).toList();
   }

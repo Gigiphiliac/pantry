@@ -45,6 +45,13 @@ class PantryOps {
     ));
   }
 
+  /// Removes a pantry entry. The underlying ingredient record is preserved.
+  Future<void> deletePantryItem(int pantryItemId) async {
+    await (db.delete(db.pantryItems)
+          ..where((t) => t.id.equals(pantryItemId)))
+        .go();
+  }
+
   /// Updates the ingredient's preferred unit.
   Future<void> setPreferredUnit(int ingredientId, String? unit) async {
     await (db.update(db.ingredients)

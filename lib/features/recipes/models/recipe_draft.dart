@@ -2,10 +2,22 @@ class ParsedIngredientLine {
   final double? qty;
   final String? unit;
   final String name;
+  final List<ParsedIngredientLine> alternatives;
 
-  const ParsedIngredientLine({this.qty, this.unit, required this.name});
+  const ParsedIngredientLine({
+    this.qty,
+    this.unit,
+    required this.name,
+    this.alternatives = const [],
+  });
 
-  Map<String, dynamic> toJson() => {'qty': qty, 'unit': unit, 'name': name};
+  Map<String, dynamic> toJson() => {
+        'qty': qty,
+        'unit': unit,
+        'name': name,
+        if (alternatives.isNotEmpty)
+          'alternatives': alternatives.map((a) => a.toJson()).toList(),
+      };
 }
 
 class PrestructuredRecipe {
@@ -66,20 +78,52 @@ class IngredientDraft {
       (s == null || s.trim().isEmpty) ? null : s.trim();
 }
 
+class RecipeSectionDraft {
+  final String name;
+  final List<IngredientDraft> ingredients;
+
+  const RecipeSectionDraft({required this.name, required this.ingredients});
+
+  factory RecipeSectionDraft.fromJson(Map<String, dynamic> json) {
+    final rawIngredients = json['ingredients'];
+    final ingredients = rawIngredients is List
+        ? rawIngredients
+            .whereType<Map<String, dynamic>>()
+            .map(IngredientDraft.fromJson)
+            .toList()
+        : <IngredientDraft>[];
+    return RecipeSectionDraft(
+      name: json['name'] as String? ?? '',
+      ingredients: ingredients,
+    );
+  }
+}
+
 class RecipeDraft {
   final String? name;
   final int? servings;
   final List<IngredientDraft> ingredients;
+  final List<RecipeSectionDraft> sections;
   final List<String> steps;
 
   const RecipeDraft({
     this.name,
     this.servings,
     this.ingredients = const [],
+    this.sections = const [],
     this.steps = const [],
   });
 
   factory RecipeDraft.fromJson(Map<String, dynamic> json) {
+    final rawSections = json['sections'];
+    final sections = rawSections is List
+        ? rawSections
+            .whereType<Map<String, dynamic>>()
+            .map(RecipeSectionDraft.fromJson)
+            .where((s) => s.name.isNotEmpty)
+            .toList()
+        : <RecipeSectionDraft>[];
+
     final rawIngredients = json['ingredients'];
     final ingredients = rawIngredients is List
         ? rawIngredients
@@ -113,6 +157,7 @@ class RecipeDraft {
       name: _nullIfEmpty(json['name'] as String?),
       servings: (json['servings'] as num?)?.toInt(),
       ingredients: ingredients,
+      sections: sections,
       steps: steps,
     );
   }

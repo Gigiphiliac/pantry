@@ -32,7 +32,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final ops = ref.watch(recipeOpsProvider);
     final ingredientsAsync = ref.watch(recipeIngredientsProvider(_recipe.id));
+    final sectionsAsync = ref.watch(recipeSectionsProvider(_recipe.id));
     final steps = ref.watch(recipeStepsProvider(_recipe.id));
+    final sectionNames = {
+      for (final s in sectionsAsync.valueOrNull ?? <RecipeIngredientSection>[])
+        s.id: s.name,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -68,12 +73,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               Text('Ingredients',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              ...ingredients.map((ing) => _IngredientTile(
-                    key: ValueKey(ing.id),
-                    ing: ing,
-                    baseServings: _baseServings,
-                    servingScale: _servingScale,
-                  )),
+              ..._buildIngredientWidgets(
+                  context, ingredients, sectionNames),
             ],
             ...steps.when(
               loading: () => const [],
@@ -139,6 +140,42 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildIngredientWidgets(
+    BuildContext context,
+    List<RecipeIngredientRow> ingredients,
+    Map<int, String> sectionNames,
+  ) {
+    final widgets = <Widget>[];
+    int? lastSectionId = -1; // sentinel — not a valid DB id
+    for (final ing in ingredients) {
+      if (ing.sectionId != lastSectionId) {
+        lastSectionId = ing.sectionId;
+        if (ing.sectionId != null) {
+          final name = sectionNames[ing.sectionId] ?? '';
+          if (name.isNotEmpty) {
+            widgets.add(Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 2),
+              child: Text(
+                name,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+              ),
+            ));
+          }
+        }
+      }
+      widgets.add(_IngredientTile(
+        key: ValueKey(ing.id),
+        ing: ing,
+        baseServings: _baseServings,
+        servingScale: _servingScale,
+      ));
+    }
+    return widgets;
   }
 
   Widget _servingsRow() {

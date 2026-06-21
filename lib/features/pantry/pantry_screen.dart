@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
 import 'package:pantry/main.dart';
 
@@ -209,25 +210,40 @@ class _PantryRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListTile(
-      leading: SizedBox(
-        width: 12,
-        height: 12,
-        child: entry.userConfirmed
-            ? null
-            : Container(
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
-                  shape: BoxShape.circle,
-                ),
-              ),
+    final ops = ref.read(pantryOpsProvider);
+    return Slidable(
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (_) => ops.deletePantryItem(entry.pantryItemId),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: 'Delete',
+          ),
+        ],
       ),
-      title: Text(entry.ingredientName),
-      subtitle: entry.preferredUnit != null
-          ? Text(entry.preferredUnit!, style: Theme.of(context).textTheme.bodySmall)
-          : null,
-      trailing: const Icon(Icons.chevron_right, size: 18),
-      onTap: () => _showEditSheet(context, ref),
+      child: ListTile(
+        leading: SizedBox(
+          width: 12,
+          height: 12,
+          child: entry.userConfirmed
+              ? null
+              : Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+        ),
+        title: Text(entry.ingredientName),
+        subtitle: entry.preferredUnit != null
+            ? Text(entry.preferredUnit!, style: Theme.of(context).textTheme.bodySmall)
+            : null,
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: () => _showEditSheet(context, ref),
+      ),
     );
   }
 

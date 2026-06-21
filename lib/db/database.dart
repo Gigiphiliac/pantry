@@ -66,9 +66,18 @@ class RecipeSteps extends Table {
   TextColumn get content => text()();
 }
 
+class RecipeIngredientSections extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get recipeId => integer().references(Recipes, #id)();
+  TextColumn get name => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+}
+
 class RecipeIngredients extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get recipeId => integer().references(Recipes, #id)();
+  IntColumn get sectionId =>
+      integer().references(RecipeIngredientSections, #id).nullable()();
   IntColumn get ingredientId => integer().references(Ingredients, #id)();
   RealColumn get qty => real().nullable()();
   TextColumn get unit => text().nullable()();
@@ -132,6 +141,7 @@ class PantryItems extends Table {
   ShoppingListItems,
   Recipes,
   RecipeSteps,
+  RecipeIngredientSections,
   RecipeIngredients,
   RecipeIngredientAlternatives,
   MealPlans,
@@ -143,7 +153,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

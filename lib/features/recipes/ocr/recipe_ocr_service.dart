@@ -31,6 +31,22 @@ JSON format:
   "name": "string or null",
   "servings": integer or null,
   "steps": ["step one text", "step two text"],
+  "sections": [
+    {
+      "name": "string (section label, e.g. 'For the sauce')",
+      "ingredients": [
+        {
+          "qty": number or null,
+          "unit": "string or null",
+          "name": "string",
+          "notes": "string or null",
+          "alternatives": [
+            { "qty": number or null, "unit": "string or null", "name": "string" }
+          ]
+        }
+      ]
+    }
+  ],
   "ingredients": [
     {
       "qty": number or null,
@@ -49,11 +65,12 @@ Rules:
 - "name" is the recipe title
 - "servings" is a whole number or null
 - "steps" is an ordered list of instruction steps — each step is a separate string
-- "ingredients" must always be an array, even if empty
+- If the recipe has labelled ingredient groups (e.g. "For the sauce:", "Dough:", "Topping:"), put each group's ingredients under "sections" with the label as "name" (strip the trailing colon). Use top-level "ingredients" for any remaining ungrouped ingredients. If there are no groups, use only "ingredients" and omit "sections"
 - CRITICAL — ingredient "name" must be the bare ingredient ONLY: no prep instructions, no cooking state, no descriptors. Examples: "eggs" not "whisked eggs", "white rice" not "cooked day old white rice", "butter" not "melted butter"
 - "notes" captures ALL prep instructions, cooking states, and descriptors that were stripped from the name. Examples: "whisked", "cooked, day old", "melted", "finely chopped, at room temperature"
-- When an ingredient offers alternatives (e.g. "1 cup beer or beef stock", "olive oil / vegetable oil"), set "name" to the first option and list the others in "alternatives". Each alternative may include its own "qty" and "unit"; omit them if the same as the parent
-- "alternatives" may be an empty array or omitted when there are no alternatives''';
+- When an ingredient offers alternatives (e.g. "1 cup beer or beef stock", "olive oil / vegetable oil", "chicken - tofu"), set "name" to the first option and list the others in "alternatives". Each alternative may include its own "qty" and "unit"; omit them if the same as the parent
+- "alternatives" may be an empty array or omitted when there are no alternatives
+- When a quantity is given as a range (e.g. "800g - 1kg", "2-3 cups"), use the lower bound as "qty" and "unit"; discard the upper bound''';
 
 
 class RecipeOcrService {
@@ -87,6 +104,14 @@ class RecipeOcrService {
     return OcrTextParser.parse(rawText);
   }
 
+  IngredientDraft _normaliseUnit(IngredientDraft ing) => IngredientDraft(
+        qty: ing.qty,
+        unit: UnitRegistry.parse(ing.unit)?.id ?? ing.unit,
+        name: ing.name,
+        notes: ing.notes,
+        alternatives: ing.alternatives.map(_normaliseUnit).toList(),
+      );
+
   Future<RecipeDraft> _cleanupWithLlm(
       PrestructuredRecipe prestructured, LlmConfig config) async {
     final hintsJson = const JsonEncoder.withIndent('  ').convert(
@@ -117,24 +142,13 @@ class RecipeOcrService {
         name: draft.name,
         servings: draft.servings,
         steps: draft.steps,
-        ingredients: draft.ingredients.map((ing) {
-          final parsed = UnitRegistry.parse(ing.unit);
-          return IngredientDraft(
-            qty: ing.qty,
-            unit: parsed?.id ?? ing.unit,
-            name: ing.name,
-            notes: ing.notes,
-            alternatives: ing.alternatives.map((alt) {
-              final altParsed = UnitRegistry.parse(alt.unit);
-              return IngredientDraft(
-                qty: alt.qty,
-                unit: altParsed?.id ?? alt.unit,
-                name: alt.name,
-                notes: alt.notes,
-              );
-            }).toList(),
-          );
-        }).toList(),
+        sections: draft.sections
+            .map((sec) => RecipeSectionDraft(
+                  name: sec.name,
+                  ingredients: sec.ingredients.map(_normaliseUnit).toList(),
+                ))
+            .toList(),
+        ingredients: draft.ingredients.map(_normaliseUnit).toList(),
       );
     } catch (e) {
       throw LlmParseException('Failed to parse LLM response: $e');

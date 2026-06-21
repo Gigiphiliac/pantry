@@ -162,39 +162,37 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
     final items = ref.watch(itemsProvider(widget.section.id));
     final tierMap = ref.watch(pantryTierMapProvider).valueOrNull ?? {};
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DragTarget<ShoppingListItem>(
-          onWillAcceptWithDetails: (_) {
-            setState(() => _isDropTarget = true);
-            return true;
-          },
-          onLeave: (_) => setState(() => _isDropTarget = false),
-          onAcceptWithDetails: (details) async {
-            setState(() => _isDropTarget = false);
-            final item = details.data;
-            if (item.sectionId == widget.section.id) return;
-            final currentItems =
-                await ref.read(itemsProvider(widget.section.id).future);
-            await widget.ops.moveItem(
-              item.id,
-              widget.section.id,
-              currentItems.length,
-            );
-          },
-          builder: (context, candidates, rejected) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              decoration: BoxDecoration(
-                color: _isDropTarget
-                    ? Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withValues(alpha: 0.4)
-                    : null,
-              ),
-              child: Slidable(
+    return DragTarget<ShoppingListItem>(
+      onWillAcceptWithDetails: (_) {
+        setState(() => _isDropTarget = true);
+        return true;
+      },
+      onLeave: (_) => setState(() => _isDropTarget = false),
+      onAcceptWithDetails: (details) async {
+        setState(() => _isDropTarget = false);
+        final item = details.data;
+        if (item.sectionId == widget.section.id) return;
+        final currentItems =
+            await ref.read(itemsProvider(widget.section.id).future);
+        await widget.ops.moveItem(
+          item.id,
+          widget.section.id,
+          currentItems.length,
+        );
+      },
+      builder: (context, candidates, rejected) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          color: _isDropTarget
+              ? Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.4)
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Slidable(
                 endActionPane: ActionPane(
                   motion: const DrawerMotion(),
                   children: [
@@ -254,33 +252,34 @@ class _SectionTileState extends ConsumerState<_SectionTile> {
                   ),
                 ),
               ),
-            );
-          },
-        ),
-        items.when(
-          loading: () => const SizedBox.shrink(),
-          error: (e, _) => Text('Error: $e'),
-          data: (itemList) {
-            if (itemList.isEmpty) return const SizedBox.shrink();
-            return ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: itemList.length,
-              itemBuilder: (context, index) {
-                final item = itemList[index];
-                return _buildReorderableItem(context, item, index, tierMap);
-              },
-              onReorderItem: (oldIndex, newIndex) {
-                widget.ops.reorderItemInSection(
-                  widget.section.id,
-                  itemList[oldIndex].id,
-                  newIndex,
-                );
-              },
-            );
-          },
-        ),
-      ],
+              items.when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, _) => Text('Error: $e'),
+                data: (itemList) {
+                  if (itemList.isEmpty) return const SizedBox.shrink();
+                  return ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: itemList.length,
+                    itemBuilder: (context, index) {
+                      final item = itemList[index];
+                      return _buildReorderableItem(
+                          context, item, index, tierMap);
+                    },
+                    onReorderItem: (oldIndex, newIndex) {
+                      widget.ops.reorderItemInSection(
+                        widget.section.id,
+                        itemList[oldIndex].id,
+                        newIndex,
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

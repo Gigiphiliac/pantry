@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/core/ingredients/ingredient_name_parser.dart';
@@ -33,7 +34,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _sourceUrlCtrl = TextEditingController();
   final List<TextEditingController> _stepControllers = [];
 
+  // Unsectioned ingredients (no section header).
   final List<_IngredientEntry> _ingredients = [];
+  // Named sections, each containing their own ingredient list.
+  final List<_SectionEntry> _sections = [];
 
   bool _saving = false;
 
@@ -59,31 +63,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _stepControllers.add(TextEditingController());
       }
       for (final ing in d.ingredients) {
-        final altEntries = ing.alternatives.map((alt) => _IngredientEntry(
-              nameCtrl: TextEditingController(text: alt.name),
-              qtyCtrl: TextEditingController(
-                  text: alt.qty != null
-                      ? (alt.qty! % 1 == 0
-                          ? alt.qty!.toInt().toString()
-                          : alt.qty.toString())
-                      : ''),
-              notesCtrl: TextEditingController(text: alt.notes ?? ''),
-              selectedUnit: UnitRegistry.parse(alt.unit),
-            )).toList();
-        _ingredients.add(_IngredientEntry(
-          nameCtrl: TextEditingController(text: ing.name),
-          qtyCtrl: TextEditingController(
-              text: ing.qty != null
-                  ? (ing.qty! % 1 == 0
-                      ? ing.qty!.toInt().toString()
-                      : ing.qty.toString())
-                  : ''),
-          notesCtrl: TextEditingController(text: ing.notes ?? ''),
-          selectedUnit: UnitRegistry.parse(ing.unit),
-          alternatives: altEntries,
-        ));
+        _ingredients.add(_ingredientEntryFromDraft(ing));
       }
-      if (_ingredients.isEmpty) {
+      for (final sec in d.sections) {
+        final entry = _SectionEntry(name: sec.name);
+        for (final ing in sec.ingredients) {
+          entry.items.add(_ingredientEntryFromDraft(ing));
+        }
+        _sections.add(entry);
+      }
+      if (_ingredients.isEmpty && _sections.isEmpty) {
         _ingredients.add(_IngredientEntry(
           nameCtrl: TextEditingController(),
           qtyCtrl: TextEditingController(),
@@ -93,6 +82,36 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     } else {
       _stepControllers.add(TextEditingController());
     }
+  }
+
+  _IngredientEntry _ingredientEntryFromDraft(IngredientDraft ing) {
+    final alts = ing.alternatives
+        .map((alt) => _IngredientEntry(
+              nameCtrl: TextEditingController(text: alt.name),
+              qtyCtrl: TextEditingController(
+                text: alt.qty != null
+                    ? (alt.qty! % 1 == 0
+                        ? alt.qty!.toInt().toString()
+                        : alt.qty.toString())
+                    : '',
+              ),
+              notesCtrl: TextEditingController(text: alt.notes ?? ''),
+              selectedUnit: UnitRegistry.parse(alt.unit),
+            ))
+        .toList();
+    return _IngredientEntry(
+      nameCtrl: TextEditingController(text: ing.name),
+      qtyCtrl: TextEditingController(
+        text: ing.qty != null
+            ? (ing.qty! % 1 == 0
+                ? ing.qty!.toInt().toString()
+                : ing.qty.toString())
+            : '',
+      ),
+      notesCtrl: TextEditingController(text: ing.notes ?? ''),
+      selectedUnit: UnitRegistry.parse(ing.unit),
+      alternatives: alts,
+    );
   }
 
   Future<void> _loadExistingSteps() async {
@@ -113,9 +132,19 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _loadExistingIngredients() async {
+    final db = ref.read(dbProvider);
     final ops = ref.read(recipeOpsProvider);
-    final rows = await ops.getIngredients(widget.recipe!.id);
-    final entries = <_IngredientEntry>[];
+    final recipeId = widget.recipe!.id;
+
+    final dbSections = await (db.select(db.recipeIngredientSections)
+          ..where((t) => t.recipeId.equals(recipeId))
+          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        .get();
+    final sectionEntries = {
+      for (final s in dbSections) s.id: _SectionEntry(name: s.name)
+    };
+
+    final rows = await ops.getIngredients(recipeId);
     for (final row in rows) {
       final alts = await ops.getAlternatives(row.id);
       final altEntries = alts
@@ -132,7 +161,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 resolvedIngredientId: alt.ingredientId,
               ))
           .toList();
-      entries.add(_IngredientEntry(
+      final entry = _IngredientEntry(
         nameCtrl: TextEditingController(text: row.ingredientName),
         qtyCtrl: TextEditingController(
             text: row.qty != null
@@ -144,9 +173,20 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         selectedUnit: UnitRegistry.parse(row.unit),
         resolvedIngredientId: row.ingredientId,
         alternatives: altEntries,
-      ));
+      );
+      if (row.sectionId != null && sectionEntries.containsKey(row.sectionId)) {
+        sectionEntries[row.sectionId]!.items.add(entry);
+      } else {
+        _ingredients.add(entry);
+      }
     }
-    setState(() => _ingredients.addAll(entries));
+
+    setState(() {
+      for (final s in dbSections) {
+        final entry = sectionEntries[s.id];
+        if (entry != null) _sections.add(entry);
+      }
+    });
   }
 
   @override
@@ -159,6 +199,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
     for (final e in _ingredients) {
       e.dispose();
+    }
+    for (final s in _sections) {
+      s.dispose();
     }
     super.dispose();
   }
@@ -213,26 +256,61 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           Text('Ingredients',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          ..._ingredients.asMap().entries.map((e) => _IngredientRow(
-                key: ObjectKey(e.value),
-                entry: e.value,
-                index: e.key,
-                onRemove: () => setState(() {
-                  _ingredients[e.key].dispose();
-                  _ingredients.removeAt(e.key);
-                }),
-                onResolved: (id) => setState(
-                    () => _ingredients[e.key].resolvedIngredientId = id),
-                onAlternativesChanged: () => setState(() {}),
-              )),
-          TextButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Add ingredient'),
-            onPressed: () => setState(() => _ingredients.add(_IngredientEntry(
-                  nameCtrl: TextEditingController(),
-                  qtyCtrl: TextEditingController(),
-                  notesCtrl: TextEditingController(),
-                ))),
+          ..._buildIngredientList(_ingredients, sectionIndex: null),
+          // Named sections
+          ..._sections.asMap().entries.expand((se) {
+            final si = se.key;
+            final section = se.value;
+            return <Widget>[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: section.nameCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Section name (e.g. For the sauce)',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.label_outline, size: 18),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          onPressed: () => setState(() {
+                            _sections[si].dispose();
+                            _sections.removeAt(si);
+                          }),
+                        ),
+                      ),
+                      style: Theme.of(context).textTheme.titleSmall,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ..._buildIngredientList(section.items, sectionIndex: si),
+            ];
+          }),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Add ingredient'),
+                onPressed: () => setState(() => _ingredients.add(_IngredientEntry(
+                      nameCtrl: TextEditingController(),
+                      qtyCtrl: TextEditingController(),
+                      notesCtrl: TextEditingController(),
+                    ))),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Add section'),
+                onPressed: () => setState(() => _sections.add(_SectionEntry(name: ''))),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
 
@@ -308,6 +386,28 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
   }
 
+  List<Widget> _buildIngredientList(
+    List<_IngredientEntry> entries, {
+    required int? sectionIndex,
+  }) {
+    return entries.asMap().entries.map((e) {
+      final i = e.key;
+      final entry = e.value;
+      return _IngredientRow(
+        key: ObjectKey(entry),
+        entry: entry,
+        index: i,
+        onRemove: () => setState(() {
+          entries[i].dispose();
+          entries.removeAt(i);
+        }),
+        onResolved: (id) =>
+            setState(() => entries[i].resolvedIngredientId = id),
+        onAlternativesChanged: () => setState(() {}),
+      );
+    }).toList();
+  }
+
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
@@ -323,29 +423,44 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       final ops = ref.read(recipeOpsProvider);
       final servings = int.tryParse(_servingsCtrl.text.trim());
 
-      final drafts = _ingredients
-          .where((e) => e.nameCtrl.text.trim().isNotEmpty)
-          .map((e) => RecipeIngredientDraft(
-                rawText: e.nameCtrl.text.trim(),
-                qty: double.tryParse(e.qtyCtrl.text.trim()),
-                unit: e.selectedUnit?.id,
-                notes: e.notesCtrl.text.trim().isEmpty
-                    ? null
-                    : e.notesCtrl.text.trim(),
-                resolvedIngredientId: e.resolvedIngredientId,
-                alternatives: e.alternatives
-                    .where((a) => a.nameCtrl.text.trim().isNotEmpty)
-                    .map((a) => RecipeIngredientDraft(
-                          rawText: a.nameCtrl.text.trim(),
-                          qty: double.tryParse(a.qtyCtrl.text.trim()),
-                          unit: a.selectedUnit?.id,
-                          notes: a.notesCtrl.text.trim().isEmpty
-                              ? null
-                              : a.notesCtrl.text.trim(),
-                          resolvedIngredientId: a.resolvedIngredientId,
-                        ))
-                    .toList(),
-              ))
+      RecipeIngredientDraft toDraft(
+              _IngredientEntry e, {int? sectionIndex}) =>
+          RecipeIngredientDraft(
+            rawText: e.nameCtrl.text.trim(),
+            qty: double.tryParse(e.qtyCtrl.text.trim()),
+            unit: e.selectedUnit?.id,
+            notes: e.notesCtrl.text.trim().isEmpty
+                ? null
+                : e.notesCtrl.text.trim(),
+            resolvedIngredientId: e.resolvedIngredientId,
+            sectionIndex: sectionIndex,
+            alternatives: e.alternatives
+                .where((a) => a.nameCtrl.text.trim().isNotEmpty)
+                .map((a) => RecipeIngredientDraft(
+                      rawText: a.nameCtrl.text.trim(),
+                      qty: double.tryParse(a.qtyCtrl.text.trim()),
+                      unit: a.selectedUnit?.id,
+                      notes: a.notesCtrl.text.trim().isEmpty
+                          ? null
+                          : a.notesCtrl.text.trim(),
+                      resolvedIngredientId: a.resolvedIngredientId,
+                    ))
+                .toList(),
+          );
+
+      final drafts = [
+        ..._ingredients
+            .where((e) => e.nameCtrl.text.trim().isNotEmpty)
+            .map((e) => toDraft(e)),
+        ..._sections.asMap().entries.expand((se) =>
+            se.value.items
+                .where((e) => e.nameCtrl.text.trim().isNotEmpty)
+                .map((e) => toDraft(e, sectionIndex: se.key))),
+      ];
+
+      final sectionNames = _sections
+          .map((s) => s.nameCtrl.text.trim())
+          .where((n) => n.isNotEmpty)
           .toList();
 
       final steps = _stepControllers
@@ -363,6 +478,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             : _sourceUrlCtrl.text.trim(),
         sourceType: widget.sourceType ??
             (widget.initialDraft != null ? 'ocr' : 'manual'),
+        sections: sectionNames,
         ingredients: drafts,
       );
 
@@ -375,6 +491,24 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+// ── Section entry state ───────────────────────────────────────────────────────
+
+class _SectionEntry {
+  final TextEditingController nameCtrl;
+  final List<_IngredientEntry> items;
+
+  _SectionEntry({required String name})
+      : nameCtrl = TextEditingController(text: name),
+        items = [];
+
+  void dispose() {
+    nameCtrl.dispose();
+    for (final i in items) {
+      i.dispose();
     }
   }
 }
