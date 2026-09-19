@@ -27,27 +27,32 @@ class ShoppingLists extends Table {
 
 class ShoppingListStores extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get listId => integer().references(ShoppingLists, #id)();
+  IntColumn get listId =>
+      integer().references(ShoppingLists, #id, onDelete: KeyAction.cascade)();
   TextColumn get storeName => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 class ShoppingListSections extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get storeId => integer().references(ShoppingListStores, #id)();
+  IntColumn get storeId => integer()
+      .references(ShoppingListStores, #id, onDelete: KeyAction.cascade)();
   TextColumn get sectionName => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 class ShoppingListItems extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get sectionId => integer().references(ShoppingListSections, #id)();
+  IntColumn get storeId =>
+      integer().references(ShoppingListStores, #id, onDelete: KeyAction.cascade)();
+  IntColumn get sectionId => integer()
+      .references(ShoppingListSections, #id, onDelete: KeyAction.setNull)
+      .nullable()();
   IntColumn get ingredientId => integer().references(Ingredients, #id).nullable()();
   TextColumn get rawText => text()();
   RealColumn get qty => real().nullable()();
   TextColumn get unit => text().nullable()();
   BoolColumn get checked => boolean().withDefault(const Constant(false))();
-  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 class Recipes extends Table {
@@ -126,8 +131,8 @@ class PantryItems extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {ingredientId}
-      ];
+    {ingredientId}
+  ];
 }
 
 // ── Database ──────────────────────────────────────────────────────────────────
@@ -153,27 +158,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          // Destructive reset — wipe all tables and recreate from scratch.
-          // Safe for dev: no production data exists.
-          final tables = (await customSelect(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'",
-          ).get())
-              .map((r) => r.read<String>('name'))
-              .toList();
-          await customStatement('PRAGMA foreign_keys = OFF');
-          for (final t in tables) {
-            await customStatement('DROP TABLE IF EXISTS "$t"');
-          }
-          await customStatement('PRAGMA foreign_keys = ON');
-          await m.createAll();
-        },
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // Destructive reset — wipe all tables and recreate from scratch.
+      // Safe for dev: no production data exists.
+      final tables = (await customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'",
+      ).get())
+          .map((r) => r.read<String>('name'))
+          .toList();
+      await customStatement('PRAGMA foreign_keys = OFF');
+      for (final t in tables) {
+        await customStatement('DROP TABLE IF EXISTS "$t"');
+      }
+      await customStatement('PRAGMA foreign_keys = ON');
+      await m.createAll();
+    },
+  );
 }
 
 QueryExecutor _openConnection() {

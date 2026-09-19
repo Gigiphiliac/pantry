@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
-import 'package:pantry/features/settings/settings_screen.dart';
+import 'package:pantry/features/shopping/shopping_providers.dart';
+import 'package:pantry/features/shopping/shopping_store_page.dart';
+import 'package:pantry/features/shopping/prompt_utils.dart';
 
-import 'shopping_providers.dart';
-import 'prompt_utils.dart';
-import '../pantry/pantry_providers.dart';
-
-class ShoppingListDetailScreen extends ConsumerWidget {
+class ShoppingListDetailScreen extends ConsumerStatefulWidget {
   final int listId;
   final String listName;
 
@@ -20,405 +16,338 @@ class ShoppingListDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stores = ref.watch(storesProvider(listId));
+  ConsumerState<ShoppingListDetailScreen> createState() =>
+      _ShoppingListDetailScreenState();
+}
+
+class _ShoppingListDetailScreenState
+    extends ConsumerState<ShoppingListDetailScreen> {
+  bool _isFabExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final stores = ref.watch(storesProvider(widget.listId));
     final ops = ref.watch(shoppingOpsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(listName)),
-      body: stores.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (storeList) => ListView.builder(
-          itemCount: storeList.length,
-          itemBuilder: (context, i) =>
-              _StoreSection(store: storeList[i], ops: ops),
+    return stores.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: Text(widget.listName)),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: Text(widget.listName)),
+        body: Center(child: Text('Error: $e')),
+      ),
+      data: (storeList) => _buildWithStores(context, ops, storeList),
+    );
+  }
+
+  Widget _buildWithStores(
+    BuildContext context,
+    ShoppingListOps ops,
+    List<ShoppingListStore> storeList,
+  ) {
+    if (storeList.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.listName)),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('No stores yet.'),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                icon: const Icon(Icons.store),
+                label: const Text('Add store'),
+                onPressed: () => _addStore(context, ops),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return DefaultTabController(
+      length: storeList.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.listName),
+          bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: storeList
+                .map((store) => Tab(text: store.storeName))
+                .toList(),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Add store',
+              onPressed: () => _addStore(context, ops),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'manage_stores') {
+                  _showStoreManager(context, ops, storeList);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'manage_stores',
+                  child: ListTile(
+                    leading: Icon(Icons.store),
+                    title: Text('Manage stores'),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        body: Listener(
+          onPointerDown: (_) {
+            if (_isFabExpanded) {
+              setState(() => _isFabExpanded = false);
+            }
+          },
+          child: TabBarView(
+            children: storeList.map((store) {
+              return ShoppingStorePage(
+                store: store,
+                ops: ops,
+              );
+            }).toList(),
+          ),
+        ),
+        floatingActionButton: Builder(
+          builder: (fabContext) => _buildFab(storeList, ops, fabContext),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.store),
-        label: const Text('Add store'),
-        onPressed: () => _addStore(context, ops),
-      ),
+    );
+  }
+
+  Widget _buildFab(
+    List<ShoppingListStore> storeList,
+    ShoppingListOps ops,
+    BuildContext fabContext,
+  ) {
+    final tabController = DefaultTabController.maybeOf(fabContext);
+    final currentIndex = tabController?.index ?? 0;
+    final currentStore = storeList[currentIndex];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _MiniFab(
+          visible: _isFabExpanded,
+          icon: Icons.add_box,
+          label: 'Add group',
+          onPressed: () {
+            setState(() => _isFabExpanded = false);
+            _addGroup(context, ops, currentStore.id);
+          },
+        ),
+        const SizedBox(height: 8),
+        _MiniFab(
+          visible: _isFabExpanded,
+          icon: Icons.playlist_add,
+          label: 'Add item',
+          onPressed: () {
+            setState(() => _isFabExpanded = false);
+            _addUngroupedItem(context, ops, currentStore.id);
+          },
+        ),
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          onPressed: () =>
+              setState(() => _isFabExpanded = !_isFabExpanded),
+          child: AnimatedRotation(
+            turns: _isFabExpanded ? 0.125 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
     );
   }
 
   Future<void> _addStore(BuildContext context, ShoppingListOps ops) async {
     final name =
         await promptText(context, title: 'New store', hint: 'Store name');
-    if (name != null && name.isNotEmpty) await ops.addStore(listId, name);
-  }
-}
-
-class _StoreSection extends ConsumerWidget {
-  final ShoppingListStore store;
-  final ShoppingListOps ops;
-
-  const _StoreSection({required this.store, required this.ops});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sections = ref.watch(sectionsProvider(store.id));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Slidable(
-          endActionPane: ActionPane(
-            motion: const DrawerMotion(),
-            children: [
-              SlidableAction(
-                onPressed: (_) async {
-                  final newName = await promptText(
-                    context,
-                    title: 'Rename store',
-                    hint: 'Store name',
-                    initial: store.storeName,
-                  );
-                  if (newName != null && newName.isNotEmpty) {
-                    await ops.renameStore(store.id, newName);
-                  }
-                },
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                icon: Icons.edit,
-                label: 'Rename',
-              ),
-              SlidableAction(
-                onPressed: (_) => ops.deleteStore(store.id),
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                icon: Icons.delete,
-                label: 'Delete',
-              ),
-            ],
-          ),
-          child: Container(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            width: double.infinity,
-            child: Row(
-              children: [
-                const Icon(Icons.store_outlined, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    store.storeName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Section'),
-                  onPressed: () => _addSection(context),
-                ),
-              ],
-            ),
-          ),
-        ),
-        sections.when(
-          loading: () => const SizedBox.shrink(),
-          error: (e, _) => Text('Error: $e'),
-          data: (sectionList) => Column(
-            children: sectionList
-                .map((s) => _SectionTile(section: s, ops: ops))
-                .toList(),
-          ),
-        ),
-        const Divider(height: 1),
-      ],
-    );
+    if (name != null && name.isNotEmpty) {
+      await ops.addStore(widget.listId, name);
+    }
   }
 
-  Future<void> _addSection(BuildContext context) async {
-    final name = await promptText(
-      context,
-      title: 'New section',
-      hint: 'Section name (e.g. Produce)',
-    );
-    if (name != null && name.isNotEmpty) await ops.addSection(store.id, name);
-  }
-}
-
-class _SectionTile extends ConsumerStatefulWidget {
-  final ShoppingListSection section;
-  final ShoppingListOps ops;
-
-  const _SectionTile({required this.section, required this.ops});
-
-  @override
-  ConsumerState<_SectionTile> createState() => _SectionTileState();
-}
-
-class _SectionTileState extends ConsumerState<_SectionTile> {
-  bool _isDropTarget = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = ref.watch(itemsProvider(widget.section.id));
-    final tierMap = ref.watch(pantryTierMapProvider).valueOrNull ?? {};
-
-    return DragTarget<ShoppingListItem>(
-      onWillAcceptWithDetails: (_) {
-        setState(() => _isDropTarget = true);
-        return true;
-      },
-      onLeave: (_) => setState(() => _isDropTarget = false),
-      onAcceptWithDetails: (details) async {
-        setState(() => _isDropTarget = false);
-        final item = details.data;
-        if (item.sectionId == widget.section.id) return;
-        final currentItems =
-            await ref.read(itemsProvider(widget.section.id).future);
-        await widget.ops.moveItem(
-          item.id,
-          widget.section.id,
-          currentItems.length,
-        );
-      },
-      builder: (context, candidates, rejected) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          color: _isDropTarget
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.4)
-              : null,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Slidable(
-                endActionPane: ActionPane(
-                  motion: const DrawerMotion(),
-                  children: [
-                    SlidableAction(
-                      onPressed: (_) async {
-                        final newName = await promptText(
-                          context,
-                          title: 'Rename section',
-                          hint: 'Section name',
-                          initial: widget.section.sectionName,
-                        );
-                        if (newName != null && newName.isNotEmpty) {
-                          await widget.ops
-                              .renameSection(widget.section.id, newName);
-                        }
-                      },
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      icon: Icons.edit,
-                      label: 'Rename',
-                    ),
-                    SlidableAction(
-                      onPressed: (_) =>
-                          widget.ops.deleteSection(widget.section.id),
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      icon: Icons.delete,
-                      label: 'Delete',
-                    ),
-                  ],
-                ),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding: const EdgeInsets.fromLTRB(32, 6, 16, 6),
-                  width: double.infinity,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.section.sectionName,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('Item'),
-                        onPressed: () => _addItem(context),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              items.when(
-                loading: () => const SizedBox.shrink(),
-                error: (e, _) => Text('Error: $e'),
-                data: (itemList) {
-                  if (itemList.isEmpty) return const SizedBox.shrink();
-                  return ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: itemList.length,
-                    itemBuilder: (context, index) {
-                      final item = itemList[index];
-                      return _buildReorderableItem(
-                          context, item, index, tierMap);
-                    },
-                    onReorderItem: (oldIndex, newIndex) {
-                      widget.ops.reorderItemInSection(
-                        widget.section.id,
-                        itemList[oldIndex].id,
-                        newIndex,
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildReorderableItem(
-    BuildContext context,
-    ShoppingListItem item,
-    int index,
-    Map<int, int> tierMap,
-  ) {
-    final pref = ref.watch(unitPreferenceProvider).valueOrNull ??
-        UnitPreference.metric;
-    final pantryTier =
-        item.ingredientId != null ? tierMap[item.ingredientId] : null;
-
-    return KeyedSubtree(
-      key: ValueKey(item.id),
-      child: Row(
-        children: [
-          Expanded(
-            child: LongPressDraggable<ShoppingListItem>(
-              data: item,
-              delay: const Duration(milliseconds: 400),
-              feedback: Material(
-                elevation: 6,
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width - 64,
-                  child: _ItemContent(
-                    item: item,
-                    ops: widget.ops,
-                    pref: pref,
-                    pantryTier: pantryTier,
-                  ),
-                ),
-              ),
-              childWhenDragging: Opacity(
-                opacity: 0.3,
-                child: _ItemContent(
-                  item: item,
-                  ops: widget.ops,
-                  pref: pref,
-                  pantryTier: pantryTier,
-                ),
-              ),
-              child: _ItemContent(
-                item: item,
-                ops: widget.ops,
-                pref: pref,
-                pantryTier: pantryTier,
-              ),
-            ),
-          ),
-          ReorderableDragStartListener(
-            index: index,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Icon(
-                Icons.drag_handle,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _addItem(BuildContext context) async {
+  Future<void> _addUngroupedItem(
+      BuildContext context, ShoppingListOps ops, int storeId) async {
     final text =
         await promptText(context, title: 'Add item', hint: 'Item name');
     if (text != null && text.isNotEmpty) {
-      await widget.ops.addItem(widget.section.id, text);
+      await ops.addItem(storeId, rawText: text);
     }
   }
-}
 
-// ── Item content (used in both normal and dragging feedback) ─────────────────
+  Future<void> _addGroup(
+      BuildContext context, ShoppingListOps ops, int storeId) async {
+    final name = await promptText(
+      context,
+      title: 'New group',
+      hint: 'Group name (e.g. Produce)',
+    );
+    if (name != null && name.isNotEmpty) {
+      await ops.addSection(storeId, name);
+    }
+  }
 
-class _ItemContent extends StatelessWidget {
-  final ShoppingListItem item;
-  final ShoppingListOps ops;
-  final UnitPreference pref;
-  final int? pantryTier;
-
-  const _ItemContent({
-    required this.item,
-    required this.ops,
-    required this.pref,
-    this.pantryTier,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Slidable(
-      endActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => ops.deleteItem(item.id),
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: 'Delete',
-          ),
-        ],
-      ),
-      child: CheckboxListTile(
-        value: item.checked,
-        onChanged: (v) => ops.toggleItem(item.id, v ?? false),
-        title: Text(
-          item.rawText,
-          style: item.checked
-              ? TextStyle(
-                  decoration: TextDecoration.lineThrough,
-                  color: Theme.of(context).disabledColor,
-                )
-              : null,
+  void _showStoreManager(
+    BuildContext context,
+    ShoppingListOps ops,
+    List<ShoppingListStore> storeList,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Manage Stores',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            const Divider(height: 1),
+            ...storeList.map((store) => ListTile(
+              leading: const Icon(Icons.store_outlined),
+              title: Text(store.storeName),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final newName = await promptText(
+                        context,
+                        title: 'Rename store',
+                        hint: 'Store name',
+                        initial: store.storeName,
+                      );
+                      if (newName != null && newName.isNotEmpty) {
+                        await ops.renameStore(store.id, newName);
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline,
+                        size: 20, color: Colors.red),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Delete store?'),
+                          content: Text(
+                              'Delete "${store.storeName}" and all its items?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, true),
+                              child: const Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await ops.deleteStore(store.id);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            )),
+          ],
         ),
-        subtitle: pantryTier == 2 ? null : _buildQtySubtitle(item, pref),
-        controlAffinity: ListTileControlAffinity.leading,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 48, vertical: 0),
       ),
     );
   }
+}
 
-  Widget? _buildQtySubtitle(ShoppingListItem item, UnitPreference pref) {
-    if (item.qty == null) return null;
-    final unit = UnitRegistry.parse(item.unit);
-    if (unit != null) {
-      if (unit.family == UnitFamily.count) {
-        return Text(
-            '${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}');
-      }
-      final display = UnitRegistry.preferredDisplayUnit(unit.family, pref);
-      final qty = UnitRegistry.convert(item.qty!, unit, display);
-      return Text('${UnitRegistry.formatQty(qty)} ${display.abbreviation}');
+// ── Mini-FAB for speed-dial ────────────────────────────────────────────────
+
+class _MiniFab extends StatefulWidget {
+  final bool visible;
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _MiniFab({
+    required this.visible,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  State<_MiniFab> createState() => _MiniFabState();
+}
+
+class _MiniFabState extends State<_MiniFab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scale = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeIn,
+    );
+    if (widget.visible) _controller.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(_MiniFab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible && !oldWidget.visible) {
+      _controller.forward();
+    } else if (!widget.visible && oldWidget.visible) {
+      _controller.reverse();
     }
-    final raw = UnitRegistry.formatQty(item.qty!);
-    return Text(item.unit != null ? '$raw ${item.unit}' : raw);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: FloatingActionButton.small(
+        heroTag: widget.label,
+        onPressed: widget.onPressed,
+        tooltip: widget.label,
+        child: Icon(widget.icon),
+      ),
+    );
   }
 }
