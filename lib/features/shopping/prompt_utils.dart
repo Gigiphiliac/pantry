@@ -1,5 +1,139 @@
 import 'package:flutter/material.dart';
 
+// ── Generic chainable dialog ────────────────────────────────────────────────────
+
+/// Form state exposed to the [builder] of [showChainableDialog].
+class ChainableFormState {
+  final TextEditingController nameController;
+  final TextEditingController qtyController;
+  String? selectedUnit;
+  int? selectedCategoryId;
+
+  /// Callback to reset all fields to defaults after chaining.
+  final VoidCallback reset;
+
+  ChainableFormState({
+    required this.nameController,
+    required this.qtyController,
+    this.selectedUnit,
+    this.selectedCategoryId,
+    required this.reset,
+  });
+}
+
+/// A generic chainable dialog with "Cancel", "OK & create new", and "OK" buttons.
+///
+/// [builder] receives a [ChainableFormState] and returns the form widget.
+/// [onAdd] is called on both "OK & create new" and "OK" with the current form state.
+/// The "OK & create new" button calls [onAdd], then calls [formState.reset] to clear
+/// fields and keeps the dialog open.
+///
+/// Returns null on Cancel, or the final form state on OK.
+Future<ChainableFormState?> showChainableDialog({
+  required BuildContext context,
+  required String title,
+  required Widget Function(ChainableFormState formState) builder,
+  required Future<void> Function(ChainableFormState formState) onAdd,
+}) {
+  return showDialog<ChainableFormState>(
+    context: context,
+    builder: (ctx) => _ChainableDialog(
+      title: title,
+      builder: builder,
+      onAdd: onAdd,
+    ),
+  );
+}
+
+class _ChainableDialog extends StatefulWidget {
+  final String title;
+  final Widget Function(ChainableFormState formState) builder;
+  final Future<void> Function(ChainableFormState formState) onAdd;
+
+  const _ChainableDialog({
+    required this.title,
+    required this.builder,
+    required this.onAdd,
+  });
+
+  @override
+  State<_ChainableDialog> createState() => _ChainableDialogState();
+}
+
+class _ChainableDialogState extends State<_ChainableDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _qtyController;
+  String? _selectedUnit;
+  int? _selectedCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _qtyController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _qtyController.dispose();
+    super.dispose();
+  }
+
+  ChainableFormState get _formState => ChainableFormState(
+        nameController: _nameController,
+        qtyController: _qtyController,
+        selectedUnit: _selectedUnit,
+        selectedCategoryId: _selectedCategoryId,
+        reset: () {
+          _nameController.clear();
+          _qtyController.clear();
+          setState(() {
+            _selectedUnit = null;
+            _selectedCategoryId = null;
+          });
+        },
+      );
+
+  Future<void> _createAndContinue() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    await widget.onAdd(_formState);
+    _formState.reset();
+  }
+
+  void _createAndDone() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    await widget.onAdd(_formState);
+    if (mounted) Navigator.pop(context, _formState);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: widget.builder(_formState),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _createAndContinue,
+          child: const Text('OK & create new'),
+        ),
+        TextButton(
+          onPressed: _createAndDone,
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Convenience wrappers ────────────────────────────────────────────────────────
+
 Future<String?> promptText(
   BuildContext context, {
   required String title,
@@ -29,8 +163,7 @@ Future<String?> promptText(
   );
 }
 
-/// Like [promptText] but adds an "OK & create new" button that creates the
-/// item (via [onAdd]), clears the field, and keeps the dialog open.
+/// Convenience wrapper around [showChainableDialog] that uses a single text field.
 /// Returns null on Cancel, or the final text on OK.
 Future<String?> promptItemText(
   BuildContext context, {
@@ -41,7 +174,7 @@ Future<String?> promptItemText(
   final controller = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => _ChainableDialog(
+    builder: (ctx) => _SimpleChainableDialog(
       title: title,
       hint: hint,
       controller: controller,
@@ -50,13 +183,13 @@ Future<String?> promptItemText(
   );
 }
 
-class _ChainableDialog extends StatefulWidget {
+class _SimpleChainableDialog extends StatefulWidget {
   final String title;
   final String hint;
   final TextEditingController controller;
   final Future<void> Function(String text) onAdd;
 
-  const _ChainableDialog({
+  const _SimpleChainableDialog({
     required this.title,
     required this.hint,
     required this.controller,
@@ -64,10 +197,10 @@ class _ChainableDialog extends StatefulWidget {
   });
 
   @override
-  State<_ChainableDialog> createState() => _ChainableDialogState();
+  State<_SimpleChainableDialog> createState() => _SimpleChainableDialogState();
 }
 
-class _ChainableDialogState extends State<_ChainableDialog> {
+class _SimpleChainableDialogState extends State<_SimpleChainableDialog> {
   Future<void> _createAndContinue() async {
     final text = widget.controller.text.trim();
     if (text.isEmpty) return;
