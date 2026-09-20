@@ -5,6 +5,7 @@ import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/features/settings/settings_screen.dart';
 import 'package:pantry/features/shopping/shopping_providers.dart';
+import 'package:pantry/features/shopping/prompt_utils.dart';
 import 'package:pantry/features/pantry/pantry_providers.dart';
 
 class ShoppingItemTile extends ConsumerWidget {
@@ -80,11 +81,26 @@ class _ItemContent extends StatelessWidget {
         motion: const DrawerMotion(),
         children: [
           SlidableAction(
+            onPressed: (_) async {
+              final newName = await promptText(
+                context,
+                title: 'Rename item',
+                hint: 'Item name',
+                initial: item.rawText,
+              );
+              if (newName != null && newName.isNotEmpty) {
+                ops.renameItem(item.id, newName);
+              }
+            },
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+          ),
+          SlidableAction(
             onPressed: (_) => ops.deleteItem(item.id),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             icon: Icons.delete,
-            label: 'Delete',
           ),
         ],
       ),

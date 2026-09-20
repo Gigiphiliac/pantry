@@ -139,6 +139,7 @@ class _ShoppingListDetailScreenState
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _MiniFab(
           visible: _isFabExpanded,
@@ -183,11 +184,12 @@ class _ShoppingListDetailScreenState
 
   Future<void> _addUngroupedItem(
       BuildContext context, ShoppingListOps ops, int storeId) async {
-    final text =
-        await promptText(context, title: 'Add item', hint: 'Item name');
-    if (text != null && text.isNotEmpty) {
-      await ops.addItem(storeId, rawText: text);
-    }
+    await promptItemText(
+      context,
+      title: 'Add item',
+      hint: 'Item name',
+      onAdd: (text) => ops.addItem(storeId, rawText: text),
+    );
   }
 
   Future<void> _addGroup(
@@ -340,13 +342,17 @@ class _MiniFabState extends State<_MiniFab>
 
   @override
   Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.of(context).size.width - 64;
     return ScaleTransition(
       scale: _scale,
-      child: FloatingActionButton.small(
-        heroTag: widget.label,
-        onPressed: widget.onPressed,
-        tooltip: widget.label,
-        child: Icon(widget.icon),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: FloatingActionButton.extended(
+          heroTag: widget.label,
+          icon: Icon(widget.icon),
+          label: Text(widget.label),
+          onPressed: widget.onPressed,
+        ),
       ),
     );
   }

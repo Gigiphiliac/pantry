@@ -94,7 +94,6 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       icon: Icons.edit,
-                      label: 'Rename',
                     ),
                     SlidableAction(
                       onPressed: (_) =>
@@ -102,7 +101,6 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       icon: Icons.delete,
-                      label: 'Delete',
                     ),
                   ],
                 ),
@@ -148,14 +146,15 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
   }
 
   Future<void> _addItem(BuildContext context) async {
-    final text =
-    await promptText(context, title: 'Add item', hint: 'Item name');
-    if (text != null && text.isNotEmpty) {
-      await widget.ops.addItem(
+    await promptItemText(
+      context,
+      title: 'Add item',
+      hint: 'Item name',
+      onAdd: (text) => widget.ops.addItem(
         widget.storeId,
         sectionId: widget.section.id,
         rawText: text,
-      );
-    }
+      ),
+    );
   }
 }

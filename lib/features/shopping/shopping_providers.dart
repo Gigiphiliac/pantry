@@ -350,6 +350,10 @@ class ShoppingListOps {
       (db.update(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
           .write(ShoppingListItemsCompanion(checked: Value(checked)));
 
+  Future<void> renameItem(int itemId, String newText) =>
+      (db.update(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
+          .write(ShoppingListItemsCompanion(rawText: Value(newText)));
+
   Future<void> deleteItem(int itemId) =>
       (db.delete(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
           .go();
