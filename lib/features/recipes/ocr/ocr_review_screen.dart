@@ -71,9 +71,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
     final config = providerConfig?.activeLlmConfig;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Scanned Text'),
-      ),
+      appBar: AppBar(title: const Text('Review Scanned Text')),
       body: Stack(
         children: [
           // Main content
@@ -86,27 +84,34 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                   Container(
                     color: Colors.orange.shade900,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
                             'LLM not configured — cannot structure recipe',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 13),
+                            style: TextStyle(color: Colors.white, fontSize: 13),
                           ),
                         ),
                         TextButton(
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const SettingsScreen()),
+                              builder: (_) => const SettingsScreen(),
+                            ),
                           ),
-                          child: const Text('Settings',
-                              style: TextStyle(color: Colors.white)),
+                          child: const Text(
+                            'Settings',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                     ),
@@ -139,8 +144,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                           ? () => _analyse(config!)
                           : null,
                       style: FilledButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Analyse Recipe'),
                     ),
@@ -163,9 +167,10 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                     Text(
                       'Structuring recipe…',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500),
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),

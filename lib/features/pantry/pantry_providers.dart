@@ -28,36 +28,39 @@ class PantryEntry {
 /// All pantry entries joined with ingredient names, ordered tier DESC then name ASC.
 final pantryEntriesProvider = StreamProvider<List<PantryEntry>>((ref) {
   final db = ref.watch(dbProvider);
-  final query = db.select(db.pantryItems).join([
-    innerJoin(
-      db.ingredients,
-      db.ingredients.id.equalsExp(db.pantryItems.ingredientId),
-    ),
-  ])
-    ..orderBy([
-      OrderingTerm.desc(db.pantryItems.tier),
-      OrderingTerm.asc(db.ingredients.name),
-    ]);
-  return query.watch().map((rows) => rows.map((row) {
-        final p = row.readTable(db.pantryItems);
-        final i = row.readTable(db.ingredients);
-        return PantryEntry(
-          pantryItemId: p.id,
-          ingredientId: i.id,
-          ingredientName: i.name,
-          preferredUnit: i.preferredUnit,
-          tier: p.tier,
-          userConfirmed: p.userConfirmed,
-        );
-      }).toList());
+  final query =
+      db.select(db.pantryItems).join([
+        innerJoin(
+          db.ingredients,
+          db.ingredients.id.equalsExp(db.pantryItems.ingredientId),
+        ),
+      ])..orderBy([
+        OrderingTerm.desc(db.pantryItems.tier),
+        OrderingTerm.asc(db.ingredients.name),
+      ]);
+  return query.watch().map(
+    (rows) => rows.map((row) {
+      final p = row.readTable(db.pantryItems);
+      final i = row.readTable(db.ingredients);
+      return PantryEntry(
+        pantryItemId: p.id,
+        ingredientId: i.id,
+        ingredientName: i.name,
+        preferredUnit: i.preferredUnit,
+        tier: p.tier,
+        userConfirmed: p.userConfirmed,
+      );
+    }).toList(),
+  );
 });
 
 /// Flat map of ingredientId → tier for quick lookups (e.g. shopping list display).
 final pantryTierMapProvider = StreamProvider<Map<int, int>>((ref) {
   final db = ref.watch(dbProvider);
-  return db.select(db.pantryItems).watch().map((rows) => {
-        for (final row in rows) row.ingredientId: row.tier,
-      });
+  return db
+      .select(db.pantryItems)
+      .watch()
+      .map((rows) => {for (final row in rows) row.ingredientId: row.tier});
 });
 
 // ── Stock (new) ────────────────────────────────────────────────────────────────
@@ -85,11 +88,13 @@ class StockEntry {
 }
 
 /// All stock categories ordered by sortOrder.
-final stockCategoriesProvider = StreamProvider<List<PantryStockCategory>>((ref) {
+final stockCategoriesProvider = StreamProvider<List<PantryStockCategory>>((
+  ref,
+) {
   final db = ref.watch(dbProvider);
-  return (db.select(db.pantryStockCategories)
-    ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-      .watch();
+  return (db.select(
+    db.pantryStockCategories,
+  )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).watch();
 });
 
 /// All stock items joined with ingredient and category names, flat list.
@@ -105,26 +110,30 @@ final allStockProvider = StreamProvider<List<StockEntry>>((ref) {
       db.pantryStockCategories.id.equalsExp(db.pantryStock.categoryId),
     ),
   ]);
-  return query.watch().map((rows) => rows.map((row) {
-        final s = row.readTable(db.pantryStock);
-        final i = row.readTable(db.ingredients);
-        final c = row.readTable(db.pantryStockCategories);
-        return StockEntry(
-          stockId: s.id,
-          ingredientId: i.id,
-          ingredientName: i.name,
-          onHandQty: s.onHandQty,
-          onHandUnit: s.onHandUnit,
-          categoryId: c.id,
-          categoryName: c.name,
-          notes: s.notes,
-        );
-      }).toList());
+  return query.watch().map(
+    (rows) => rows.map((row) {
+      final s = row.readTable(db.pantryStock);
+      final i = row.readTable(db.ingredients);
+      final c = row.readTable(db.pantryStockCategories);
+      return StockEntry(
+        stockId: s.id,
+        ingredientId: i.id,
+        ingredientName: i.name,
+        onHandQty: s.onHandQty,
+        onHandUnit: s.onHandUnit,
+        categoryId: c.id,
+        categoryName: c.name,
+        notes: s.notes,
+      );
+    }).toList(),
+  );
 });
 
 /// Stock items filtered by category (derived from allStockProvider).
-final stockByCategoryProvider =
-    Provider.family<List<StockEntry>, int>((ref, categoryId) {
+final stockByCategoryProvider = Provider.family<List<StockEntry>, int>((
+  ref,
+  categoryId,
+) {
   final all = ref.watch(allStockProvider).valueOrNull ?? [];
   return all.where((s) => s.categoryId == categoryId).toList();
 });

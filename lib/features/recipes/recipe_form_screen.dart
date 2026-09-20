@@ -73,11 +73,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _sections.add(entry);
       }
       if (_ingredients.isEmpty && _sections.isEmpty) {
-        _ingredients.add(_IngredientEntry(
-          nameCtrl: TextEditingController(),
-          qtyCtrl: TextEditingController(),
-          notesCtrl: TextEditingController(),
-        ));
+        _ingredients.add(
+          _IngredientEntry(
+            nameCtrl: TextEditingController(),
+            qtyCtrl: TextEditingController(),
+            notesCtrl: TextEditingController(),
+          ),
+        );
       }
     } else {
       _stepControllers.add(TextEditingController());
@@ -86,26 +88,28 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   _IngredientEntry _ingredientEntryFromDraft(IngredientDraft ing) {
     final alts = ing.alternatives
-        .map((alt) => _IngredientEntry(
-              nameCtrl: TextEditingController(text: alt.name),
-              qtyCtrl: TextEditingController(
-                text: alt.qty != null
-                    ? (alt.qty! % 1 == 0
+        .map(
+          (alt) => _IngredientEntry(
+            nameCtrl: TextEditingController(text: alt.name),
+            qtyCtrl: TextEditingController(
+              text: alt.qty != null
+                  ? (alt.qty! % 1 == 0
                         ? alt.qty!.toInt().toString()
                         : alt.qty.toString())
-                    : '',
-              ),
-              notesCtrl: TextEditingController(text: alt.notes ?? ''),
-              selectedUnit: UnitRegistry.parse(alt.unit),
-            ))
+                  : '',
+            ),
+            notesCtrl: TextEditingController(text: alt.notes ?? ''),
+            selectedUnit: UnitRegistry.parse(alt.unit),
+          ),
+        )
         .toList();
     return _IngredientEntry(
       nameCtrl: TextEditingController(text: ing.name),
       qtyCtrl: TextEditingController(
         text: ing.qty != null
             ? (ing.qty! % 1 == 0
-                ? ing.qty!.toInt().toString()
-                : ing.qty.toString())
+                  ? ing.qty!.toInt().toString()
+                  : ing.qty.toString())
             : '',
       ),
       notesCtrl: TextEditingController(text: ing.notes ?? ''),
@@ -136,39 +140,44 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final ops = ref.read(recipeOpsProvider);
     final recipeId = widget.recipe!.id;
 
-    final dbSections = await (db.select(db.recipeIngredientSections)
-          ..where((t) => t.recipeId.equals(recipeId))
-          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-        .get();
+    final dbSections =
+        await (db.select(db.recipeIngredientSections)
+              ..where((t) => t.recipeId.equals(recipeId))
+              ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+            .get();
     final sectionEntries = {
-      for (final s in dbSections) s.id: _SectionEntry(name: s.name)
+      for (final s in dbSections) s.id: _SectionEntry(name: s.name),
     };
 
     final rows = await ops.getIngredients(recipeId);
     for (final row in rows) {
       final alts = await ops.getAlternatives(row.id);
       final altEntries = alts
-          .map((alt) => _IngredientEntry(
-                nameCtrl: TextEditingController(text: alt.ingredientName),
-                qtyCtrl: TextEditingController(
-                    text: alt.qty != null
-                        ? (alt.qty! % 1 == 0
-                            ? alt.qty!.toInt().toString()
-                            : alt.qty.toString())
-                        : ''),
-                notesCtrl: TextEditingController(),
-                selectedUnit: UnitRegistry.parse(alt.unit),
-                resolvedIngredientId: alt.ingredientId,
-              ))
+          .map(
+            (alt) => _IngredientEntry(
+              nameCtrl: TextEditingController(text: alt.ingredientName),
+              qtyCtrl: TextEditingController(
+                text: alt.qty != null
+                    ? (alt.qty! % 1 == 0
+                          ? alt.qty!.toInt().toString()
+                          : alt.qty.toString())
+                    : '',
+              ),
+              notesCtrl: TextEditingController(),
+              selectedUnit: UnitRegistry.parse(alt.unit),
+              resolvedIngredientId: alt.ingredientId,
+            ),
+          )
           .toList();
       final entry = _IngredientEntry(
         nameCtrl: TextEditingController(text: row.ingredientName),
         qtyCtrl: TextEditingController(
-            text: row.qty != null
-                ? (row.qty! % 1 == 0
+          text: row.qty != null
+              ? (row.qty! % 1 == 0
                     ? row.qty!.toInt().toString()
                     : row.qty.toString())
-                : ''),
+              : '',
+        ),
         notesCtrl: TextEditingController(text: row.notes ?? ''),
         selectedUnit: UnitRegistry.parse(row.unit),
         resolvedIngredientId: row.ingredientId,
@@ -220,10 +229,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               child: CircularProgressIndicator(),
             )
           else
-            TextButton(
-              onPressed: _save,
-              child: const Text('Save'),
-            ),
+            TextButton(onPressed: _save, child: const Text('Save')),
         ],
       ),
       body: ListView(
@@ -253,8 +259,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           const SizedBox(height: 24),
 
           // Ingredients
-          Text('Ingredients',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text('Ingredients', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           ..._buildIngredientList(_ingredients, sectionIndex: null),
           // Named sections
@@ -272,7 +277,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                         hintText: 'Section name (e.g. For the sauce)',
                         border: const OutlineInputBorder(),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         isDense: true,
                         prefixIcon: const Icon(Icons.label_outline, size: 18),
                         suffixIcon: IconButton(
@@ -299,16 +306,21 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               TextButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('Add ingredient'),
-                onPressed: () => setState(() => _ingredients.add(_IngredientEntry(
+                onPressed: () => setState(
+                  () => _ingredients.add(
+                    _IngredientEntry(
                       nameCtrl: TextEditingController(),
                       qtyCtrl: TextEditingController(),
                       notesCtrl: TextEditingController(),
-                    ))),
+                    ),
+                  ),
+                ),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('Add section'),
-                onPressed: () => setState(() => _sections.add(_SectionEntry(name: ''))),
+                onPressed: () =>
+                    setState(() => _sections.add(_SectionEntry(name: ''))),
               ),
             ],
           ),
@@ -343,7 +355,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                         hintText: 'Step ${i + 1}',
                         border: const OutlineInputBorder(),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
                       maxLines: null,
                       textCapitalization: TextCapitalization.sentences,
@@ -364,9 +378,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           TextButton.icon(
             icon: const Icon(Icons.add),
             label: const Text('Add step'),
-            onPressed: () => setState(
-              () => _stepControllers.add(TextEditingController()),
-            ),
+            onPressed: () =>
+                setState(() => _stepControllers.add(TextEditingController())),
           ),
           const SizedBox(height: 24),
 
@@ -411,9 +424,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recipe name is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Recipe name is required')));
       return;
     }
 
@@ -423,8 +436,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       final ops = ref.read(recipeOpsProvider);
       final servings = int.tryParse(_servingsCtrl.text.trim());
 
-      RecipeIngredientDraft toDraft(
-              _IngredientEntry e, {int? sectionIndex}) =>
+      RecipeIngredientDraft toDraft(_IngredientEntry e, {int? sectionIndex}) =>
           RecipeIngredientDraft(
             rawText: e.nameCtrl.text.trim(),
             qty: double.tryParse(e.qtyCtrl.text.trim()),
@@ -436,15 +448,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             sectionIndex: sectionIndex,
             alternatives: e.alternatives
                 .where((a) => a.nameCtrl.text.trim().isNotEmpty)
-                .map((a) => RecipeIngredientDraft(
-                      rawText: a.nameCtrl.text.trim(),
-                      qty: double.tryParse(a.qtyCtrl.text.trim()),
-                      unit: a.selectedUnit?.id,
-                      notes: a.notesCtrl.text.trim().isEmpty
-                          ? null
-                          : a.notesCtrl.text.trim(),
-                      resolvedIngredientId: a.resolvedIngredientId,
-                    ))
+                .map(
+                  (a) => RecipeIngredientDraft(
+                    rawText: a.nameCtrl.text.trim(),
+                    qty: double.tryParse(a.qtyCtrl.text.trim()),
+                    unit: a.selectedUnit?.id,
+                    notes: a.notesCtrl.text.trim().isEmpty
+                        ? null
+                        : a.notesCtrl.text.trim(),
+                    resolvedIngredientId: a.resolvedIngredientId,
+                  ),
+                )
                 .toList(),
           );
 
@@ -452,10 +466,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         ..._ingredients
             .where((e) => e.nameCtrl.text.trim().isNotEmpty)
             .map((e) => toDraft(e)),
-        ..._sections.asMap().entries.expand((se) =>
-            se.value.items
-                .where((e) => e.nameCtrl.text.trim().isNotEmpty)
-                .map((e) => toDraft(e, sectionIndex: se.key))),
+        ..._sections.asMap().entries.expand(
+          (se) => se.value.items
+              .where((e) => e.nameCtrl.text.trim().isNotEmpty)
+              .map((e) => toDraft(e, sectionIndex: se.key)),
+        ),
       ];
 
       final sectionNames = _sections
@@ -476,7 +491,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         sourceUrl: _sourceUrlCtrl.text.trim().isEmpty
             ? null
             : _sourceUrlCtrl.text.trim(),
-        sourceType: widget.sourceType ??
+        sourceType:
+            widget.sourceType ??
             (widget.initialDraft != null ? 'ocr' : 'manual'),
         sections: sectionNames,
         ingredients: drafts,
@@ -484,9 +500,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
       if (mounted) {
         final db = ref.read(dbProvider);
-        final updated =
-            await (db.select(db.recipes)..where((t) => t.id.equals(id)))
-                .getSingleOrNull();
+        final updated = await (db.select(
+          db.recipes,
+        )..where((t) => t.id.equals(id))).getSingleOrNull();
         if (mounted) Navigator.pop(context, updated);
       }
     } finally {
@@ -502,8 +518,8 @@ class _SectionEntry {
   final List<_IngredientEntry> items;
 
   _SectionEntry({required String name})
-      : nameCtrl = TextEditingController(text: name),
-        items = [];
+    : nameCtrl = TextEditingController(text: name),
+      items = [];
 
   void dispose() {
     nameCtrl.dispose();
@@ -568,8 +584,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
   String? _mergeCandidate;
   int? _mergeCandidateId;
 
-  Future<void> _pickUnit(BuildContext context,
-      {_IngredientEntry? entry}) async {
+  Future<void> _pickUnit(
+    BuildContext context, {
+    _IngredientEntry? entry,
+  }) async {
     final target = entry ?? widget.entry;
     final result = await showModalBottomSheet<_PickResult>(
       context: context,
@@ -591,7 +609,8 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
         setState(() {
           widget.entry.nameCtrl.text = split.name;
           widget.entry.nameCtrl.selection = TextSelection.collapsed(
-              offset: split.name.length);
+            offset: split.name.length,
+          );
           widget.entry.notesCtrl.text = split.notes!;
         });
       }
@@ -639,11 +658,14 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                   decoration: const InputDecoration(
                     hintText: 'Qty',
                     border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 10,
+                    ),
                   ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -656,8 +678,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
                     ),
                     child: Text(
                       widget.entry.selectedUnit?.abbreviation ?? 'Unit',
@@ -680,7 +704,9 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                     hintText: 'Ingredient',
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 10),
+                      horizontal: 8,
+                      vertical: 10,
+                    ),
                     suffixIcon: widget.entry.resolvedIngredientId != null
                         ? const Icon(Icons.link, size: 16, color: Colors.green)
                         : null,
@@ -706,8 +732,7 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
             decoration: const InputDecoration(
               hintText: 'Prep notes (e.g. whisked, finely chopped)',
               border: OutlineInputBorder(),
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               isDense: true,
             ),
             style: const TextStyle(fontSize: 13),
@@ -723,8 +748,11 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
             padding: const EdgeInsets.only(left: 16, bottom: 4),
             child: Row(
               children: [
-                const Icon(Icons.subdirectory_arrow_right,
-                    size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.subdirectory_arrow_right,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 4),
                 // Qty
                 SizedBox(
@@ -734,12 +762,15 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                     decoration: const InputDecoration(
                       hintText: 'Qty',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       isDense: true,
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                      decimal: true,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -752,8 +783,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                     child: InputDecorator(
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
                         isDense: true,
                       ),
                       child: Text(
@@ -776,8 +809,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                     decoration: const InputDecoration(
                       hintText: 'Alternative ingredient',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       isDense: true,
                     ),
                     style: const TextStyle(fontSize: 13),
@@ -811,15 +846,19 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             icon: const Icon(Icons.add, size: 14),
-            label: const Text('Add alternative',
-                style: TextStyle(fontSize: 12)),
+            label: const Text(
+              'Add alternative',
+              style: TextStyle(fontSize: 12),
+            ),
             onPressed: () {
               setState(() {
-                widget.entry.alternatives.add(_IngredientEntry(
-                  nameCtrl: TextEditingController(),
-                  qtyCtrl: TextEditingController(),
-                  notesCtrl: TextEditingController(),
-                ));
+                widget.entry.alternatives.add(
+                  _IngredientEntry(
+                    nameCtrl: TextEditingController(),
+                    qtyCtrl: TextEditingController(),
+                    notesCtrl: TextEditingController(),
+                  ),
+                );
               });
               widget.onAlternativesChanged();
             },
@@ -842,9 +881,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () {
                     widget.onResolved(_mergeCandidateId);
                     setState(() {
@@ -857,9 +897,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                 const SizedBox(width: 4),
                 TextButton(
                   style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () {
                     widget.onResolved(null);
                     setState(() {
@@ -867,8 +908,10 @@ class _IngredientRowState extends ConsumerState<_IngredientRow> {
                       _mergeCandidateId = null;
                     });
                   },
-                  child: const Text('Keep separate',
-                      style: TextStyle(fontSize: 12)),
+                  child: const Text(
+                    'Keep separate',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -924,8 +967,7 @@ class _UnitPickerSheet extends StatelessWidget {
     );
   }
 
-  Widget _familySection(
-      BuildContext context, String title, UnitFamily family) {
+  Widget _familySection(BuildContext context, String title, UnitFamily family) {
     final units = UnitRegistry.unitsForFamily(family);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -948,7 +990,8 @@ class _UnitPickerSheet extends StatelessWidget {
             trailing: Text(
               u.abbreviation,
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             onTap: () => Navigator.pop(context, _PickResult(u)),
           ),

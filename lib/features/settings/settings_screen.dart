@@ -22,19 +22,23 @@ const _storage = FlutterSecureStorage();
 
 final unitPreferenceProvider =
     AsyncNotifierProvider<UnitPreferenceNotifier, UnitPreference>(
-        UnitPreferenceNotifier.new);
+      UnitPreferenceNotifier.new,
+    );
 
 class UnitPreferenceNotifier extends AsyncNotifier<UnitPreference> {
   @override
   Future<UnitPreference> build() async {
     final value = await _storage.read(key: _kUnitPrefKey);
-    return value == 'imperial' ? UnitPreference.imperial : UnitPreference.metric;
+    return value == 'imperial'
+        ? UnitPreference.imperial
+        : UnitPreference.metric;
   }
 
   Future<void> save(UnitPreference pref) async {
     await _storage.write(
-        key: _kUnitPrefKey,
-        value: pref == UnitPreference.imperial ? 'imperial' : 'metric');
+      key: _kUnitPrefKey,
+      value: pref == UnitPreference.imperial ? 'imperial' : 'metric',
+    );
     state = AsyncData(pref);
   }
 }
@@ -100,7 +104,8 @@ class LlmProviderConfig {
 
 final llmConfigProvider =
     AsyncNotifierProvider<LlmConfigNotifier, LlmProviderConfig>(
-        LlmConfigNotifier.new);
+      LlmConfigNotifier.new,
+    );
 
 class LlmConfigNotifier extends AsyncNotifier<LlmProviderConfig> {
   @override
@@ -112,29 +117,27 @@ class LlmConfigNotifier extends AsyncNotifier<LlmProviderConfig> {
           : LlmProvider.ollama,
       ollamaHost: await _storage.read(key: _kOllamaHost) ?? '',
       ollamaModel: await _storage.read(key: _kOllamaModel) ?? '',
-      openRouterApiKey:
-          await _storage.read(key: _kOpenRouterApiKey) ?? '',
+      openRouterApiKey: await _storage.read(key: _kOpenRouterApiKey) ?? '',
       openRouterModel: await _storage.read(key: _kOpenRouterModel) ?? '',
     );
   }
 
-  Future<void> saveOllama({
-    required String host,
-    required String model,
-  }) async {
+  Future<void> saveOllama({required String host, required String model}) async {
     await Future.wait([
       _storage.write(key: _kOllamaHost, value: host),
       _storage.write(key: _kOllamaModel, value: model),
       _storage.write(key: _kActiveProvider, value: 'ollama'),
     ]);
     final current = state.valueOrNull;
-    state = AsyncData(LlmProviderConfig(
-      active: LlmProvider.ollama,
-      ollamaHost: host,
-      ollamaModel: model,
-      openRouterApiKey: current?.openRouterApiKey ?? '',
-      openRouterModel: current?.openRouterModel ?? '',
-    ));
+    state = AsyncData(
+      LlmProviderConfig(
+        active: LlmProvider.ollama,
+        ollamaHost: host,
+        ollamaModel: model,
+        openRouterApiKey: current?.openRouterApiKey ?? '',
+        openRouterModel: current?.openRouterModel ?? '',
+      ),
+    );
   }
 
   Future<void> saveOpenRouter({
@@ -147,13 +150,15 @@ class LlmConfigNotifier extends AsyncNotifier<LlmProviderConfig> {
       _storage.write(key: _kActiveProvider, value: 'openrouter'),
     ]);
     final current = state.valueOrNull;
-    state = AsyncData(LlmProviderConfig(
-      active: LlmProvider.openRouter,
-      ollamaHost: current?.ollamaHost ?? '',
-      ollamaModel: current?.ollamaModel ?? '',
-      openRouterApiKey: apiKey,
-      openRouterModel: model,
-    ));
+    state = AsyncData(
+      LlmProviderConfig(
+        active: LlmProvider.openRouter,
+        ollamaHost: current?.ollamaHost ?? '',
+        ollamaModel: current?.ollamaModel ?? '',
+        openRouterApiKey: apiKey,
+        openRouterModel: model,
+      ),
+    );
   }
 }
 
@@ -226,28 +231,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
-          ref.watch(unitPreferenceProvider).when(
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => Text('Error: $e'),
-            data: (pref) => SegmentedButton<UnitPreference>(
-              segments: const [
-                ButtonSegment(
-                    value: UnitPreference.metric, label: Text('Metric')),
-                ButtonSegment(
-                    value: UnitPreference.imperial, label: Text('Imperial')),
-              ],
-              selected: {pref},
-              onSelectionChanged: (set) =>
-                  ref.read(unitPreferenceProvider.notifier).save(set.first),
-            ),
-          ),
+          ref
+              .watch(unitPreferenceProvider)
+              .when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, _) => Text('Error: $e'),
+                data: (pref) => SegmentedButton<UnitPreference>(
+                  segments: const [
+                    ButtonSegment(
+                      value: UnitPreference.metric,
+                      label: Text('Metric'),
+                    ),
+                    ButtonSegment(
+                      value: UnitPreference.imperial,
+                      label: Text('Imperial'),
+                    ),
+                  ],
+                  selected: {pref},
+                  onSelectionChanged: (set) =>
+                      ref.read(unitPreferenceProvider.notifier).save(set.first),
+                ),
+              ),
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),
 
           // ── LLM Configuration ──────────────────────────────────────────────
-          Text('LLM Configuration',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'LLM Configuration',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 4),
           Text(
             'Configure an LLM provider to enable AI-assisted recipe import and smart suggestions.',
@@ -273,8 +286,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 20),
           config.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('Error: $e'),
             data: (_) => _selectedProvider == LlmProvider.ollama
                 ? _buildOllamaSection()
@@ -306,7 +318,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.wifi_tethering, size: 18),
           label: Text(_testing ? 'Testing…' : 'Test Connection'),
           onPressed: _testing ? null : _testOllama,
@@ -316,9 +329,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Text(
             _testResult!,
             style: TextStyle(
-              color: _testSuccess
-                  ? Colors.green.shade700
-                  : Colors.red.shade700,
+              color: _testSuccess ? Colors.green.shade700 : Colors.red.shade700,
               fontSize: 13,
             ),
           ),
@@ -348,8 +359,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         FilledButton(
           onPressed:
               (_selectedOllamaModel != null && _selectedOllamaModel!.isNotEmpty)
-                  ? _saveOllama
-                  : null,
+              ? _saveOllama
+              : null,
           child: const Text('Save'),
         ),
       ],
@@ -361,19 +372,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant),
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Endpoint',
-                  style: Theme.of(context).textTheme.labelSmall),
+              Text('Endpoint', style: Theme.of(context).textTheme.labelSmall),
               const SizedBox(height: 2),
               const Text(
                 'https://openrouter.ai/api/v1',
@@ -390,10 +400,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             hintText: 'sk-or-v1-…',
             border: const OutlineInputBorder(),
             suffixIcon: IconButton(
-              icon: Icon(
-                  _obscureKey ? Icons.visibility_off : Icons.visibility),
-              onPressed: () =>
-                  setState(() => _obscureKey = !_obscureKey),
+              icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscureKey = !_obscureKey),
             ),
           ),
           obscureText: _obscureKey,
@@ -410,10 +418,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           autocorrect: false,
         ),
         const SizedBox(height: 20),
-        FilledButton(
-          onPressed: _saveOpenRouter,
-          child: const Text('Save'),
-        ),
+        FilledButton(onPressed: _saveOpenRouter, child: const Text('Save')),
       ],
     );
   }
@@ -437,8 +442,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final uri = Uri.parse('http://$host:11434/api/tags');
-      final resp =
-          await http.get(uri).timeout(const Duration(seconds: 8));
+      final resp = await http.get(uri).timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) {
         final json = jsonDecode(resp.body) as Map<String, dynamic>;
         final names = (json['models'] as List)
@@ -476,26 +480,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _saveOllama() async {
-    await ref.read(llmConfigProvider.notifier).saveOllama(
+    await ref
+        .read(llmConfigProvider.notifier)
+        .saveOllama(
           host: _ollamaHostCtrl.text.trim(),
           model: _selectedOllamaModel ?? '',
         );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ollama configured')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ollama configured')));
     }
   }
 
   Future<void> _saveOpenRouter() async {
-    await ref.read(llmConfigProvider.notifier).saveOpenRouter(
+    await ref
+        .read(llmConfigProvider.notifier)
+        .saveOpenRouter(
           apiKey: _openRouterKeyCtrl.text.trim(),
           model: _openRouterModelCtrl.text.trim(),
         );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OpenRouter configured')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('OpenRouter configured')));
     }
   }
 }

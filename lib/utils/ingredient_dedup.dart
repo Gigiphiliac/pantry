@@ -31,7 +31,9 @@ double _jaro(String a, String b) {
   int k = 0;
   for (int i = 0; i < a.length; i++) {
     if (!aMatched[i]) continue;
-    while (!bMatched[k]) { k++; }
+    while (!bMatched[k]) {
+      k++;
+    }
     if (a[i] != b[k]) transpositions++;
     k++;
   }
@@ -93,9 +95,9 @@ Future<DedupResult> resolveIngredient(AppDatabase db, String rawText) async {
   if (normalised.isEmpty) return const DedupResult(score: 0);
 
   // 1. Exact alias match
-  final aliasMatch = await (db.select(db.ingredientAliases)
-        ..where((t) => t.alias.equals(normalised)))
-      .getSingleOrNull();
+  final aliasMatch = await (db.select(
+    db.ingredientAliases,
+  )..where((t) => t.alias.equals(normalised))).getSingleOrNull();
   if (aliasMatch != null) {
     return DedupResult(ingredientId: aliasMatch.ingredientId, score: 1.0);
   }
@@ -111,15 +113,17 @@ Future<DedupResult> resolveIngredient(AppDatabase db, String rawText) async {
     double score = jaroWinkler(normalised, ingredient.name.toLowerCase());
 
     // Also check all aliases for this ingredient
-    for (final alias in allAliases.where((a) => a.ingredientId == ingredient.id)) {
+    for (final alias in allAliases.where(
+      (a) => a.ingredientId == ingredient.id,
+    )) {
       final aliasScore = jaroWinkler(normalised, alias.alias.toLowerCase());
       if (aliasScore > score) score = aliasScore;
     }
 
     if (score > bestScore) {
-        bestScore = score;
-        bestIngredient = ingredient;
-      }
+      bestScore = score;
+      bestIngredient = ingredient;
+    }
   }
 
   if (bestIngredient == null || bestScore < 0.75) {
@@ -142,22 +146,24 @@ Future<int> getOrCreateIngredient(AppDatabase db, String rawName) async {
   final normalised = _sanitiseIngredientName(rawName).toLowerCase();
 
   // Check alias first
-  final existing = await (db.select(db.ingredientAliases)
-        ..where((t) => t.alias.equals(normalised)))
-      .getSingleOrNull();
+  final existing = await (db.select(
+    db.ingredientAliases,
+  )..where((t) => t.alias.equals(normalised))).getSingleOrNull();
   if (existing != null) return existing.ingredientId;
 
   // Check canonical name
-  final canonical = await (db.select(db.ingredients)
-        ..where((t) => t.name.equals(normalised)))
-      .getSingleOrNull();
+  final canonical = await (db.select(
+    db.ingredients,
+  )..where((t) => t.name.equals(normalised))).getSingleOrNull();
   if (canonical != null) return canonical.id;
 
   // Create new
-  final id = await db.into(db.ingredients).insert(
-        IngredientsCompanion.insert(name: normalised),
-      );
-  await db.into(db.ingredientAliases).insert(
+  final id = await db
+      .into(db.ingredients)
+      .insert(IngredientsCompanion.insert(name: normalised));
+  await db
+      .into(db.ingredientAliases)
+      .insert(
         IngredientAliasesCompanion.insert(alias: normalised, ingredientId: id),
       );
   return id;

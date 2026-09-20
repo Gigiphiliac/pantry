@@ -18,20 +18,80 @@ class IngredientParser {
   /// detected. These overlap with [UnitRegistry.countUnits] but are duplicated
   /// here for forward reference — the classifier checks both sets.
   static const Set<String> _countUnits = {
-    'clove', 'cloves', 'fillet', 'fillets', 'slice', 'slices',
-    'rasher', 'rashers', 'piece', 'pieces',
-    'bunch', 'bunches', 'head', 'heads', 'sprig', 'sprigs',
-    'pinch', 'pinches', 'dash', 'dashes',
-    'handful', 'handfuls', 'strip', 'strips',
-    'stick', 'sticks', 'leaf', 'leaves', 'pod', 'pods',
-    'thigh', 'thighs', 'breast', 'breasts', 'steak', 'steaks',
-    'wing', 'wings', 'drumstick', 'drumsticks',
-    'cup', 'cups', 'scoop', 'scoops', 'drop', 'drops',
-    'square', 'squares', 'bar', 'bars', 'slab', 'slabs',
-    'wedge', 'wedges', 'ring', 'rings', 'roll', 'rolls',
-    'sheet', 'sheets', 'tube', 'tubes', 'loaf', 'loaves',
-    'can', 'cans', 'jar', 'jars', 'bottle', 'bottles',
-    'bag', 'bags', 'packet', 'packets',
+    'clove',
+    'cloves',
+    'fillet',
+    'fillets',
+    'slice',
+    'slices',
+    'rasher',
+    'rashers',
+    'piece',
+    'pieces',
+    'bunch',
+    'bunches',
+    'head',
+    'heads',
+    'sprig',
+    'sprigs',
+    'pinch',
+    'pinches',
+    'dash',
+    'dashes',
+    'handful',
+    'handfuls',
+    'strip',
+    'strips',
+    'stick',
+    'sticks',
+    'leaf',
+    'leaves',
+    'pod',
+    'pods',
+    'thigh',
+    'thighs',
+    'breast',
+    'breasts',
+    'steak',
+    'steaks',
+    'wing',
+    'wings',
+    'drumstick',
+    'drumsticks',
+    'cup',
+    'cups',
+    'scoop',
+    'scoops',
+    'drop',
+    'drops',
+    'square',
+    'squares',
+    'bar',
+    'bars',
+    'slab',
+    'slabs',
+    'wedge',
+    'wedges',
+    'ring',
+    'rings',
+    'roll',
+    'rolls',
+    'sheet',
+    'sheets',
+    'tube',
+    'tubes',
+    'loaf',
+    'loaves',
+    'can',
+    'cans',
+    'jar',
+    'jars',
+    'bottle',
+    'bottles',
+    'bag',
+    'bags',
+    'packet',
+    'packets',
   };
 
   /// Words that describe preparation, quality, or state — extracted from the
@@ -62,14 +122,21 @@ class IngredientParser {
 
   /// Adverbs that form compound with the following word.
   static const Set<String> _adverbs = {
-    'roughly', 'finely', 'thickly', 'thinly', 'coarsely',
-    'lightly', 'heavily', 'generously', 'fully', 'partially', 'freshly',
+    'roughly',
+    'finely',
+    'thickly',
+    'thinly',
+    'coarsely',
+    'lightly',
+    'heavily',
+    'generously',
+    'fully',
+    'partially',
+    'freshly',
   };
 
   /// Articles and filler words removed entirely.
-  static const Set<String> _articles = {
-    'a', 'an', 'the', 'of',
-  };
+  static const Set<String> _articles = {'a', 'an', 'the', 'of'};
 
   /// Unicode fraction characters and their numeric values.
   static const Map<String, double> _unicodeFractions = {
@@ -92,11 +159,9 @@ class IngredientParser {
   static bool _isNoteKeyword(String word) =>
       _noteKeywords.contains(word.toLowerCase());
 
-  static bool _isAdverb(String word) =>
-      _adverbs.contains(word.toLowerCase());
+  static bool _isAdverb(String word) => _adverbs.contains(word.toLowerCase());
 
-  static bool _isArticle(String word) =>
-      _articles.contains(word.toLowerCase());
+  static bool _isArticle(String word) => _articles.contains(word.toLowerCase());
 
   // ── Main public API ────────────────────────────────────────────────────────
 
@@ -129,7 +194,8 @@ class IngredientParser {
           final d = double.parse(numMatch.group(3)!);
           qty = whole + n / d;
         } else if (numMatch.group(4) != null) {
-          qty = double.parse(numMatch.group(4)!) /
+          qty =
+              double.parse(numMatch.group(4)!) /
               double.parse(numMatch.group(5)!);
         } else {
           qty = double.tryParse(numMatch.group(6)!);
@@ -140,18 +206,12 @@ class IngredientParser {
 
     // 1b. Strip range upper bound: "1 - 1.5" → "1"
     remaining = remaining
-        .replaceFirst(
-            RegExp(r'^[-–—]\s*\d+(?:\.\d+)?(?:\s+\d+/\d+)?\s*'), '')
+        .replaceFirst(RegExp(r'^[-–—]\s*\d+(?:\.\d+)?(?:\s+\d+/\d+)?\s*'), '')
         .trim();
 
     // 1c. Strip unit-conversion slashes: "120g / 4oz" → "120g"
     // Right side must start with a digit/fraction.
-    remaining = remaining
-        .replaceAll(
-          _unitConversionSlash,
-          '',
-        )
-        .trim();
+    remaining = remaining.replaceAll(_unitConversionSlash, '').trim();
 
     if (remaining.isEmpty) {
       return IngredientDraft(qty: qty, name: '', notes: null);
@@ -174,9 +234,10 @@ class IngredientParser {
         notesParts.insert(0, cleaned);
       }
       // Reconstruct remaining: group(1) = before paren, group(3) = after paren
-      iterName = [m.group(1)!.trim(), m.group(3)!.trim()]
-          .where((p) => p.isNotEmpty)
-          .join(' ');
+      iterName = [
+        m.group(1)!.trim(),
+        m.group(3)!.trim(),
+      ].where((p) => p.isNotEmpty).join(' ');
     }
 
     // Clean trailing unmatched closing parens: "garlic cloves )" → "garlic cloves"
@@ -188,8 +249,9 @@ class IngredientParser {
       iterName = iterName.substring(0, iterName.length - 1).trim();
     }
 
-    String? existingNotes =
-        notesParts.isNotEmpty ? notesParts.join(', ') : null;
+    String? existingNotes = notesParts.isNotEmpty
+        ? notesParts.join(', ')
+        : null;
 
     // ── Stage 3: Alternative detection ─────────────────────────────────
 
@@ -210,8 +272,11 @@ class IngredientParser {
     final alternatives = <IngredientDraft>[];
 
     if (iterName.contains(' or ')) {
-      final parts =
-          iterName.split(' or ').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+      final parts = iterName
+          .split(' or ')
+          .map((p) => p.trim())
+          .where((p) => p.isNotEmpty)
+          .toList();
       if (parts.length > 1) {
         iterName = parts.first;
         final pu = detectPrefixUnit(parts.first);
@@ -225,7 +290,8 @@ class IngredientParser {
         final left = iterName.substring(0, slashIdx).trim();
         final right = iterName.substring(slashIdx + 1).trim();
         // Word/word slash = alternative (digit-starting right was already stripped).
-        if (right.isNotEmpty && left.isNotEmpty &&
+        if (right.isNotEmpty &&
+            left.isNotEmpty &&
             !RegExp(r'^[\d¼½¾⅓⅔⅛⅜⅝⅞]').hasMatch(right)) {
           iterName = left;
           final pu = detectPrefixUnit(left);
@@ -262,7 +328,8 @@ class IngredientParser {
       }
 
       // Compound adverb + note word → single note entry
-      if (_isAdverb(token) && i + 1 < tokens.length &&
+      if (_isAdverb(token) &&
+          i + 1 < tokens.length &&
           _isNoteKeyword(tokens[i + 1])) {
         noteWords.add('$token ${tokens[i + 1]}');
         i += 2;
@@ -343,8 +410,14 @@ class IngredientParser {
 
     while (j < tokens.length) {
       final token = tokens[j];
-      if (_isArticle(token)) { j++; continue; }
-      if (_isNoteKeyword(token)) { j++; continue; }
+      if (_isArticle(token)) {
+        j++;
+        continue;
+      }
+      if (_isNoteKeyword(token)) {
+        j++;
+        continue;
+      }
       // Detect a unit at prefix position if none inherited.
       if (detectedUnit == null && inheritedUnit == null) {
         final u = _tryReadUnitAt(j, tokens);

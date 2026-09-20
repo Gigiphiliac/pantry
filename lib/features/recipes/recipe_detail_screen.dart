@@ -70,11 +70,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             if (_recipe.servings != null) _servingsRow(),
             if (ingredients.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text('Ingredients',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Ingredients',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
-              ..._buildIngredientWidgets(
-                  context, ingredients, sectionNames),
+              ..._buildIngredientWidgets(context, ingredients, sectionNames),
             ],
             ...steps.when(
               loading: () => const [],
@@ -83,39 +84,37 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   ? const []
                   : [
                       const SizedBox(height: 20),
-                      Text('Method',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'Method',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
                       ...stepList.asMap().entries.map(
-                            (e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SizedBox(
-                                    width: 28,
-                                    child: Text(
-                                      '${e.key + 1}.',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text(e.value)),
-                                ],
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  '${e.key + 1}.',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.right,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(e.value)),
+                            ],
                           ),
+                        ),
+                      ),
                     ],
             ),
             if (_recipe.sourceUrl?.isNotEmpty == true) ...[
               const SizedBox(height: 20),
-              Text('Source',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Source', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
                 _recipe.sourceUrl!,
@@ -155,25 +154,29 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         if (ing.sectionId != null) {
           final name = sectionNames[ing.sectionId] ?? '';
           if (name.isNotEmpty) {
-            widgets.add(Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 2),
-              child: Text(
-                name,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+            widgets.add(
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 2),
+                child: Text(
+                  name,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ),
-            ));
+            );
           }
         }
       }
-      widgets.add(_IngredientTile(
-        key: ValueKey(ing.id),
-        ing: ing,
-        baseServings: _baseServings,
-        servingScale: _servingScale,
-      ));
+      widgets.add(
+        _IngredientTile(
+          key: ValueKey(ing.id),
+          ing: ing,
+          baseServings: _baseServings,
+          servingScale: _servingScale,
+        ),
+      );
     }
     return widgets;
   }
@@ -189,8 +192,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               ? () => setState(() => _servingScale--)
               : null,
         ),
-        Text('$_servingScale',
-            style: Theme.of(context).textTheme.titleMedium),
+        Text('$_servingScale', style: Theme.of(context).textTheme.titleMedium),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
           onPressed: () => setState(() => _servingScale++),
@@ -215,12 +217,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         content: Text('Delete "${_recipe.name}"? This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -248,15 +250,26 @@ class _IngredientTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final altsAsync =
-        ref.watch(recipeIngredientAlternativesProvider(ing.id));
+    final altsAsync = ref.watch(recipeIngredientAlternativesProvider(ing.id));
     final ops = ref.watch(recipeOpsProvider);
 
     return altsAsync.when(
-      loading: () => _buildRow(context, ing.ingredientName, ing.qty,
-          ing.unit, hasAlts: false, onCycle: null),
-      error: (_, _) => _buildRow(context, ing.ingredientName, ing.qty,
-          ing.unit, hasAlts: false, onCycle: null),
+      loading: () => _buildRow(
+        context,
+        ing.ingredientName,
+        ing.qty,
+        ing.unit,
+        hasAlts: false,
+        onCycle: null,
+      ),
+      error: (_, _) => _buildRow(
+        context,
+        ing.ingredientName,
+        ing.qty,
+        ing.unit,
+        hasAlts: false,
+        onCycle: null,
+      ),
       data: (alts) {
         final hasAlts = alts.isNotEmpty;
 
@@ -285,9 +298,7 @@ class _IngredientTile extends ConsumerWidget {
           hasAlts: hasAlts,
           activeIdx: idx,
           totalOptions: alts.length + 1,
-          onCycle: hasAlts
-              ? () => ops.cycleAlternative(ing.id)
-              : null,
+          onCycle: hasAlts ? () => ops.cycleAlternative(ing.id) : null,
         );
       },
     );
@@ -307,8 +318,8 @@ class _IngredientTile extends ConsumerWidget {
     final scaledQty = qty != null ? qty * scale : null;
     final qtyStr = scaledQty != null
         ? (scaledQty == scaledQty.roundToDouble()
-            ? scaledQty.toInt().toString()
-            : scaledQty.toStringAsFixed(1))
+              ? scaledQty.toInt().toString()
+              : scaledQty.toStringAsFixed(1))
         : '';
 
     // Dot indicator: which option is active (e.g. "2/3")
@@ -369,8 +380,10 @@ class _AddToListSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Add to which list?',
-                style: Theme.of(context).textTheme.titleMedium),
+            child: Text(
+              'Add to which list?',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
           lists.when(
             loading: () => const CircularProgressIndicator(),
@@ -382,14 +395,19 @@ class _AddToListSheet extends ConsumerWidget {
                   )
                 : Column(
                     children: items
-                        .map((list) => ListTile(
-                              title: Text(list.name),
-                              onTap: () async {
-                                Navigator.pop(context);
-                                await ops.addToShoppingList(
-                                    recipe.id, list.id, recipe.name);
-                              },
-                            ))
+                        .map(
+                          (list) => ListTile(
+                            title: Text(list.name),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              await ops.addToShoppingList(
+                                recipe.id,
+                                list.id,
+                                recipe.name,
+                              );
+                            },
+                          ),
+                        )
                         .toList(),
                   ),
           ),

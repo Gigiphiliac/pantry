@@ -35,20 +35,27 @@ class ShoppingListStores extends Table {
 
 class ShoppingListSections extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get storeId => integer()
-      .references(ShoppingListStores, #id, onDelete: KeyAction.cascade)();
+  IntColumn get storeId => integer().references(
+    ShoppingListStores,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   TextColumn get sectionName => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 class ShoppingListItems extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get storeId =>
-      integer().references(ShoppingListStores, #id, onDelete: KeyAction.cascade)();
+  IntColumn get storeId => integer().references(
+    ShoppingListStores,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   IntColumn get sectionId => integer()
       .references(ShoppingListSections, #id, onDelete: KeyAction.setNull)
       .nullable()();
-  IntColumn get ingredientId => integer().references(Ingredients, #id).nullable()();
+  IntColumn get ingredientId =>
+      integer().references(Ingredients, #id).nullable()();
   TextColumn get rawText => text()();
   RealColumn get qty => real().nullable()();
   TextColumn get unit => text().nullable()();
@@ -127,11 +134,12 @@ class PantryItems extends Table {
   IntColumn get ingredientId => integer().references(Ingredients, #id)();
   // 1 = always available, 2 = bulk staple, 3 = per-recipe
   IntColumn get tier => integer().withDefault(const Constant(3))();
-  BoolColumn get userConfirmed => boolean().withDefault(const Constant(false))();
+  BoolColumn get userConfirmed =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
-    {ingredientId}
+    {ingredientId},
   ];
 }
 
@@ -144,40 +152,47 @@ class PantryStockCategories extends Table {
 class PantryStock extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get ingredientId => integer().references(Ingredients, #id)();
-  IntColumn get categoryId => integer().references(PantryStockCategories, #id)();
+  IntColumn get categoryId =>
+      integer().references(PantryStockCategories, #id)();
   RealColumn get onHandQty => real().nullable()();
   TextColumn get onHandUnit => text().nullable()();
   TextColumn get notes => text().nullable()();
 
   @override
   List<Set<Column>> get uniqueKeys => [
-    {ingredientId}
+    {ingredientId},
   ];
 }
 
 // ── Database ──────────────────────────────────────────────────────────────────
 
-@DriftDatabase(tables: [
-  Ingredients,
-  IngredientAliases,
-  ShoppingLists,
-  ShoppingListStores,
-  ShoppingListSections,
-  ShoppingListItems,
-  Recipes,
-  RecipeSteps,
-  RecipeIngredientSections,
-  RecipeIngredients,
-  RecipeIngredientAlternatives,
-  MealPlans,
-  MealPlanDays,
-  MealSlots,
-  PantryItems,
-  PantryStockCategories,
-  PantryStock,
-])
+@DriftDatabase(
+  tables: [
+    Ingredients,
+    IngredientAliases,
+    ShoppingLists,
+    ShoppingListStores,
+    ShoppingListSections,
+    ShoppingListItems,
+    Recipes,
+    RecipeSteps,
+    RecipeIngredientSections,
+    RecipeIngredients,
+    RecipeIngredientAlternatives,
+    MealPlans,
+    MealPlanDays,
+    MealSlots,
+    PantryItems,
+    PantryStockCategories,
+    PantryStock,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
+
+  /// Creates a database backed by an arbitrary [QueryExecutor].
+  /// Used for testing with e.g. [NativeDatabase.memory()].
+  AppDatabase.connect(QueryExecutor e) : super(e);
 
   @override
   int get schemaVersion => 10;
@@ -189,9 +204,18 @@ class AppDatabase extends _$AppDatabase {
       // Seed default stock categories
       await batch((b) {
         b.insertAll(pantryStockCategories, [
-          PantryStockCategoriesCompanion.insert(name: 'Fridge', sortOrder: const Value(0)),
-          PantryStockCategoriesCompanion.insert(name: 'Freezer', sortOrder: const Value(1)),
-          PantryStockCategoriesCompanion.insert(name: 'Pantry Cupboard', sortOrder: const Value(2)),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Fridge',
+            sortOrder: const Value(0),
+          ),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Freezer',
+            sortOrder: const Value(1),
+          ),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Pantry Cupboard',
+            sortOrder: const Value(2),
+          ),
         ]);
       });
     },
@@ -200,9 +224,7 @@ class AppDatabase extends _$AppDatabase {
       // Safe for dev: no production data exists.
       final tables = (await customSelect(
         "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'",
-      ).get())
-          .map((r) => r.read<String>('name'))
-          .toList();
+      ).get()).map((r) => r.read<String>('name')).toList();
       await customStatement('PRAGMA foreign_keys = OFF');
       for (final t in tables) {
         await customStatement('DROP TABLE IF EXISTS "$t"');
@@ -212,9 +234,18 @@ class AppDatabase extends _$AppDatabase {
       // Seed default stock categories
       await batch((b) {
         b.insertAll(pantryStockCategories, [
-          PantryStockCategoriesCompanion.insert(name: 'Fridge', sortOrder: const Value(0)),
-          PantryStockCategoriesCompanion.insert(name: 'Freezer', sortOrder: const Value(1)),
-          PantryStockCategoriesCompanion.insert(name: 'Pantry Cupboard', sortOrder: const Value(2)),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Fridge',
+            sortOrder: const Value(0),
+          ),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Freezer',
+            sortOrder: const Value(1),
+          ),
+          PantryStockCategoriesCompanion.insert(
+            name: 'Pantry Cupboard',
+            sortOrder: const Value(2),
+          ),
         ]);
       });
     },

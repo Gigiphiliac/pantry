@@ -12,19 +12,16 @@ class ShoppingItemTile extends ConsumerWidget {
   final ShoppingListItem item;
   final ShoppingListOps ops;
 
-  const ShoppingItemTile({
-    super.key,
-    required this.item,
-    required this.ops,
-  });
+  const ShoppingItemTile({super.key, required this.item, required this.ops});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref =
         ref.watch(unitPreferenceProvider).valueOrNull ?? UnitPreference.metric;
     final tierMap = ref.watch(pantryTierMapProvider).valueOrNull ?? {};
-    final pantryTier =
-    item.ingredientId != null ? tierMap[item.ingredientId] : null;
+    final pantryTier = item.ingredientId != null
+        ? tierMap[item.ingredientId]
+        : null;
 
     return LongPressDraggable<ShoppingListItem>(
       data: item,
@@ -107,22 +104,24 @@ class _ItemContent extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: CheckboxListTile(
-        value: item.checked,
-        onChanged: (v) => ops.toggleItem(item.id, v ?? false),
-        title: Text(
-          item.rawText,
-          style: item.checked
-              ? TextStyle(
-            decoration: TextDecoration.lineThrough,
-            color: Theme.of(context).disabledColor,
-          )
-              : null,
+          value: item.checked,
+          onChanged: (v) => ops.toggleItem(item.id, v ?? false),
+          title: Text(
+            item.rawText,
+            style: item.checked
+                ? TextStyle(
+                    decoration: TextDecoration.lineThrough,
+                    color: Theme.of(context).disabledColor,
+                  )
+                : null,
+          ),
+          subtitle: pantryTier == 2 ? null : _buildQtySubtitle(item, pref),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 48,
+            vertical: 0,
+          ),
         ),
-        subtitle: pantryTier == 2 ? null : _buildQtySubtitle(item, pref),
-        controlAffinity: ListTileControlAffinity.leading,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 48, vertical: 0),
-      ),
       ),
     );
   }
@@ -133,7 +132,8 @@ class _ItemContent extends StatelessWidget {
     if (unit != null) {
       if (unit.family == UnitFamily.count) {
         return Text(
-            '${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}');
+          '${UnitRegistry.formatQty(item.qty!)} ${unit.abbreviation}',
+        );
       }
       final display = UnitRegistry.preferredDisplayUnit(unit.family, pref);
       final qty = UnitRegistry.convert(item.qty!, unit, display);

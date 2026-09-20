@@ -87,10 +87,12 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
           final filtered = _query.isEmpty
               ? allItems
               : allItems
-                  .where((s) => s.ingredientName
-                      .toLowerCase()
-                      .contains(_query.toLowerCase()))
-                  .toList();
+                    .where(
+                      (s) => s.ingredientName.toLowerCase().contains(
+                        _query.toLowerCase(),
+                      ),
+                    )
+                    .toList();
           final filteredIds = filtered.map((s) => s.ingredientId).toSet();
 
           return ListView(
@@ -118,18 +120,18 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
   Future<void> _addStockItem() async {
     final db = ref.read(dbProvider);
     final ops = ref.read(pantryOpsProvider);
-    var categories = await (db.select(db.pantryStockCategories)
-          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-        .get();
+    var categories = await (db.select(
+      db.pantryStockCategories,
+    )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).get();
 
     if (categories.isEmpty) {
       // Seed defaults so the + button works on a fresh database.
       await ops.createCategory('Fridge');
       await ops.createCategory('Freezer');
       await ops.createCategory('Pantry Cupboard');
-      categories = await (db.select(db.pantryStockCategories)
-            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-          .get();
+      categories = await (db.select(
+        db.pantryStockCategories,
+      )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).get();
       if (categories.isEmpty) return;
     }
 
@@ -193,7 +195,6 @@ class _AddStockForm extends ConsumerStatefulWidget {
 }
 
 class _AddStockFormState extends ConsumerState<_AddStockForm> {
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -221,7 +222,9 @@ class _AddStockFormState extends ConsumerState<_AddStockForm> {
                 flex: 2,
                 child: TextField(
                   controller: widget.formState.qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Qty',
                     border: OutlineInputBorder(),
@@ -240,16 +243,21 @@ class _AddStockFormState extends ConsumerState<_AddStockForm> {
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
-                  items: [
-                    ...UnitRegistry.weightUnits,
-                    ...UnitRegistry.volumeUnits,
-                    ...UnitRegistry.countUnits,
-                  ].map((u) => DropdownMenuItem(
-                        value: u.id,
-                        child: Text(u.abbreviation),
-                      )).toList(),
-                  onChanged: (v) => setState(() =>
-                    widget.formState.selectedUnit = v),
+                  items:
+                      [
+                            ...UnitRegistry.weightUnits,
+                            ...UnitRegistry.volumeUnits,
+                            ...UnitRegistry.countUnits,
+                          ]
+                          .map(
+                            (u) => DropdownMenuItem(
+                              value: u.id,
+                              child: Text(u.abbreviation),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (v) =>
+                      setState(() => widget.formState.selectedUnit = v),
                 ),
               ),
             ],
@@ -288,7 +296,8 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
     final ops = ref.read(pantryOpsProvider);
 
     // Hide empty section during search.
-    if (widget.query.isNotEmpty && items.isEmpty) return const SizedBox.shrink();
+    if (widget.query.isNotEmpty && items.isEmpty)
+      return const SizedBox.shrink();
 
     return DragTarget<StockEntry>(
       onWillAcceptWithDetails: (details) {
@@ -305,7 +314,9 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
       builder: (context, candidates, rejected) {
         final displayItems = widget.query.isEmpty
             ? items
-            : items.where((s) => widget.filteredIds.contains(s.ingredientId)).toList();
+            : items
+                  .where((s) => widget.filteredIds.contains(s.ingredientId))
+                  .toList();
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -318,10 +329,9 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
             ),
             borderRadius: BorderRadius.circular(8),
             color: _isDropTarget
-                ? Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withValues(alpha: 0.2)
+                ? Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.2)
                 : Colors.transparent,
           ),
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -340,14 +350,12 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
                       Expanded(
                         child: Text(
                           widget.category.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
+                          style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ),
                       TextButton.icon(
@@ -363,7 +371,8 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
                   ...displayItems.map(
                     (item) => PantryStockTile(
                       entry: item,
-                      categories: ref.watch(stockCategoriesProvider).valueOrNull ?? [],
+                      categories:
+                          ref.watch(stockCategoriesProvider).valueOrNull ?? [],
                     ),
                   ),
                 if (displayItems.isEmpty && widget.query.isEmpty)
@@ -441,7 +450,7 @@ class _PantryStockTileState extends ConsumerState<PantryStockTile> {
     final unit = UnitRegistry.parse(widget.entry.onHandUnit);
     final qtyText = widget.entry.onHandQty != null
         ? '${UnitRegistry.formatQty(widget.entry.onHandQty!)} ${unit?.abbreviation ?? widget.entry.onHandUnit ?? ""}'
-            .trim()
+              .trim()
         : 'Unmeasured';
 
     return Slidable(
@@ -488,10 +497,7 @@ class _StockTileContent extends StatelessWidget {
   final StockEntry entry;
   final String qtyText;
 
-  const _StockTileContent({
-    required this.entry,
-    required this.qtyText,
-  });
+  const _StockTileContent({required this.entry, required this.qtyText});
 
   @override
   Widget build(BuildContext context) {
@@ -548,9 +554,9 @@ class _EditStockSheetState extends ConsumerState<_EditStockSheet> {
 
   void _loadCategories() async {
     final db = ref.read(dbProvider);
-    final cats = await (db.select(db.pantryStockCategories)
-          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-        .get();
+    final cats = await (db.select(
+      db.pantryStockCategories,
+    )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).get();
     if (mounted) setState(() => _categories = cats);
   }
 
@@ -601,7 +607,9 @@ class _EditStockSheetState extends ConsumerState<_EditStockSheet> {
               Expanded(
                 child: TextField(
                   controller: _qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     hintText: '0',
                     border: OutlineInputBorder(),
@@ -630,21 +638,28 @@ class _EditStockSheetState extends ConsumerState<_EditStockSheet> {
               border: OutlineInputBorder(),
               isDense: true,
             ),
-            items: [
-              ...UnitRegistry.weightUnits,
-              ...UnitRegistry.volumeUnits,
-              ...UnitRegistry.countUnits,
-            ].map((u) => DropdownMenuItem(
-                  value: u.id,
-                  child: Text(u.displayName),
-                )).toList(),
+            items:
+                [
+                      ...UnitRegistry.weightUnits,
+                      ...UnitRegistry.volumeUnits,
+                      ...UnitRegistry.countUnits,
+                    ]
+                    .map(
+                      (u) => DropdownMenuItem(
+                        value: u.id,
+                        child: Text(u.displayName),
+                      ),
+                    )
+                    .toList(),
             onChanged: (v) => setState(() => _selectedUnit = v),
           ),
           const SizedBox(height: 12),
 
           // Category dropdown
-          Text('Storage location',
-              style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            'Storage location',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _selectedCategoryId,
@@ -653,18 +668,17 @@ class _EditStockSheetState extends ConsumerState<_EditStockSheet> {
               isDense: true,
             ),
             items: categories
-                .map((c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Text(c.name),
-                    ))
+                .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                 .toList(),
             onChanged: (v) => setState(() => _selectedCategoryId = v),
           ),
           const SizedBox(height: 12),
 
           // Notes
-          Text('Notes (optional)',
-              style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            'Notes (optional)',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _notesController,
@@ -695,17 +709,26 @@ class _EditStockSheetState extends ConsumerState<_EditStockSheet> {
                 child: FilledButton(
                   onPressed: () async {
                     final qtyText = _qtyController.text.trim();
-                    final qty = qtyText.isNotEmpty ? double.tryParse(qtyText) : null;
+                    final qty = qtyText.isNotEmpty
+                        ? double.tryParse(qtyText)
+                        : null;
                     await ops.updateStockQty(widget.entry.stockId, qty);
-                    await ops.updateStockUnit(widget.entry.stockId, _selectedUnit);
+                    await ops.updateStockUnit(
+                      widget.entry.stockId,
+                      _selectedUnit,
+                    );
                     if (_selectedCategoryId != null &&
                         _selectedCategoryId != widget.entry.categoryId) {
                       await ops.moveStockItem(
-                          widget.entry.stockId, _selectedCategoryId!);
+                        widget.entry.stockId,
+                        _selectedCategoryId!,
+                      );
                     }
                     final notes = _notesController.text.trim();
                     await ops.updateStockNotes(
-                        widget.entry.stockId, notes.isEmpty ? null : notes);
+                      widget.entry.stockId,
+                      notes.isEmpty ? null : notes,
+                    );
                     if (context.mounted) Navigator.pop(context);
                   },
                   child: const Text('Save'),
