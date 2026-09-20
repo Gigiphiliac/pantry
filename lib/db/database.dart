@@ -135,6 +135,26 @@ class PantryItems extends Table {
   ];
 }
 
+class PantryStockCategories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+}
+
+class PantryStock extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get ingredientId => integer().references(Ingredients, #id)();
+  IntColumn get categoryId => integer().references(PantryStockCategories, #id)();
+  RealColumn get onHandQty => real().nullable()();
+  TextColumn get onHandUnit => text().nullable()();
+  TextColumn get notes => text().nullable()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {ingredientId}
+  ];
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 
 @DriftDatabase(tables: [
@@ -153,16 +173,28 @@ class PantryItems extends Table {
   MealPlanDays,
   MealSlots,
   PantryItems,
+  PantryStockCategories,
+  PantryStock,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) => m.createAll(),
+    onCreate: (m) async {
+      await m.createAll();
+      // Seed default stock categories
+      await batch((b) {
+        b.insertAll(pantryStockCategories, [
+          PantryStockCategoriesCompanion.insert(name: 'Fridge', sortOrder: const Value(0)),
+          PantryStockCategoriesCompanion.insert(name: 'Freezer', sortOrder: const Value(1)),
+          PantryStockCategoriesCompanion.insert(name: 'Pantry Cupboard', sortOrder: const Value(2)),
+        ]);
+      });
+    },
     onUpgrade: (m, from, to) async {
       // Destructive reset — wipe all tables and recreate from scratch.
       // Safe for dev: no production data exists.
@@ -177,6 +209,14 @@ class AppDatabase extends _$AppDatabase {
       }
       await customStatement('PRAGMA foreign_keys = ON');
       await m.createAll();
+      // Seed default stock categories
+      await batch((b) {
+        b.insertAll(pantryStockCategories, [
+          PantryStockCategoriesCompanion.insert(name: 'Fridge', sortOrder: const Value(0)),
+          PantryStockCategoriesCompanion.insert(name: 'Freezer', sortOrder: const Value(1)),
+          PantryStockCategoriesCompanion.insert(name: 'Pantry Cupboard', sortOrder: const Value(2)),
+        ]);
+      });
     },
   );
 }

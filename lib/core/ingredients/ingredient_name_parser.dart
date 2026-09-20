@@ -13,7 +13,7 @@ class IngredientNameParser {
     'whisked', 'beaten', 'chopped', 'diced', 'minced', 'sliced', 'grated',
     'shredded', 'melted', 'softened', 'cooled', 'cooked', 'boiled', 'fried',
     'roasted', 'toasted', 'crushed', 'crumbled', 'halved', 'quartered',
-    'peeled', 'seeded', 'deveined', 'thawed', 'frozen', 'dried', 'canned',
+    'peeled', 'seeded', 'pitted', 'deveined', 'thawed', 'frozen', 'dried', 'canned',
     'sifted', 'packed', 'heaped', 'heaping', 'levelled', 'leveled',
     'warmed', 'chilled', 'ground', 'mashed', 'pureed', 'puréed',
     'blanched', 'steamed', 'poached', 'grilled', 'baked', 'raw',
