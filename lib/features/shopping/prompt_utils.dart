@@ -63,14 +63,27 @@ class _ChainableDialog extends StatefulWidget {
 class _ChainableDialogState extends State<_ChainableDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _qtyController;
-  String? _selectedUnit;
-  int? _selectedCategoryId;
+  late ChainableFormState _formState;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _qtyController = TextEditingController();
+    _formState = ChainableFormState(
+      nameController: _nameController,
+      qtyController: _qtyController,
+      selectedUnit: null,
+      selectedCategoryId: null,
+      reset: () {
+        _nameController.clear();
+        _qtyController.clear();
+        setState(() {
+          _formState.selectedUnit = null;
+          _formState.selectedCategoryId = null;
+        });
+      },
+    );
   }
 
   @override
@@ -79,21 +92,6 @@ class _ChainableDialogState extends State<_ChainableDialog> {
     _qtyController.dispose();
     super.dispose();
   }
-
-  ChainableFormState get _formState => ChainableFormState(
-        nameController: _nameController,
-        qtyController: _qtyController,
-        selectedUnit: _selectedUnit,
-        selectedCategoryId: _selectedCategoryId,
-        reset: () {
-          _nameController.clear();
-          _qtyController.clear();
-          setState(() {
-            _selectedUnit = null;
-            _selectedCategoryId = null;
-          });
-        },
-      );
 
   Future<void> _createAndContinue() async {
     final name = _nameController.text.trim();

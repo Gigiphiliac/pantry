@@ -75,6 +75,8 @@ class PantryOps {
             notes: Value(notes),
           ),
         );
+    // Also appear in the ingredient library (tier defaults to 3: Per-Recipe).
+    await autoCreatePantryItem(ingredientId);
   }
 
   /// Update quantity for a stock item.

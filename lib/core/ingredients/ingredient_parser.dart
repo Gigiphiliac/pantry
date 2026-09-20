@@ -296,7 +296,7 @@ class IngredientParser {
     final joinedNoteWords = noteWords.join(', ');
     final allNotes = [
       if (joinedNoteWords.isNotEmpty) joinedNoteWords,
-      if (existingNotes != null) existingNotes,
+      ?existingNotes,
     ].join(', ');
 
     return IngredientDraft(

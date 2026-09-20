@@ -118,11 +118,20 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
   Future<void> _addStockItem() async {
     final db = ref.read(dbProvider);
     final ops = ref.read(pantryOpsProvider);
-    final categories = await (db.select(db.pantryStockCategories)
+    var categories = await (db.select(db.pantryStockCategories)
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
 
-    if (categories.isEmpty) return;
+    if (categories.isEmpty) {
+      // Seed defaults so the + button works on a fresh database.
+      await ops.createCategory('Fridge');
+      await ops.createCategory('Freezer');
+      await ops.createCategory('Pantry Cupboard');
+      categories = await (db.select(db.pantryStockCategories)
+            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+          .get();
+      if (categories.isEmpty) return;
+    }
 
     if (!mounted) return;
 
@@ -184,7 +193,6 @@ class _AddStockForm extends ConsumerStatefulWidget {
 }
 
 class _AddStockFormState extends ConsumerState<_AddStockForm> {
-  String _unitText = '';
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +233,8 @@ class _AddStockFormState extends ConsumerState<_AddStockForm> {
               Expanded(
                 flex: 3,
                 child: DropdownButtonFormField<String>(
-                  initialValue: _unitText.isEmpty ? null : _unitText,
+                  key: ValueKey(widget.formState.selectedUnit),
+                  initialValue: widget.formState.selectedUnit,
                   decoration: const InputDecoration(
                     labelText: 'Unit',
                     border: OutlineInputBorder(),
@@ -239,10 +248,8 @@ class _AddStockFormState extends ConsumerState<_AddStockForm> {
                         value: u.id,
                         child: Text(u.abbreviation),
                       )).toList(),
-                  onChanged: (v) {
-                    setState(() => _unitText = v ?? '');
-                    widget.formState.selectedUnit = v;
-                  },
+                  onChanged: (v) => setState(() =>
+                    widget.formState.selectedUnit = v),
                 ),
               ),
             ],
@@ -278,22 +285,22 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(stockByCategoryProvider(widget.category.id));
+    final ops = ref.read(pantryOpsProvider);
 
     // Hide empty section during search.
     if (widget.query.isNotEmpty && items.isEmpty) return const SizedBox.shrink();
 
-    return DragTarget<int>(
+    return DragTarget<StockEntry>(
       onWillAcceptWithDetails: (details) {
-        // Accept any stock entry — we'll verify it's not already here.
-        if (details.data == widget.category.id) return false;
+        // Only accept if not already in this category.
+        if (details.data.categoryId == widget.category.id) return false;
         setState(() => _isDropTarget = true);
         return true;
       },
       onLeave: (_) => setState(() => _isDropTarget = false),
       onAcceptWithDetails: (details) {
         setState(() => _isDropTarget = false);
-        // We move by stockId, but DragTarget carries categoryId as data.
-        // The actual move is handled by the draggable item's onDragEnd.
+        ops.moveStockItem(details.data.stockId, widget.category.id);
       },
       builder: (context, candidates, rejected) {
         final displayItems = widget.query.isEmpty
@@ -468,12 +475,8 @@ class _PantryStockTileState extends ConsumerState<PantryStockTile> {
           opacity: 0.3,
           child: _StockTileContent(entry: widget.entry, qtyText: qtyText),
         ),
-        onDragEnd: (details) {
-          // Movement is handled by DragTarget.accept; we use the StockEntry
-          // to identify what was dragged but the actual category change is
-          // done via DragTarget on the category section.
-          // For now, drag visual feedback works; actual category reassignment
-          // needs a more complete drag-and-drop architecture.
+        onDragEnd: (_) {
+          // Move is handled by DragTarget.onAcceptWithDetails.
         },
         child: _StockTileContent(entry: widget.entry, qtyText: qtyText),
       ),
@@ -492,11 +495,14 @@ class _StockTileContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(entry.ingredientName),
-      subtitle: Text(qtyText, style: Theme.of(context).textTheme.bodySmall),
-      trailing: const Icon(Icons.chevron_right, size: 18),
-      onTap: () => _showEditSheet(context),
+    return Material(
+      type: MaterialType.transparency,
+      child: ListTile(
+        title: Text(entry.ingredientName),
+        subtitle: Text(qtyText, style: Theme.of(context).textTheme.bodySmall),
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: () => _showEditSheet(context),
+      ),
     );
   }
 
