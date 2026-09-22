@@ -45,9 +45,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => OcrReviewScreen(rawText: rawText),
-        ),
+        MaterialPageRoute(builder: (_) => OcrReviewScreen(rawText: rawText)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -83,7 +81,8 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
             child: _imageBytes != null
                 ? Image.memory(_imageBytes!, fit: BoxFit.contain)
                 : const Center(
-                    child: CircularProgressIndicator(color: Colors.white)),
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
           ),
 
           // Extracting overlay
@@ -99,9 +98,10 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                     Text(
                       _phase,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500),
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -125,8 +125,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white54),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Retake'),
                       ),
@@ -136,8 +135,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                       child: FilledButton(
                         onPressed: _extractAndReview,
                         style: FilledButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Use Photo'),
                       ),

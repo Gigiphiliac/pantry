@@ -44,11 +44,14 @@ class ShoppingListsScreen extends ConsumerWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ShoppingListDetailScreen(listId: list.id, listName: list.name),
+                        builder: (_) => ShoppingListDetailScreen(
+                          listId: list.id,
+                          listName: list.name,
+                        ),
                       ),
                     ),
-                    onLongPress: () => _showListMenu(context, ref, ops, list.id, list.name),
+                    onLongPress: () =>
+                        _showListMenu(context, ref, ops, list.id, list.name),
                   );
                 },
               ),
@@ -61,7 +64,11 @@ class ShoppingListsScreen extends ConsumerWidget {
   }
 
   Future<void> _createList(BuildContext context, ShoppingListOps ops) async {
-    final name = await promptText(context, title: 'New list', hint: 'List name');
+    final name = await promptText(
+      context,
+      title: 'New list',
+      hint: 'List name',
+    );
     if (name != null && name.isNotEmpty) await ops.createList(name);
   }
 
@@ -83,8 +90,14 @@ class ShoppingListsScreen extends ConsumerWidget {
               title: const Text('Rename'),
               onTap: () async {
                 Navigator.pop(context);
-                final newName = await promptText(context, title: 'Rename list', hint: 'List name', initial: name);
-                if (newName != null && newName.isNotEmpty) await ops.renameList(id, newName);
+                final newName = await promptText(
+                  context,
+                  title: 'Rename list',
+                  hint: 'List name',
+                  initial: name,
+                );
+                if (newName != null && newName.isNotEmpty)
+                  await ops.renameList(id, newName);
               },
             ),
             ListTile(
@@ -104,10 +117,21 @@ class ShoppingListsScreen extends ConsumerWidget {
                   context: context,
                   builder: (_) => AlertDialog(
                     title: const Text('Delete list?'),
-                    content: Text('Delete "$name" and all its items? This cannot be undone.'),
+                    content: Text(
+                      'Delete "$name" and all its items? This cannot be undone.',
+                    ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ],
                   ),
                 );

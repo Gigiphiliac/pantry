@@ -23,16 +23,22 @@ class RecipeUrlService {
   Future<String> _fetchHtml(String url) async {
     late http.Response response;
     try {
-      response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Pantry/1.0)',
-        'Accept': 'text/html,application/xhtml+xml',
-      }).timeout(const Duration(seconds: 15));
+      response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; Pantry/1.0)',
+              'Accept': 'text/html,application/xhtml+xml',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       throw UrlImportException('Could not fetch URL: $e');
     }
     if (response.statusCode != 200) {
       throw UrlImportException(
-          'Site returned ${response.statusCode} — check the URL');
+        'Site returned ${response.statusCode} — check the URL',
+      );
     }
     return response.body;
   }
@@ -40,8 +46,9 @@ class RecipeUrlService {
   // Returns the raw schema.org Recipe map, or throws if none found.
   Map<String, dynamic> _extractSchemaOrg(String html) {
     final document = html_parser.parse(html);
-    final scripts =
-        document.querySelectorAll('script[type="application/ld+json"]');
+    final scripts = document.querySelectorAll(
+      'script[type="application/ld+json"]',
+    );
     for (final script in scripts) {
       try {
         final raw = script.text.trim();
@@ -54,15 +61,17 @@ class RecipeUrlService {
       }
     }
     throw const UrlImportException(
-        "This site doesn't support structured recipe data. "
-        'Try copying the recipe text and using the camera import instead.');
+      "This site doesn't support structured recipe data. "
+      'Try copying the recipe text and using the camera import instead.',
+    );
   }
 
   // Converts a raw schema.org Recipe map into a RecipeDraft.
   // Missing or malformed fields produce null/empty values rather than exceptions.
   RecipeDraft _normaliseFields(Map<String, dynamic> r) {
-    final (sections, unsectioned) =
-        _parseIngredientListWithSections(r['recipeIngredient']);
+    final (sections, unsectioned) = _parseIngredientListWithSections(
+      r['recipeIngredient'],
+    );
     return RecipeDraft(
       name: r['name'] as String?,
       servings: _parseServings(r['recipeYield']),
@@ -75,8 +84,8 @@ class RecipeUrlService {
   // Scans the schema.org recipeIngredient array for section header strings
   // (lines ending with ":" that have no leading quantity) and groups following
   // ingredient strings under that section.
-  (List<RecipeSectionDraft>, List<IngredientDraft>) _parseIngredientListWithSections(
-      dynamic raw) {
+  (List<RecipeSectionDraft>, List<IngredientDraft>)
+  _parseIngredientListWithSections(dynamic raw) {
     if (raw is! List) return (const [], const []);
 
     final sections = <RecipeSectionDraft>[];
@@ -91,10 +100,12 @@ class RecipeUrlService {
       if (headerPattern.hasMatch(s)) {
         // Flush previous group
         if (currentSectionName != null && currentItems.isNotEmpty) {
-          sections.add(RecipeSectionDraft(
-            name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
-            ingredients: List.of(currentItems),
-          ));
+          sections.add(
+            RecipeSectionDraft(
+              name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
+              ingredients: List.of(currentItems),
+            ),
+          );
         } else if (currentSectionName == null && currentItems.isNotEmpty) {
           unsectioned.addAll(currentItems);
         }
@@ -107,10 +118,12 @@ class RecipeUrlService {
 
     // Flush final group
     if (currentSectionName != null && currentItems.isNotEmpty) {
-      sections.add(RecipeSectionDraft(
-        name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
-        ingredients: List.of(currentItems),
-      ));
+      sections.add(
+        RecipeSectionDraft(
+          name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
+          ingredients: List.of(currentItems),
+        ),
+      );
     } else {
       unsectioned.addAll(currentItems);
     }
@@ -136,8 +149,9 @@ class RecipeUrlService {
   bool _isRecipeType(dynamic type) {
     if (type is String) return type == 'Recipe' || type.endsWith('/Recipe');
     if (type is List) {
-      return type
-          .any((t) => t is String && (t == 'Recipe' || t.endsWith('/Recipe')));
+      return type.any(
+        (t) => t is String && (t == 'Recipe' || t.endsWith('/Recipe')),
+      );
     }
     return false;
   }
@@ -152,8 +166,7 @@ class RecipeUrlService {
   }
 
   /// Delegate to the deterministic [IngredientParser].
-  IngredientDraft _parseIngredientString(String s) =>
-      IngredientParser.parse(s);
+  IngredientDraft _parseIngredientString(String s) => IngredientParser.parse(s);
 
   // Returns each instruction as a separate string.
   // Schema.org HowToStep lists produce one element per step.
@@ -164,10 +177,10 @@ class RecipeUrlService {
       return t.isEmpty
           ? const []
           : t
-              .split('\n')
-              .map((l) => l.trim())
-              .where((l) => l.isNotEmpty)
-              .toList();
+                .split('\n')
+                .map((l) => l.trim())
+                .where((l) => l.isNotEmpty)
+                .toList();
     }
     if (raw is List) {
       final steps = <String>[];

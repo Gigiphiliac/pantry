@@ -37,11 +37,8 @@ Future<ChainableFormState?> showChainableDialog({
 }) {
   return showDialog<ChainableFormState>(
     context: context,
-    builder: (ctx) => _ChainableDialog(
-      title: title,
-      builder: builder,
-      onAdd: onAdd,
-    ),
+    builder: (ctx) =>
+        _ChainableDialog(title: title, builder: builder, onAdd: onAdd),
   );
 }
 
@@ -121,10 +118,7 @@ class _ChainableDialogState extends State<_ChainableDialog> {
           onPressed: _createAndContinue,
           child: const Text('OK & create new'),
         ),
-        TextButton(
-          onPressed: _createAndDone,
-          child: const Text('OK'),
-        ),
+        TextButton(onPressed: _createAndDone, child: const Text('OK')),
       ],
     );
   }
@@ -151,7 +145,10 @@ Future<String?> promptText(
         onSubmitted: (_) => Navigator.pop(ctx, controller.text.trim()),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancel'),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, controller.text.trim()),
           child: const Text('OK'),
@@ -233,10 +230,7 @@ class _SimpleChainableDialogState extends State<_SimpleChainableDialog> {
           onPressed: _createAndContinue,
           child: const Text('OK & create new'),
         ),
-        TextButton(
-          onPressed: _createAndDone,
-          child: const Text('OK'),
-        ),
+        TextButton(onPressed: _createAndDone, child: const Text('OK')),
       ],
     );
   }

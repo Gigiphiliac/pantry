@@ -7,14 +7,13 @@ import 'package:pantry/main.dart';
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 List<ShoppingListItem> sortItemsAlphabetically(
-    Iterable<ShoppingListItem> items,
-    ) {
-  return [...items]
-    ..sort((a, b) {
-      // Unchecked (false) before checked (true).
-      if (a.checked != b.checked) return a.checked ? 1 : -1;
-      return a.rawText.toLowerCase().compareTo(b.rawText.toLowerCase());
-    });
+  Iterable<ShoppingListItem> items,
+) {
+  return [...items]..sort((a, b) {
+    // Unchecked (false) before checked (true).
+    if (a.checked != b.checked) return a.checked ? 1 : -1;
+    return a.rawText.toLowerCase().compareTo(b.rawText.toLowerCase());
+  });
 }
 
 // ── Shopping Lists ─────────────────────────────────────────────────────────
@@ -22,68 +21,77 @@ List<ShoppingListItem> sortItemsAlphabetically(
 final shoppingListsProvider = StreamProvider<List<ShoppingList>>((ref) {
   final db = ref.watch(dbProvider);
   return (db.select(db.shoppingLists)
-    ..where((t) => t.archivedAt.isNull())
-    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        ..where((t) => t.archivedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
       .watch();
 });
 
 final archivedListsProvider = StreamProvider<List<ShoppingList>>((ref) {
   final db = ref.watch(dbProvider);
   return (db.select(db.shoppingLists)
-    ..where((t) => t.archivedAt.isNotNull())
-    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        ..where((t) => t.archivedAt.isNotNull())
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
       .watch();
 });
 
 // ── Stores for a list ──────────────────────────────────────────────────────
 
-final storesProvider =
-StreamProvider.family<List<ShoppingListStore>, int>((ref, listId) {
+final storesProvider = StreamProvider.family<List<ShoppingListStore>, int>((
+  ref,
+  listId,
+) {
   final db = ref.watch(dbProvider);
   return (db.select(db.shoppingListStores)
-    ..where((t) => t.listId.equals(listId))
-    ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        ..where((t) => t.listId.equals(listId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
       .watch();
 });
 
 // ── Sections for a store ───────────────────────────────────────────────────
 
-final sectionsProvider =
-StreamProvider.family<List<ShoppingListSection>, int>((ref, storeId) {
+final sectionsProvider = StreamProvider.family<List<ShoppingListSection>, int>((
+  ref,
+  storeId,
+) {
   final db = ref.watch(dbProvider);
   return (db.select(db.shoppingListSections)
-    ..where((t) => t.storeId.equals(storeId))
-    ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        ..where((t) => t.storeId.equals(storeId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
       .watch();
 });
 
 // ── Items for a store ──────────────────────────────────────────────────────
 
-final storeItemsProvider =
-StreamProvider.family<List<ShoppingListItem>, int>((ref, storeId) {
+final storeItemsProvider = StreamProvider.family<List<ShoppingListItem>, int>((
+  ref,
+  storeId,
+) {
   final db = ref.watch(dbProvider);
   return (db.select(db.shoppingListItems)
-    ..where((t) => t.storeId.equals(storeId)))
+        ..where((t) => t.storeId.equals(storeId)))
       .watch()
       .map(sortItemsAlphabetically);
 });
 
 /// Items that belong to a section (derived from storeItemsProvider).
 final sectionItemsProvider =
-Provider.family<List<ShoppingListItem>, ({int storeId, int sectionId})>(
-      (ref, param) {
-    final items = ref.watch(storeItemsProvider(param.storeId)).valueOrNull ?? [];
-    return items.where((i) => i.sectionId == param.sectionId).toList();
-  },
-);
+    Provider.family<List<ShoppingListItem>, ({int storeId, int sectionId})>((
+      ref,
+      param,
+    ) {
+      final items =
+          ref.watch(storeItemsProvider(param.storeId)).valueOrNull ?? [];
+      return items.where((i) => i.sectionId == param.sectionId).toList();
+    });
 
 /// Ungrouped items for a store (derived from storeItemsProvider).
-final ungroupedItemsProvider = Provider.family<List<ShoppingListItem>, int>(
-      (ref, storeId) {
-    final items = ref.watch(storeItemsProvider(storeId)).valueOrNull ?? [];
-    return items.where((i) => i.sectionId == null).toList();
-  },
-);
+final ungroupedItemsProvider = Provider.family<List<ShoppingListItem>, int>((
+  ref,
+  storeId,
+) {
+  final items = ref.watch(storeItemsProvider(storeId)).valueOrNull ?? [];
+  return items.where((i) => i.sectionId == null).toList();
+});
 
 // ── Operations ─────────────────────────────────────────────────────────────
 
@@ -92,15 +100,16 @@ class ShoppingListOps {
   ShoppingListOps(this.db);
 
   Future<int> createList(String name) async {
-    final listId = await db.into(db.shoppingLists).insert(
-      ShoppingListsCompanion.insert(name: name),
-    );
+    final listId = await db
+        .into(db.shoppingLists)
+        .insert(ShoppingListsCompanion.insert(name: name));
     return listId;
   }
 
   Future<void> renameList(int id, String name) =>
-      (db.update(db.shoppingLists)..where((t) => t.id.equals(id)))
-          .write(ShoppingListsCompanion(name: Value(name)));
+      (db.update(db.shoppingLists)..where((t) => t.id.equals(id))).write(
+        ShoppingListsCompanion(name: Value(name)),
+      );
 
   Future<void> archiveList(int id) =>
       (db.update(db.shoppingLists)..where((t) => t.id.equals(id))).write(
@@ -117,76 +126,78 @@ class ShoppingListOps {
   }
 
   Future<int> addStore(int listId, String name) async {
-    final count = await (db.select(db.shoppingListStores)
-      ..where((t) => t.listId.equals(listId)))
-        .get()
-        .then((l) => l.length);
-    return db.into(db.shoppingListStores).insert(
-      ShoppingListStoresCompanion.insert(
-        listId: listId,
-        storeName: name,
-        sortOrder: Value(count),
-      ),
-    );
+    final count = await (db.select(
+      db.shoppingListStores,
+    )..where((t) => t.listId.equals(listId))).get().then((l) => l.length);
+    return db
+        .into(db.shoppingListStores)
+        .insert(
+          ShoppingListStoresCompanion.insert(
+            listId: listId,
+            storeName: name,
+            sortOrder: Value(count),
+          ),
+        );
   }
 
   Future<void> renameStore(int storeId, String name) =>
-      (db.update(db.shoppingListStores)
-        ..where((t) => t.id.equals(storeId)))
+      (db.update(db.shoppingListStores)..where((t) => t.id.equals(storeId)))
           .write(ShoppingListStoresCompanion(storeName: Value(name)));
 
   Future<void> deleteStore(int storeId) async {
     // FK cascade handles items and sections.
-    await (db.delete(db.shoppingListStores)
-      ..where((t) => t.id.equals(storeId)))
-        .go();
+    await (db.delete(
+      db.shoppingListStores,
+    )..where((t) => t.id.equals(storeId))).go();
   }
 
   Future<int> addSection(int storeId, String name) async {
-    final count = await (db.select(db.shoppingListSections)
-      ..where((t) => t.storeId.equals(storeId)))
-        .get()
-        .then((l) => l.length);
-    return db.into(db.shoppingListSections).insert(
-      ShoppingListSectionsCompanion.insert(
-        storeId: storeId,
-        sectionName: name,
-        sortOrder: Value(count),
-      ),
-    );
+    final count = await (db.select(
+      db.shoppingListSections,
+    )..where((t) => t.storeId.equals(storeId))).get().then((l) => l.length);
+    return db
+        .into(db.shoppingListSections)
+        .insert(
+          ShoppingListSectionsCompanion.insert(
+            storeId: storeId,
+            sectionName: name,
+            sortOrder: Value(count),
+          ),
+        );
   }
 
   Future<void> renameSection(int sectionId, String name) =>
-      (db.update(db.shoppingListSections)
-        ..where((t) => t.id.equals(sectionId)))
+      (db.update(db.shoppingListSections)..where((t) => t.id.equals(sectionId)))
           .write(ShoppingListSectionsCompanion(sectionName: Value(name)));
 
   Future<void> deleteSection(int sectionId) async {
     // FK SET NULL cascades items to ungrouped automatically.
-    await (db.delete(db.shoppingListSections)
-      ..where((t) => t.id.equals(sectionId)))
-        .go();
+    await (db.delete(
+      db.shoppingListSections,
+    )..where((t) => t.id.equals(sectionId))).go();
   }
 
   // ── Item stacking helpers ─────────────────────────────────────────────────
 
   Future<bool> _tryStack(
-      ShoppingListItem existing,
-      double? qty,
-      String? unit,
-      ) async {
+    ShoppingListItem existing,
+    double? qty,
+    String? unit,
+  ) async {
     if (existing.qty == null || qty == null) return false;
 
     final existingUnit = UnitRegistry.parse(existing.unit);
     final newUnit = UnitRegistry.parse(unit);
 
     // Case A: same unit — add directly
-    final sameId = existingUnit != null &&
+    final sameId =
+        existingUnit != null &&
         newUnit != null &&
         existingUnit.id == newUnit.id;
 
     // Case B: cross-unit within weight or volume (never for count)
-    final crossConvertible = existingUnit != null &&
+    final crossConvertible =
+        existingUnit != null &&
         newUnit != null &&
         existingUnit.id != newUnit.id &&
         existingUnit.family == newUnit.family &&
@@ -197,20 +208,16 @@ class ShoppingListOps {
 
     if (sameId || bothUnitless) {
       await (db.update(db.shoppingListItems)
-        ..where((t) => t.id.equals(existing.id)))
-          .write(ShoppingListItemsCompanion(
-        qty: Value(existing.qty! + qty),
-      ));
+            ..where((t) => t.id.equals(existing.id)))
+          .write(ShoppingListItemsCompanion(qty: Value(existing.qty! + qty)));
       return true;
     } else if (crossConvertible) {
       // Convert incoming qty to the existing item's unit — preserves display unit
       final stacked =
           existing.qty! + UnitRegistry.convert(qty, newUnit, existingUnit);
       await (db.update(db.shoppingListItems)
-        ..where((t) => t.id.equals(existing.id)))
-          .write(ShoppingListItemsCompanion(
-        qty: Value(stacked),
-      ));
+            ..where((t) => t.id.equals(existing.id)))
+          .write(ShoppingListItemsCompanion(qty: Value(stacked)));
       return true;
     }
     return false;
@@ -219,13 +226,13 @@ class ShoppingListOps {
   // ── addItem: store-scoped add/stack ───────────────────────────────────────
 
   Future<void> addItem(
-      int storeId, {
-        int? sectionId,
-        required String rawText,
-        double? qty,
-        String? unit,
-        int? ingredientId,
-      }) async {
+    int storeId, {
+    int? sectionId,
+    required String rawText,
+    double? qty,
+    String? unit,
+    int? ingredientId,
+  }) async {
     final normalised = rawText.toLowerCase().trim();
 
     // Search for an existing unchecked match within the same store.
@@ -234,8 +241,8 @@ class ShoppingListOps {
         final base = t.storeId.equals(storeId) & t.checked.equals(false);
         if (ingredientId != null) {
           return base &
-          (t.ingredientId.equals(ingredientId) |
-          t.rawText.lower().equals(normalised));
+              (t.ingredientId.equals(ingredientId) |
+                  t.rawText.lower().equals(normalised));
         }
         return base & t.rawText.lower().equals(normalised);
       })
@@ -245,33 +252,35 @@ class ShoppingListOps {
 
     if (existing != null && await _tryStack(existing, qty, unit)) return;
 
-    await db.into(db.shoppingListItems).insert(
-      ShoppingListItemsCompanion.insert(
-        storeId: storeId,
-        sectionId: Value(sectionId),
-        rawText: rawText,
-        qty: Value(qty),
-        unit: Value(unit),
-        ingredientId: Value(ingredientId),
-      ),
-    );
+    await db
+        .into(db.shoppingListItems)
+        .insert(
+          ShoppingListItemsCompanion.insert(
+            storeId: storeId,
+            sectionId: Value(sectionId),
+            rawText: rawText,
+            qty: Value(qty),
+            unit: Value(unit),
+            ingredientId: Value(ingredientId),
+          ),
+        );
   }
 
   // ── stackOrAddItem: list-scoped add/stack, falls back to first store ──────
 
   Future<void> stackOrAddItem(
-      int listId,
-      String rawText, {
-        double? qty,
-        String? unit,
-        int? ingredientId,
-      }) async {
+    int listId,
+    String rawText, {
+    double? qty,
+    String? unit,
+    int? ingredientId,
+  }) async {
     final normalised = rawText.toLowerCase().trim();
 
     // Gather all store IDs for this list.
-    final stores = await (db.select(db.shoppingListStores)
-      ..where((t) => t.listId.equals(listId)))
-        .get();
+    final stores = await (db.select(
+      db.shoppingListStores,
+    )..where((t) => t.listId.equals(listId))).get();
 
     if (stores.isEmpty) {
       // No stores exist yet — create one with a default name.
@@ -294,9 +303,9 @@ class ShoppingListOps {
         final unchecked = t.checked.equals(false);
         if (ingredientId != null) {
           return inStore &
-          unchecked &
-          (t.ingredientId.equals(ingredientId) |
-          t.rawText.lower().equals(normalised));
+              unchecked &
+              (t.ingredientId.equals(ingredientId) |
+                  t.rawText.lower().equals(normalised));
         }
         return inStore & unchecked & t.rawText.lower().equals(normalised);
       })
@@ -324,13 +333,13 @@ class ShoppingListOps {
   Future<void> moveItem(int itemId, int? destinationSectionId) async {
     // If destination is a section, verify it belongs to the same store as the item.
     if (destinationSectionId != null) {
-      final item = await (db.select(db.shoppingListItems)
-        ..where((t) => t.id.equals(itemId)))
-          .getSingle();
+      final item = await (db.select(
+        db.shoppingListItems,
+      )..where((t) => t.id.equals(itemId))).getSingle();
 
-      final section = await (db.select(db.shoppingListSections)
-        ..where((t) => t.id.equals(destinationSectionId)))
-          .getSingle();
+      final section = await (db.select(
+        db.shoppingListSections,
+      )..where((t) => t.id.equals(destinationSectionId))).getSingle();
 
       if (section.storeId != item.storeId) {
         throw ArgumentError(
@@ -339,11 +348,11 @@ class ShoppingListOps {
       }
     }
 
-    await (db.update(db.shoppingListItems)
-      ..where((t) => t.id.equals(itemId)))
-        .write(ShoppingListItemsCompanion(
-      sectionId: Value(destinationSectionId),
-    ));
+    await (db.update(
+      db.shoppingListItems,
+    )..where((t) => t.id.equals(itemId))).write(
+      ShoppingListItemsCompanion(sectionId: Value(destinationSectionId)),
+    );
   }
 
   Future<void> toggleItem(int itemId, bool checked) =>
@@ -355,14 +364,11 @@ class ShoppingListOps {
           .write(ShoppingListItemsCompanion(rawText: Value(newText)));
 
   Future<void> deleteItem(int itemId) =>
-      (db.delete(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
-          .go();
+      (db.delete(db.shoppingListItems)..where((t) => t.id.equals(itemId))).go();
 
-  Future<void> clearChecked(int storeId) =>
-      (db.delete(db.shoppingListItems)
-        ..where((t) =>
-        t.storeId.equals(storeId) & t.checked.equals(true)))
-          .go();
+  Future<void> clearChecked(int storeId) => (db.delete(
+    db.shoppingListItems,
+  )..where((t) => t.storeId.equals(storeId) & t.checked.equals(true))).go();
 }
 
 final shoppingOpsProvider = Provider<ShoppingListOps>((ref) {

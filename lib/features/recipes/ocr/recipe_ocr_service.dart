@@ -72,7 +72,6 @@ Rules:
 - "alternatives" may be an empty array or omitted when there are no alternatives
 - When a quantity is given as a range (e.g. "800g - 1kg", "2-3 cups"), use the lower bound as "qty" and "unit"; discard the upper bound''';
 
-
 class RecipeOcrService {
   Future<String> extractText(XFile image) async {
     final inputImage = InputImage.fromFilePath(image.path);
@@ -82,7 +81,8 @@ class RecipeOcrService {
       final text = recognised.text.trim();
       if (text.isEmpty) {
         throw const OcrException(
-            'No text could be extracted from the image. Try a clearer photo.');
+          'No text could be extracted from the image. Try a clearer photo.',
+        );
       }
       return text;
     } on OcrException {
@@ -94,8 +94,7 @@ class RecipeOcrService {
     }
   }
 
-  Future<RecipeDraft> structureRecipe(
-      String rawText, LlmConfig config) async {
+  Future<RecipeDraft> structureRecipe(String rawText, LlmConfig config) async {
     final prestructured = _prestructure(rawText);
     return _cleanupWithLlm(prestructured, config);
   }
@@ -105,20 +104,23 @@ class RecipeOcrService {
   }
 
   IngredientDraft _normaliseUnit(IngredientDraft ing) => IngredientDraft(
-        qty: ing.qty,
-        unit: UnitRegistry.parse(ing.unit)?.id ?? ing.unit,
-        name: ing.name,
-        notes: ing.notes,
-        alternatives: ing.alternatives.map(_normaliseUnit).toList(),
-      );
+    qty: ing.qty,
+    unit: UnitRegistry.parse(ing.unit)?.id ?? ing.unit,
+    name: ing.name,
+    notes: ing.notes,
+    alternatives: ing.alternatives.map(_normaliseUnit).toList(),
+  );
 
   Future<RecipeDraft> _cleanupWithLlm(
-      PrestructuredRecipe prestructured, LlmConfig config) async {
-    final hintsJson = const JsonEncoder.withIndent('  ').convert(
-      prestructured.toJson()..remove('rawText'),
-    );
+    PrestructuredRecipe prestructured,
+    LlmConfig config,
+  ) async {
+    final hintsJson = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(prestructured.toJson()..remove('rawText'));
 
-    final userMessage = 'RAW OCR TEXT:\n'
+    final userMessage =
+        'RAW OCR TEXT:\n'
         '${prestructured.rawText}\n\n'
         'PRE-PARSED HINTS:\n'
         '$hintsJson';
@@ -143,10 +145,12 @@ class RecipeOcrService {
         servings: draft.servings,
         steps: draft.steps,
         sections: draft.sections
-            .map((sec) => RecipeSectionDraft(
-                  name: sec.name,
-                  ingredients: sec.ingredients.map(_normaliseUnit).toList(),
-                ))
+            .map(
+              (sec) => RecipeSectionDraft(
+                name: sec.name,
+                ingredients: sec.ingredients.map(_normaliseUnit).toList(),
+              ),
+            )
             .toList(),
         ingredients: draft.ingredients.map(_normaliseUnit).toList(),
       );

@@ -75,9 +75,7 @@ class _ShoppingListDetailScreenState
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: storeList
-                .map((store) => Tab(text: store.storeName))
-                .toList(),
+            tabs: storeList.map((store) => Tab(text: store.storeName)).toList(),
           ),
           actions: [
             IconButton(
@@ -114,10 +112,7 @@ class _ShoppingListDetailScreenState
           },
           child: TabBarView(
             children: storeList.map((store) {
-              return ShoppingStorePage(
-                store: store,
-                ops: ops,
-              );
+              return ShoppingStorePage(store: store, ops: ops);
             }).toList(),
           ),
         ),
@@ -162,8 +157,7 @@ class _ShoppingListDetailScreenState
         ),
         const SizedBox(height: 8),
         FloatingActionButton(
-          onPressed: () =>
-              setState(() => _isFabExpanded = !_isFabExpanded),
+          onPressed: () => setState(() => _isFabExpanded = !_isFabExpanded),
           child: AnimatedRotation(
             turns: _isFabExpanded ? 0.125 : 0.0,
             duration: const Duration(milliseconds: 200),
@@ -175,15 +169,21 @@ class _ShoppingListDetailScreenState
   }
 
   Future<void> _addStore(BuildContext context, ShoppingListOps ops) async {
-    final name =
-        await promptText(context, title: 'New store', hint: 'Store name');
+    final name = await promptText(
+      context,
+      title: 'New store',
+      hint: 'Store name',
+    );
     if (name != null && name.isNotEmpty) {
       await ops.addStore(widget.listId, name);
     }
   }
 
   Future<void> _addUngroupedItem(
-      BuildContext context, ShoppingListOps ops, int storeId) async {
+    BuildContext context,
+    ShoppingListOps ops,
+    int storeId,
+  ) async {
     await promptItemText(
       context,
       title: 'Add item',
@@ -193,7 +193,10 @@ class _ShoppingListDetailScreenState
   }
 
   Future<void> _addGroup(
-      BuildContext context, ShoppingListOps ops, int storeId) async {
+    BuildContext context,
+    ShoppingListOps ops,
+    int storeId,
+  ) async {
     final name = await promptText(
       context,
       title: 'New group',
@@ -223,61 +226,67 @@ class _ShoppingListDetailScreenState
               ),
             ),
             const Divider(height: 1),
-            ...storeList.map((store) => ListTile(
-              leading: const Icon(Icons.store_outlined),
-              title: Text(store.storeName),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      final newName = await promptText(
-                        context,
-                        title: 'Rename store',
-                        hint: 'Store name',
-                        initial: store.storeName,
-                      );
-                      if (newName != null && newName.isNotEmpty) {
-                        await ops.renameStore(store.id, newName);
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: 20, color: Colors.red),
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Delete store?'),
-                          content: Text(
-                              'Delete "${store.storeName}" and all its items?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, false),
-                              child: const Text('Cancel'),
+            ...storeList.map(
+              (store) => ListTile(
+                leading: const Icon(Icons.store_outlined),
+                title: Text(store.storeName),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final newName = await promptText(
+                          context,
+                          title: 'Rename store',
+                          hint: 'Store name',
+                          initial: store.storeName,
+                        );
+                        if (newName != null && newName.isNotEmpty) {
+                          await ops.renameStore(store.id, newName);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Colors.red,
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Delete store?'),
+                            content: Text(
+                              'Delete "${store.storeName}" and all its items?',
                             ),
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, true),
-                              child: const Text('Delete',
-                                  style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        await ops.deleteStore(store.id);
-                      }
-                    },
-                  ),
-                ],
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await ops.deleteStore(store.id);
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),

@@ -29,8 +29,8 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
   Widget build(BuildContext context) {
     final items = ref.watch(
       sectionItemsProvider((
-      storeId: widget.storeId,
-      sectionId: widget.section.id,
+        storeId: widget.storeId,
+        sectionId: widget.section.id,
       )),
     );
 
@@ -62,10 +62,9 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
             ),
             borderRadius: BorderRadius.circular(8),
             color: _isDropTarget
-                ? Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withValues(alpha: 0.2)
+                ? Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.2)
                 : Colors.transparent,
           ),
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -78,69 +77,68 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
                   endActionPane: ActionPane(
                     motion: const DrawerMotion(),
                     children: [
-                    SlidableAction(
-                      onPressed: (_) async {
-                        final newName = await promptText(
-                          context,
-                          title: 'Rename section',
-                          hint: 'Section name',
-                          initial: widget.section.sectionName,
-                        );
-                        if (newName != null && newName.isNotEmpty) {
-                          await widget.ops
-                              .renameSection(widget.section.id, newName);
-                        }
-                      },
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      icon: Icons.edit,
-                    ),
-                    SlidableAction(
-                      onPressed: (_) =>
-                          widget.ops.deleteSection(widget.section.id),
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      icon: Icons.delete,
-                    ),
-                  ],
-                ),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding: const EdgeInsets.fromLTRB(32, 6, 16, 6),
-                  width: double.infinity,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.section.sectionName,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
-                        ),
+                      SlidableAction(
+                        onPressed: (_) async {
+                          final newName = await promptText(
+                            context,
+                            title: 'Rename section',
+                            hint: 'Section name',
+                            initial: widget.section.sectionName,
+                          );
+                          if (newName != null && newName.isNotEmpty) {
+                            await widget.ops.renameSection(
+                              widget.section.id,
+                              newName,
+                            );
+                          }
+                        },
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        icon: Icons.edit,
                       ),
-                      TextButton.icon(
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('Item'),
-                        onPressed: () => _addItem(context),
+                      SlidableAction(
+                        onPressed: (_) =>
+                            widget.ops.deleteSection(widget.section.id),
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        icon: Icons.delete,
                       ),
                     ],
                   ),
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    padding: const EdgeInsets.fromLTRB(32, 6, 16, 6),
+                    width: double.infinity,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.section.sectionName,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.add, size: 14),
+                          label: const Text('Item'),
+                          onPressed: () => _addItem(context),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              if (items.isNotEmpty)
-                ...items.map((item) => ShoppingItemTile(
-                  item: item,
-                  ops: widget.ops,
-                )),
-            ],
+                if (items.isNotEmpty)
+                  ...items.map(
+                    (item) => ShoppingItemTile(item: item, ops: widget.ops),
+                  ),
+              ],
+            ),
           ),
-        ),
-      );
+        );
       },
     );
   }

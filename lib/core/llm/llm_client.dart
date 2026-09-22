@@ -48,7 +48,9 @@ class LlmClient {
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Ollama returned ${response.statusCode}: ${response.body}');
+      throw Exception(
+        'Ollama returned ${response.statusCode}: ${response.body}',
+      );
     }
 
     try {

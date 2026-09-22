@@ -9,11 +9,7 @@ class ShoppingStorePage extends ConsumerStatefulWidget {
   final ShoppingListStore store;
   final ShoppingListOps ops;
 
-  const ShoppingStorePage({
-    super.key,
-    required this.store,
-    required this.ops,
-  });
+  const ShoppingStorePage({super.key, required this.store, required this.ops});
 
   @override
   ConsumerState<ShoppingStorePage> createState() => _ShoppingStorePageState();
@@ -33,7 +29,10 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
     );
   }
 
-  Widget _buildPage(BuildContext context, List<ShoppingListSection> sectionList) {
+  Widget _buildPage(
+    BuildContext context,
+    List<ShoppingListSection> sectionList,
+  ) {
     final ungrouped = ref.watch(ungroupedItemsProvider(widget.store.id));
     final allItems = ref.watch(storeItemsProvider(widget.store.id));
     final hasNoItems = allItems.valueOrNull?.isEmpty ?? true;
@@ -54,9 +53,7 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
             onLeave: (_) => setState(() => _isUngroupedDropTarget = false),
             onAcceptWithDetails: (details) {
               setState(() => _isUngroupedDropTarget = false);
-              ref
-                  .read(shoppingOpsProvider)
-                  .moveItem(details.data.id, null);
+              ref.read(shoppingOpsProvider).moveItem(details.data.id, null);
             },
             builder: (context, candidates, rejected) {
               final isEmpty = ungrouped.isEmpty;
@@ -67,23 +64,20 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
                     color: _isUngroupedDropTarget
                         ? Theme.of(context).colorScheme.primary
                         : isEmpty
-                            ? Theme.of(context)
-                                .colorScheme
-                                .outlineVariant
-                                .withValues(alpha: 0.6)
-                            : Colors.transparent,
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.6)
+                        : Colors.transparent,
                     width: _isUngroupedDropTarget ? 1.5 : 1.0,
                   ),
                   borderRadius: BorderRadius.circular(8),
                   color: _isUngroupedDropTarget
-                      ? Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.15)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.15)
                       : Colors.transparent,
                 ),
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 padding: isEmpty
                     ? const EdgeInsets.symmetric(vertical: 6, horizontal: 12)
                     : EdgeInsets.zero,
@@ -91,10 +85,9 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (ungrouped.isNotEmpty)
-                      ...ungrouped.map((item) => ShoppingItemTile(
-                        item: item,
-                        ops: widget.ops,
-                      )),
+                      ...ungrouped.map(
+                        (item) => ShoppingItemTile(item: item, ops: widget.ops),
+                      ),
                     if (isEmpty)
                       SizedBox(
                         height: 32,
@@ -103,18 +96,16 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
                             _isUngroupedDropTarget
                                 ? 'Drop here to ungroup'
                                 : hasNoItems
-                                    ? 'Create a new item'
-                                    : 'Drop to ungroup',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
+                                ? 'Create a new item'
+                                : 'Drop to ungroup',
+                            style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
-                              color: _isUngroupedDropTarget
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant,
-                            ),
+                                  color: _isUngroupedDropTarget
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant,
+                                ),
                           ),
                         ),
                       ),
@@ -125,11 +116,13 @@ class _ShoppingStorePageState extends ConsumerState<ShoppingStorePage> {
           ),
 
           // ── Sections ──────────────────────────────────────────────────
-          ...sectionList.map((section) => ShoppingSection(
-            section: section,
-            ops: widget.ops,
-            storeId: widget.store.id,
-          )),
+          ...sectionList.map(
+            (section) => ShoppingSection(
+              section: section,
+              ops: widget.ops,
+              storeId: widget.store.id,
+            ),
+          ),
 
           // ── Bottom padding ────────────────────────────────────────────
           const SizedBox(height: 80),

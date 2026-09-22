@@ -12,12 +12,12 @@ class ParsedIngredientLine {
   });
 
   Map<String, dynamic> toJson() => {
-        'qty': qty,
-        'unit': unit,
-        'name': name,
-        if (alternatives.isNotEmpty)
-          'alternatives': alternatives.map((a) => a.toJson()).toList(),
-      };
+    'qty': qty,
+    'unit': unit,
+    'name': name,
+    if (alternatives.isNotEmpty)
+      'alternatives': alternatives.map((a) => a.toJson()).toList(),
+  };
 }
 
 class PrestructuredRecipe {
@@ -34,11 +34,10 @@ class PrestructuredRecipe {
   });
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'parsedIngredients':
-            parsedIngredients.map((i) => i.toJson()).toList(),
-        'instructionLines': instructionLines,
-      };
+    'title': title,
+    'parsedIngredients': parsedIngredients.map((i) => i.toJson()).toList(),
+    'instructionLines': instructionLines,
+  };
 }
 
 class IngredientDraft {
@@ -60,9 +59,9 @@ class IngredientDraft {
     final rawAlts = json['alternatives'];
     final alternatives = rawAlts is List
         ? rawAlts
-            .whereType<Map<String, dynamic>>()
-            .map(IngredientDraft.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(IngredientDraft.fromJson)
+              .toList()
         : <IngredientDraft>[];
 
     return IngredientDraft(
@@ -88,9 +87,9 @@ class RecipeSectionDraft {
     final rawIngredients = json['ingredients'];
     final ingredients = rawIngredients is List
         ? rawIngredients
-            .whereType<Map<String, dynamic>>()
-            .map(IngredientDraft.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(IngredientDraft.fromJson)
+              .toList()
         : <IngredientDraft>[];
     return RecipeSectionDraft(
       name: json['name'] as String? ?? '',
@@ -118,18 +117,18 @@ class RecipeDraft {
     final rawSections = json['sections'];
     final sections = rawSections is List
         ? rawSections
-            .whereType<Map<String, dynamic>>()
-            .map(RecipeSectionDraft.fromJson)
-            .where((s) => s.name.isNotEmpty)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(RecipeSectionDraft.fromJson)
+              .where((s) => s.name.isNotEmpty)
+              .toList()
         : <RecipeSectionDraft>[];
 
     final rawIngredients = json['ingredients'];
     final ingredients = rawIngredients is List
         ? rawIngredients
-            .whereType<Map<String, dynamic>>()
-            .map(IngredientDraft.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(IngredientDraft.fromJson)
+              .toList()
         : <IngredientDraft>[];
 
     // Support both 'steps' (new) and 'instructions' (legacy LLM output)
@@ -146,11 +145,11 @@ class RecipeDraft {
       steps = (blob == null || blob.trim().isEmpty)
           ? const []
           : blob
-              .trim()
-              .split('\n')
-              .map((s) => s.trim())
-              .where((s) => s.isNotEmpty)
-              .toList();
+                .trim()
+                .split('\n')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
     }
 
     return RecipeDraft(

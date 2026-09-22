@@ -100,8 +100,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 Navigator.pop(ctx);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => const RecipeFormScreen()),
+                  MaterialPageRoute(builder: (_) => const RecipeFormScreen()),
                 );
               },
             ),
@@ -136,8 +135,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   Future<void> _pickAndScan(ImageSource source) async {
-    final file =
-        await ImagePicker().pickImage(source: source, imageQuality: 90);
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 90,
+    );
     if (file == null || !mounted) return;
     if (!context.mounted) return;
     Navigator.push(
@@ -180,9 +181,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (!mounted) return;
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
       return;
     }
 
@@ -201,11 +202,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   bool _looksLikeUrl(String? s) =>
-      s != null &&
-      (s.startsWith('http://') || s.startsWith('https://'));
+      s != null && (s.startsWith('http://') || s.startsWith('https://'));
 
-  Future<String?> _promptUrl(BuildContext context,
-      {String initial = ''}) async {
+  Future<String?> _promptUrl(
+    BuildContext context, {
+    String initial = '',
+  }) async {
     final ctrl = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
@@ -221,8 +223,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
             child: const Text('Import'),
@@ -307,9 +310,7 @@ class _RecipeTile extends ConsumerWidget {
       trailing: const Icon(Icons.chevron_right),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => RecipeDetailScreen(recipe: recipe),
-        ),
+        MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
       ),
     );
   }
