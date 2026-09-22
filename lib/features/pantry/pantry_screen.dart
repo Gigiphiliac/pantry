@@ -296,8 +296,9 @@ class _PantryCategorySectionState extends ConsumerState<PantryCategorySection> {
     final ops = ref.read(pantryOpsProvider);
 
     // Hide empty section during search.
-    if (widget.query.isNotEmpty && items.isEmpty)
+    if (widget.query.isNotEmpty && items.isEmpty) {
       return const SizedBox.shrink();
+    }
 
     return DragTarget<StockEntry>(
       onWillAcceptWithDetails: (details) {

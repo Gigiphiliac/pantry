@@ -96,8 +96,9 @@ class ShoppingListsScreen extends ConsumerWidget {
                   hint: 'List name',
                   initial: name,
                 );
-                if (newName != null && newName.isNotEmpty)
+                if (newName != null && newName.isNotEmpty) {
                   await ops.renameList(id, newName);
+                }
               },
             ),
             ListTile(

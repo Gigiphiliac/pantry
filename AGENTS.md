@@ -20,6 +20,64 @@ Personal iOS app: recipe management, shopping lists, meal planning. Local-AI ass
 
 ---
 
+## Development Workflow
+
+All common tasks go through `make`. The Makefile is the canonical local interface.
+
+| Command | What it does |
+|---|---|
+| `make get` | `flutter pub get` |
+| `make format` | Reformat Dart source in-place |
+| `make format-check` | Dry-run format check (fails on unformatted code) |
+| `make analyze` | `flutter analyze` |
+| `make test` | `flutter test --exclude-tags=golden` |
+| `make check` | `format-check` + `analyze` + `test` — run before committing |
+| `make run` | `flutter run` on default device |
+| `make build` | `flutter build apk --release` |
+| `make clean` | `flutter clean` |
+| `make tag VERSION=0.1.0` | Validate, run checks, create annotated `v0.1.0` tag |
+| `make release VERSION=0.1.0` | Tag + push branch + push tag — triggers GitHub Actions release |
+
+Githooks are in `githooks/` and run `make format-check && make analyze` on every commit.
+Install: `git config core.hooksPath githooks` or run `scripts/setup.sh`.
+
+CI (`.github/workflows/ci.yml`) runs the same checks on push/PR to `main`.
+
+---
+
+## Releases
+
+```bash
+make release VERSION=0.2.0
+```
+
+Creates `v0.2.0`, pushes it to GitHub, and triggers `.github/workflows/release.yml`:
+format check → analyze → tests → `flutter build apk --release` → GitHub Release with APK.
+
+The `release` build type uses `signingConfig = signingConfigs.debug` (Android's auto-generated debug keystore): APK is signed, R8-minified, installable on any device, no debug banner.
+
+For production, configure secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` and switch to `signingConfigs.release`.
+
+---
+
+## Test Layout
+
+Tests mirror `lib/` structure under `test/`:
+
+```
+test/
+├── core/
+│   ├── ingredients/ingredient_parser_test.dart    29 tests
+│   └── units/unit_system_test.dart                30 tests
+├── features/recipes/models/ingredient_name_parser_test.dart  14 tests
+├── utils/ingredient_dedup_test.dart               18 tests
+└── widget_test.dart                               (placeholder)
+```
+
+Drift-dependent tests use `AppDatabase.connect(NativeDatabase.memory())` for in-memory SQLite — no device needed.
+
+---
+
 ## Data Model (Drift schema)
 
 ```
@@ -31,10 +89,17 @@ shopping_list_sections store_id, section_name, sort_order
 shopping_list_items    section_id, ingredient_id (nullable), raw_text, qty, unit, checked
 recipes                id, name, source_url, source_type (manual/url/ocr), servings, instructions, nutrition_json
 recipe_ingredients     recipe_id, ingredient_id, qty, unit, notes
+recipe_ingredient_alternatives  ingredient_id, qty, unit, sort_order
+recipe_steps                    recipe_id, step_number, content
 meal_plans             id, name, start_date, end_date
 meal_plan_days         plan_id, date
 meal_slots             day_id, slot_name, recipe_id (nullable), notes
+pantry_items           ingredient_id, tier, user_confirmed
+pantry_stock_categories        name, sort_order
+pantry_stock          ingredient_id, category_id, on_hand_qty, on_hand_unit, notes
 ```
+
+The database class exposes `AppDatabase.connect(QueryExecutor)` for testing.
 
 ---
 
