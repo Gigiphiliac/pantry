@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Pantry pre-commit hook
+# Runs flutter analyze and dart format checks before every commit.
+# Install: git config core.hooksPath githooks
+#
+set -e
+
+echo "🔍 Running dart format check..."
+dart format --output none --set-exit-if-changed lib/ test/
+
+echo "🧪 Running flutter analyze..."
+flutter analyze
+
+echo "✅ Pre-commit checks passed!"

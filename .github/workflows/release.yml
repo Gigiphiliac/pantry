@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+
+      - name: 🔧 Ensure debug keystore exists
+        run: |
+          KEYSTORE="$HOME/.android/debug.keystore"
+          if [ ! -f "$KEYSTORE" ]; then
+            keytool -genkey -v \
+              -keystore "$KEYSTORE" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: 📦 Install dependencies
+        run: make get
+
+      - name: 🎨 Check formatting
+        run: make format-check
+
+      - name: 🔍 Analyze
+        run: make analyze
+
+      - name: 🧪 Run tests
+        run: make test
+
+      - name: 📱 Build release APK
+        run: make build
+
+      - name: 📦 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## Changes
+
+            <!-- Summarise changes in this release -->
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: true

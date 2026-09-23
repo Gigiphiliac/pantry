@@ -192,7 +192,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Creates a database backed by an arbitrary [QueryExecutor].
   /// Used for testing with e.g. [NativeDatabase.memory()].
-  AppDatabase.connect(QueryExecutor e) : super(e);
+  AppDatabase.connect(super.e);
 
   @override
   int get schemaVersion => 10;
