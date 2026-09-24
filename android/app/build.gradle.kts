@@ -25,6 +25,15 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("ci") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -32,7 +41,7 @@ android {
             // Signed with the auto-generated debug keystore initially.
             // For production, replace with secrets-based signing:
             //   run signingConfig = signingConfigs.release
-            signingConfig = this@android.signingConfigs.debug
+            signingConfig = signingConfigs["ci"]
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
