@@ -32,7 +32,7 @@ android {
             // Signed with the auto-generated debug keystore initially.
             // For production, replace with secrets-based signing:
             //   run signingConfig = signingConfigs.release
-            signingConfig = signingConfigs.debug
+            signingConfig = this@android.signingConfigs.debug
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
