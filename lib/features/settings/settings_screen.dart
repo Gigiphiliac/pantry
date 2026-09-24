@@ -273,32 +273,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final showLabels = constraints.maxWidth >= 360;
-              return ref.watch(themeModeProvider).when(
-                loading: () => const SizedBox.shrink(),
-                error: (e, _) => Text('Error: $e'),
-                data: (mode) => SegmentedButton<AppThemeMode>(
-                  segments: [
-                    ButtonSegment(
-                      value: AppThemeMode.light,
-                      label: showLabels ? const Text('Light') : null,
-                      icon: const Icon(Icons.light_mode),
+              return ref
+                  .watch(themeModeProvider)
+                  .when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Text('Error: $e'),
+                    data: (mode) => SegmentedButton<AppThemeMode>(
+                      segments: [
+                        ButtonSegment(
+                          value: AppThemeMode.light,
+                          label: showLabels ? const Text('Light') : null,
+                          icon: const Icon(Icons.light_mode),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.dark,
+                          label: showLabels ? const Text('Dark') : null,
+                          icon: const Icon(Icons.dark_mode),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.system,
+                          label: showLabels ? const Text('System') : null,
+                          icon: const Icon(Icons.settings_suggest),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (set) =>
+                          ref.read(themeModeProvider.notifier).save(set.first),
                     ),
-                    ButtonSegment(
-                      value: AppThemeMode.dark,
-                      label: showLabels ? const Text('Dark') : null,
-                      icon: const Icon(Icons.dark_mode),
-                    ),
-                    ButtonSegment(
-                      value: AppThemeMode.system,
-                      label: showLabels ? const Text('System') : null,
-                      icon: const Icon(Icons.settings_suggest),
-                    ),
-                  ],
-                  selected: {mode},
-                  onSelectionChanged: (set) =>
-                      ref.read(themeModeProvider.notifier).save(set.first),
-                ),
-              );
+                  );
             },
           ),
           const SizedBox(height: 24),

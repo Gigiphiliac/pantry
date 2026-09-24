@@ -10,8 +10,8 @@ enum AppThemeMode { light, dark, system }
 
 final themeModeProvider =
     AsyncNotifierProvider<ThemeModeNotifier, AppThemeMode>(
-  ThemeModeNotifier.new,
-);
+      ThemeModeNotifier.new,
+    );
 
 class ThemeModeNotifier extends AsyncNotifier<AppThemeMode> {
   @override

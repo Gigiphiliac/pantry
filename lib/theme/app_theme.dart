@@ -22,16 +22,24 @@ abstract final class Palette {
   static const Color darkSurfaceContainer = Color(0xFF2A2A30);
   static const Color darkOnSurface = Color(0xFFE4E2DC);
   static const Color darkPrimaryLight = Color(0xFFB8845A);
-  static const Color onPrimaryDark = Color(0xFFF5EDE0); // light warm text for dark primary bg
+  static const Color onPrimaryDark = Color(
+    0xFFF5EDE0,
+  ); // light warm text for dark primary bg
 
   // Outline / border: tuned for contrast
   static const Color outlineLight = Color(0xFF7A735D); // darken khaki a bit
-  static const Color outlineVariantLight = Color(0xFFA49C82); // slightly darker than khakiBeige
+  static const Color outlineVariantLight = Color(
+    0xFFA49C82,
+  ); // slightly darker than khakiBeige
   static const Color outlineDark = Color(0xFF8A9270); // lightened dusty olive
-  static const Color outlineVariantDark = Color(0xFF535359); // visible against darkSurface
+  static const Color outlineVariantDark = Color(
+    0xFF535359,
+  ); // visible against darkSurface
 
   // Dark-mode text on container backgrounds: bumped for readability
-  static const Color onContainerDark = Color(0xFFE0D5C8); // warm light tone for toffee brown bg
+  static const Color onContainerDark = Color(
+    0xFFE0D5C8,
+  ); // warm light tone for toffee brown bg
 }
 
 // ── Light colour scheme ─────────────────────────────────────────────────────
@@ -144,9 +152,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerHighest,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
 
       // Bottom Navigation
