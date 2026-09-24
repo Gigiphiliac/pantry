@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder splash logo: abstract P with fork replacing the counter/hole.
+     Replace with the real asset when ready. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- P stem -->
+    <path
+        android:fillColor="#E4E2DC"
+        android:pathData="M22,18h8v64h-8z" />
+    <!-- P bowl outline -->
+    <path
+        android:strokeColor="#E4E2DC"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M30,18c25,0 38,6 38,24c0,18 -13,24 -38,24z" />
+    <!-- Fork left tine -->
+    <path
+        android:fillColor="#E4E2DC"
+        android:pathData="M40,30h4v22h-4z" />
+    <!-- Fork center tine -->
+    <path
+        android:fillColor="#E4E2DC"
+        android:pathData="M48,28h4v24h-4z" />
+    <!-- Fork right tine -->
+    <path
+        android:fillColor="#E4E2DC"
+        android:pathData="M56,30h4v22h-4z" />
+</vector>

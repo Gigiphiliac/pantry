@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="#2A2A30"/>
+  
+  <!-- P letterform stem -->
+  <rect x="76" y="52" width="16" height="96" rx="6" fill="#E4E2DC"/>
+  
+  <!-- P letterform bowl (outer curve) -->
+  <path d="M92 52 C150 52 160 68 160 100 C160 132 150 148 92 148 Z" fill="none" stroke="#E4E2DC" stroke-width="12" stroke-linecap="round"/>
+  
+  <!-- Fork tines (replacing the counter/hole of the P) -->
+  <!-- Left tine -->
+  <rect x="110" y="76" width="8" height="36" rx="4" fill="#E4E2DC"/>
+  <!-- Center tine -->
+  <rect x="124" y="72" width="8" height="40" rx="4" fill="#E4E2DC"/>
+  <!-- Right tine -->
+  <rect x="138" y="76" width="8" height="36" rx="4" fill="#E4E2DC"/>
+</svg>

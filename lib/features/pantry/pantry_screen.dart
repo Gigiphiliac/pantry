@@ -8,6 +8,7 @@ import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/features/shopping/prompt_utils.dart';
 
+import 'package:pantry/widgets/app_bar_logo.dart';
 import 'pantry_providers.dart';
 import 'ingredient_library_screen.dart';
 
@@ -38,6 +39,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBarLogo(),
         title: _searching
             ? TextField(
                 controller: _searchController,
