@@ -21,6 +21,7 @@ jobs:
 
       - name: 🔧 Ensure debug keystore exists
         run: |
+          mkdir -p "$HOME/.android"
           KEYSTORE="$HOME/.android/debug.keystore"
           if [ ! -f "$KEYSTORE" ]; then
             keytool -genkey -v \
