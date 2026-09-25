@@ -35,7 +35,9 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No text to process — retake the photo.')),
+        const SnackBar(
+          content: Text('No text to process. Please retake the photo.'),
+        ),
       );
       return;
     }
@@ -86,7 +88,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
         return;
       }
 
-      setState(() => _overlayText = 'LLM failed — using basic parser');
+      setState(() => _overlayText = 'LLM failed; using basic parser');
       final draft = service.parseRaw(text);
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -159,7 +161,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'No LLM configured — basic parsing only',
+                            'No LLM configured; basic parsing only',
                             style: TextStyle(
                               color: Theme.of(
                                 context,

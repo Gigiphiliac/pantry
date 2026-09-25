@@ -37,7 +37,7 @@ class RecipeUrlService {
     }
     if (response.statusCode != 200) {
       throw UrlImportException(
-        'Site returned ${response.statusCode} — check the URL',
+        'Site returned ${response.statusCode}, please check the URL',
       );
     }
     return response.body;
