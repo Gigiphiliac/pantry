@@ -11,9 +11,7 @@ class RecipeTextParser {
   /// Matches a line that looks like a section header within an ingredient list
   /// (e.g. "For the sauce:", "Dough:"). Lines ending with ":" that do NOT start
   /// with a quantity digit or Unicode fraction character.
-  static final RegExp sectionHeaderPattern = RegExp(
-    r'^[^0-9¼½¾⅓⅔⅛⅜⅝⅞].*:$',
-  );
+  static final RegExp sectionHeaderPattern = RegExp(r'^[^0-9¼½¾⅓⅔⅛⅜⅝⅞].*:$');
 
   // ── Zone-marker words for dual-pass segmentation ──────────────────────────
 
@@ -41,7 +39,11 @@ class RecipeTextParser {
   ///   2. If found, split at those boundaries
   ///   3. If not found, fall back to heuristic (numbered lines = steps,
   ///      digit-starting lines = ingredients)
-  static ({String? title, List<String> ingredientLines, List<String> methodLines})
+  static ({
+    String? title,
+    List<String> ingredientLines,
+    List<String> methodLines,
+  })
   splitZones(String rawText) {
     final lines = rawText
         .split('\n')
@@ -81,12 +83,12 @@ class RecipeTextParser {
     return markers.contains(lower);
   }
 
-  static ({String? title, List<String> ingredientLines, List<String> methodLines})
-  _splitByMarkers(
-    List<String> lines,
-    int? ingredientsStart,
-    int? methodStart,
-  ) {
+  static ({
+    String? title,
+    List<String> ingredientLines,
+    List<String> methodLines,
+  })
+  _splitByMarkers(List<String> lines, int? ingredientsStart, int? methodStart) {
     // Use the LAST ingredients marker and the FIRST method marker
     final ingredientsEnd = methodStart ?? lines.length;
 
@@ -112,8 +114,9 @@ class RecipeTextParser {
     }
 
     // Ingredients zone
-    final ingredientZoneStart =
-        actualIngredientsStart != null ? actualIngredientsStart + 1 : 0;
+    final ingredientZoneStart = actualIngredientsStart != null
+        ? actualIngredientsStart + 1
+        : 0;
     final ingredientZoneEnd = methodStart ?? lines.length;
     for (var i = ingredientZoneStart; i < ingredientZoneEnd; i++) {
       final line = lines[i].trim();
@@ -137,7 +140,8 @@ class RecipeTextParser {
     // Extract title from pre-lines: first non-ingredient-like line
     String? title;
     for (final line in preLines) {
-      if (!_startsWithQuantity(line) && !_isZoneMarker(line, _ingredientsMarkers)) {
+      if (!_startsWithQuantity(line) &&
+          !_isZoneMarker(line, _ingredientsMarkers)) {
         title = line;
         break;
       }
@@ -157,14 +161,61 @@ class RecipeTextParser {
   /// (base/imperative form) is almost certainly an instruction, not an
   /// ingredient.
   static const _imperativeVerbs = {
-    'add', 'bake', 'beat', 'blend', 'boil', 'broil', 'brown', 'chill',
-    'chop', 'combine', 'cook', 'cover', 'cut', 'defrost', 'dice', 'drain',
-    'drizzle', 'fold', 'fry', 'garnish', 'grate', 'grill', 'heat', 'knead',
-    'layer', 'marinate', 'mash', 'melt', 'microwave', 'mix', 'place',
-    'pour', 'preheat', 'prepare', 'press', 'refrigerate', 'remove',
-    'rinse', 'roast', 'rest', 'roll', 'sauté', 'sear', 'season', 'serve',
-    'simmer', 'slice', 'soak', 'spread', 'steam', 'stir', 'toast',
-    'toss', 'trim', 'whisk',
+    'add',
+    'bake',
+    'beat',
+    'blend',
+    'boil',
+    'broil',
+    'brown',
+    'chill',
+    'chop',
+    'combine',
+    'cook',
+    'cover',
+    'cut',
+    'defrost',
+    'dice',
+    'drain',
+    'drizzle',
+    'fold',
+    'fry',
+    'garnish',
+    'grate',
+    'grill',
+    'heat',
+    'knead',
+    'layer',
+    'marinate',
+    'mash',
+    'melt',
+    'microwave',
+    'mix',
+    'place',
+    'pour',
+    'preheat',
+    'prepare',
+    'press',
+    'refrigerate',
+    'remove',
+    'rinse',
+    'roast',
+    'rest',
+    'roll',
+    'sauté',
+    'sear',
+    'season',
+    'serve',
+    'simmer',
+    'slice',
+    'soak',
+    'spread',
+    'steam',
+    'stir',
+    'toast',
+    'toss',
+    'trim',
+    'whisk',
   };
 
   /// Heuristic fallback when no zone markers are found.
@@ -176,7 +227,11 @@ class RecipeTextParser {
   ///
   /// Finds the ingredient/instruction boundary by scanning for the first
   /// numbered step or the first line starting with an imperative cooking verb.
-  static ({String? title, List<String> ingredientLines, List<String> methodLines})
+  static ({
+    String? title,
+    List<String> ingredientLines,
+    List<String> methodLines,
+  })
   _splitHeuristic(List<String> lines) {
     if (lines.isEmpty) {
       return (title: null, ingredientLines: const [], methodLines: const []);
@@ -297,8 +352,9 @@ class RecipeTextParser {
     if (lines.isEmpty) return const [];
 
     // Check if most lines are numbered
-    final numberedCount =
-        lines.where((l) => RegExp(r'^\d+[.)]\s').hasMatch(l.trim())).length;
+    final numberedCount = lines
+        .where((l) => RegExp(r'^\d+[.)]\s').hasMatch(l.trim()))
+        .length;
     final usesNumbering = numberedCount > lines.length * 0.3;
 
     if (usesNumbering) {

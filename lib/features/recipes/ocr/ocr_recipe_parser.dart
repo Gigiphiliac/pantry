@@ -30,8 +30,9 @@ class OcrRecipeParser {
     final zones = RecipeTextParser.splitZones(rawText);
 
     // Step 2: Parse ingredient lines into sections + unsectioned ingredients
-    final (sections, unsectioned) =
-        RecipeTextParser.parseIngredientLines(zones.ingredientLines);
+    final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
+      zones.ingredientLines,
+    );
 
     // Step 3: Parse method lines into steps
     final steps = RecipeTextParser.parseInstructions(zones.methodLines);

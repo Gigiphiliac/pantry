@@ -11,7 +11,8 @@ void main() {
     });
 
     test('recognises "Ingredients:" and "Method:" markers', () {
-      const text = 'Creamy Garlic Pasta\n\nIngredients:\n400g spaghetti\n4 cloves garlic\n\nMethod:\n1. Boil pasta\n2. Sauté garlic';
+      const text =
+          'Creamy Garlic Pasta\n\nIngredients:\n400g spaghetti\n4 cloves garlic\n\nMethod:\n1. Boil pasta\n2. Sauté garlic';
       final result = RecipeTextParser.splitZones(text);
       expect(result.title, 'Creamy Garlic Pasta');
       expect(result.ingredientLines, ['400g spaghetti', '4 cloves garlic']);
@@ -19,7 +20,8 @@ void main() {
     });
 
     test('recognises "Ingredients" and "Directions" markers', () {
-      const text = 'Simple Salad\nIngredients\nLettuce\nTomato\n\nDirections\nChop and toss';
+      const text =
+          'Simple Salad\nIngredients\nLettuce\nTomato\n\nDirections\nChop and toss';
       final result = RecipeTextParser.splitZones(text);
       expect(result.title, 'Simple Salad');
       expect(result.ingredientLines, ['Lettuce', 'Tomato']);
@@ -41,15 +43,22 @@ void main() {
     });
 
     test('handles subsections in ingredients zone', () {
-      const text = 'Pasta Bake\nIngredients:\n500g pasta\n\nFor the sauce:\n400g tomatoes\n2 cloves garlic\n\nMethod:\nBake at 180C';
+      const text =
+          'Pasta Bake\nIngredients:\n500g pasta\n\nFor the sauce:\n400g tomatoes\n2 cloves garlic\n\nMethod:\nBake at 180C';
       final result = RecipeTextParser.splitZones(text);
       expect(result.title, 'Pasta Bake');
-      expect(result.ingredientLines, ['500g pasta', 'For the sauce:', '400g tomatoes', '2 cloves garlic']);
+      expect(result.ingredientLines, [
+        '500g pasta',
+        'For the sauce:',
+        '400g tomatoes',
+        '2 cloves garlic',
+      ]);
       expect(result.methodLines, ['Bake at 180C']);
     });
 
     test('no markers — falls back to heuristic', () {
-      const text = 'Simple Recipe\n400g spaghetti\n4 cloves garlic\nBoil pasta.\nSauté garlic.';
+      const text =
+          'Simple Recipe\n400g spaghetti\n4 cloves garlic\nBoil pasta.\nSauté garlic.';
       final result = RecipeTextParser.splitZones(text);
       expect(result.title, 'Simple Recipe');
       expect(result.ingredientLines, ['400g spaghetti', '4 cloves garlic']);
@@ -81,9 +90,11 @@ void main() {
     });
 
     test('plain ingredients produce unsectioned list', () {
-      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
-        ['400g spaghetti', '4 cloves garlic', 'Salt to taste'],
-      );
+      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines([
+        '400g spaghetti',
+        '4 cloves garlic',
+        'Salt to taste',
+      ]);
       expect(sections, isEmpty);
       expect(unsectioned.length, 3);
       expect(unsectioned[0].name, 'spaghetti');
@@ -91,14 +102,12 @@ void main() {
     });
 
     test('section headers create named sections', () {
-      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
-        [
-          '400g spaghetti',
-          'For the sauce:',
-          '400g tomatoes',
-          '2 cloves garlic',
-        ],
-      );
+      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines([
+        '400g spaghetti',
+        'For the sauce:',
+        '400g tomatoes',
+        '2 cloves garlic',
+      ]);
       expect(sections.length, 1);
       expect(unsectioned.length, 1);
       expect(unsectioned[0].name, 'spaghetti');
@@ -109,14 +118,12 @@ void main() {
     });
 
     test('multiple sections', () {
-      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
-        [
-          'For the base:',
-          '200g flour',
-          'For the topping:',
-          '100g cheese',
-        ],
-      );
+      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines([
+        'For the base:',
+        '200g flour',
+        'For the topping:',
+        '100g cheese',
+      ]);
       expect(sections.length, 2);
       expect(unsectioned, isEmpty);
       expect(sections[0].name, 'For the base');
@@ -124,9 +131,11 @@ void main() {
     });
 
     test('non-ingredient lines without colon are parsed as ingredients', () {
-      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
-        ['Salt to taste', 'Olive oil', 'Fresh basil'],
-      );
+      final (sections, unsectioned) = RecipeTextParser.parseIngredientLines([
+        'Salt to taste',
+        'Olive oil',
+        'Fresh basil',
+      ]);
       expect(sections, isEmpty);
       expect(unsectioned.length, 3);
     });

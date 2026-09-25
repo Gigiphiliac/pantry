@@ -20,7 +20,8 @@ void main() {
     });
 
     test('simple recipe with markers: title, ingredients, method', () {
-      const text = 'Garlic Pasta\n\nIngredients:\n400g spaghetti\n4 cloves garlic\n1 cup cream\n\nMethod:\n1. Boil pasta in salted water\n2. Sauté garlic in butter\n3. Add cream and simmer';
+      const text =
+          'Garlic Pasta\n\nIngredients:\n400g spaghetti\n4 cloves garlic\n1 cup cream\n\nMethod:\n1. Boil pasta in salted water\n2. Sauté garlic in butter\n3. Add cream and simmer';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.name, 'Garlic Pasta');
@@ -38,7 +39,8 @@ void main() {
     });
 
     test('recipe with subsections in ingredients', () {
-      const text = 'Pasta Bake\nIngredients:\n500g pasta\n\nFor the sauce:\n400g tomatoes\n2 garlic cloves\n\nMethod:\nLayer and bake at 180C for 30 min';
+      const text =
+          'Pasta Bake\nIngredients:\n500g pasta\n\nFor the sauce:\n400g tomatoes\n2 garlic cloves\n\nMethod:\nLayer and bake at 180C for 30 min';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.name, 'Pasta Bake');
@@ -54,7 +56,8 @@ void main() {
     test('no markers — falls back to heuristic', () {
       // Heuristic: first line = title, scan for first imperative verb
       // as ingredient/instruction boundary
-      const text = 'Quick Salad\nLettuce\nTomato\nCucumber\nChop all vegetables.\nToss with dressing.\nServe chilled.';
+      const text =
+          'Quick Salad\nLettuce\nTomato\nCucumber\nChop all vegetables.\nToss with dressing.\nServe chilled.';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.name, 'Quick Salad');
@@ -66,7 +69,8 @@ void main() {
     });
 
     test('detects non-digit ingredients like Salt to taste', () {
-      const text = 'Marinade\nIngredients:\n2 tbsp soy sauce\n1 tbsp honey\nSalt to taste\nPepper to taste\n\nMethod:\nMix all ingredients in a bowl.';
+      const text =
+          'Marinade\nIngredients:\n2 tbsp soy sauce\n1 tbsp honey\nSalt to taste\nPepper to taste\n\nMethod:\nMix all ingredients in a bowl.';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.name, 'Marinade');
@@ -77,7 +81,8 @@ void main() {
     });
 
     test('numberless lines in ingredients zone are still parsed', () {
-      const text = 'Ingredients:\nOlive oil\nFresh basil\n\nInstructions:\nDrizzle and serve';
+      const text =
+          'Ingredients:\nOlive oil\nFresh basil\n\nInstructions:\nDrizzle and serve';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.ingredients.length, 2);
@@ -104,7 +109,8 @@ void main() {
     });
 
     test('handles unicode fractions in OCR text', () {
-      const text = 'Pancakes\nIngredients:\n½ cup flour\n1 cup milk\n1 egg\n\nMethod:\nMix. Cook. Serve.';
+      const text =
+          'Pancakes\nIngredients:\n½ cup flour\n1 cup milk\n1 egg\n\nMethod:\nMix. Cook. Serve.';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.ingredients[0].qty, closeTo(0.5, 0.001));
@@ -113,7 +119,8 @@ void main() {
     });
 
     test('handles OCR line-break artefacts', () {
-      const text = 'Creamy Sauce\nIngredients:\n1 cup cream\n2 tbsp butter\nSalt\n\nMethod:\n\nMelt butter in pan.\nAdd cream and stir.\nSeason with salt.';
+      const text =
+          'Creamy Sauce\nIngredients:\n1 cup cream\n2 tbsp butter\nSalt\n\nMethod:\n\nMelt butter in pan.\nAdd cream and stir.\nSeason with salt.';
       final result = OcrRecipeParser.parse(text);
 
       expect(result.name, 'Creamy Sauce');

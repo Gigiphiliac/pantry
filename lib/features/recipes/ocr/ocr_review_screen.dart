@@ -53,7 +53,8 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
+          builder: (_) =>
+              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
         ),
       );
       return;
@@ -72,7 +73,8 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
+          builder: (_) =>
+              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
         ),
       );
     } catch (e) {
@@ -90,7 +92,8 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
+          builder: (_) =>
+              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
         ),
       );
     }
@@ -158,9 +161,9 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                           child: Text(
                             'No LLM configured — basic parsing only',
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                               fontSize: 13,
                             ),
                           ),
@@ -180,7 +183,10 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                               builder: (_) => const SettingsScreen(),
                             ),
                           ),
-                          child: const Text('Settings', style: TextStyle(fontSize: 13)),
+                          child: const Text(
+                            'Settings',
+                            style: TextStyle(fontSize: 13),
+                          ),
                         ),
                       ],
                     ),
@@ -209,8 +215,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: FilledButton(
-                      onPressed:
-                          _processing ? null : _createRecipe,
+                      onPressed: _processing ? null : _createRecipe,
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
