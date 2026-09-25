@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:pantry/widgets/app_bar_logo.dart';
 import 'shopping_providers.dart';
 import 'shopping_list_detail_screen.dart';
 import 'prompt_utils.dart';
@@ -15,6 +16,7 @@ class ShoppingListsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBarLogo(),
         title: const Text('Shopping Lists'),
         actions: [
           IconButton(

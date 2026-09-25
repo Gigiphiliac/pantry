@@ -6,18 +6,26 @@ import 'features/recipes/recipes_screen.dart';
 import 'features/pantry/pantry_screen.dart';
 import 'features/meal_plans/meal_plans_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_mode_provider.dart';
 
 class PantryApp extends ConsumerWidget {
   const PantryApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider).valueOrNull;
+    final mode = switch (themeMode) {
+      AppThemeMode.light => ThemeMode.light,
+      AppThemeMode.dark => ThemeMode.dark,
+      AppThemeMode.system || null => ThemeMode.system,
+    };
+
     return MaterialApp(
       title: 'Pantry',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4CAF50)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: mode,
       home: const _NavShell(),
     );
   }

@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:pantry/core/units/unit_system.dart';
+import 'package:pantry/theme/theme_mode_provider.dart';
+import 'package:pantry/widgets/app_bar_logo.dart';
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -219,7 +221,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     config.whenData(_initFromConfig);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        leading: const AppBarLogo(),
+        title: const Text('Settings'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -252,6 +257,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ref.read(unitPreferenceProvider.notifier).save(set.first),
                 ),
               ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+
+          // ── Theme ────────────────────────────────────────────────────────────
+          Text('Theme', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Choose your preferred appearance.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          // Use LayoutBuilder to detect overflow and hide labels on small screens.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final showLabels = constraints.maxWidth >= 360;
+              return ref
+                  .watch(themeModeProvider)
+                  .when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Text('Error: $e'),
+                    data: (mode) => SegmentedButton<AppThemeMode>(
+                      segments: [
+                        ButtonSegment(
+                          value: AppThemeMode.light,
+                          label: showLabels ? const Text('Light') : null,
+                          icon: const Icon(Icons.light_mode),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.dark,
+                          label: showLabels ? const Text('Dark') : null,
+                          icon: const Icon(Icons.dark_mode),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.system,
+                          label: showLabels ? const Text('System') : null,
+                          icon: const Icon(Icons.settings_suggest),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (set) =>
+                          ref.read(themeModeProvider.notifier).save(set.first),
+                    ),
+                  );
+            },
+          ),
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),

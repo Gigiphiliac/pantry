@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pantry splash icon: P+fork, 288dp @ 11000 viewport, content fits within 66% safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="11000"
+    android:viewportHeight="11000">
+
+    <!-- P letterform -->
+    <group
+        android:translateX="105"
+        android:translateY="1341">
+        <path
+            android:pathData="M3328.139,7430.264C3328.139,3055.087 3699.652,2414.836 3699.652,2414.836C3699.652,2414.836 7461.223,1687.289 7399.304,3591.294C7337.386,5495.299 4504.597,5905.512 4504.597,5905.512C4504.597,5905.512 4245.785,7315.019 4411.719,7383.825C4761.756,7528.971 3328.139,7507.662 3328.139,7430.264Z"
+            android:strokeColor="#E4E2DC"
+            android:strokeWidth="416.67"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="@android:color/transparent" />
+    </group>
+
+    <!-- Fork tines -->
+    <group
+        android:translateX="-3281"
+        android:translateY="517">
+        <path
+            android:pathData="M7468.202,8205.001C7584.378,8656.087 8065.136,8484.34 8286.277,8146.567C8116.743,8037.14 8038.116,7965.989 8033.063,7925.817C8070.26,7799.242 8099.281,7609.841 8101.844,7292.783C8065.502,6636.309 8061.476,6154.441 8129.021,5991.434C8219.457,5930.236 8400.793,5893.278 8698.995,5887.484L8742.907,5828.691C8861.561,3068.906 8804.633,1861.227 8165.536,1416.553C7961.613,2913.453 7781.048,4351.96 7607.808,5772.151C7751.763,5907.43 7521.361,6924.449 7468.202,8205.001Z"
+            android:strokeColor="#E4E2DC"
+            android:strokeWidth="23.33"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#E4E2DC" />
+    </group>
+</vector>

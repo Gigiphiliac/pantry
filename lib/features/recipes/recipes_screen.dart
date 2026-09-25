@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/widgets/app_bar_logo.dart';
 import 'recipe_providers.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_form_screen.dart';
@@ -35,6 +36,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBarLogo(),
         title: _searching
             ? TextField(
                 controller: _searchCtrl,
