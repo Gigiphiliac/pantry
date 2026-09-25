@@ -502,7 +502,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         if (names.isEmpty) {
           setState(() {
             _testResult =
-                'Connected — no models found. Pull one with `ollama pull <name>`.';
+                'Connected; no models found. Pull one with `ollama pull <name>`.';
             _testSuccess = true;
           });
         } else {

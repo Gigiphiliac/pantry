@@ -7,7 +7,7 @@ import 'package:pantry/core/llm/llm_client.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/features/settings/settings_screen.dart';
 import '../models/recipe_draft.dart';
-import 'ocr_text_parser.dart';
+import 'ocr_recipe_parser.dart';
 
 class OcrException implements Exception {
   final String message;
@@ -73,6 +73,7 @@ Rules:
 - When a quantity is given as a range (e.g. "800g - 1kg", "2-3 cups"), use the lower bound as "qty" and "unit"; discard the upper bound''';
 
 class RecipeOcrService {
+  /// Run ML Kit OCR on [image] and return the raw recognised text.
   Future<String> extractText(XFile image) async {
     final inputImage = InputImage.fromFilePath(image.path);
     final recogniser = TextRecognizer(script: TextRecognitionScript.latin);
@@ -94,13 +95,21 @@ class RecipeOcrService {
     }
   }
 
-  Future<RecipeDraft> structureRecipe(String rawText, LlmConfig config) async {
-    final prestructured = _prestructure(rawText);
-    return _cleanupWithLlm(prestructured, config);
+  /// Deterministic fallback: parse raw text into a [RecipeDraft] without LLM.
+  ///
+  /// Uses [OcrRecipeParser] for dual-pass zone segmentation and ingredient/
+  /// instruction parsing. Serves as the offline fallback path.
+  RecipeDraft parseRaw(String rawText) {
+    return OcrRecipeParser.parse(rawText);
   }
 
-  PrestructuredRecipe _prestructure(String rawText) {
-    return OcrTextParser.parse(rawText);
+  /// Structure recipe text using an LLM for cleanup and enrichment.
+  ///
+  /// First runs [OcrRecipeParser] to produce hints, then sends both the raw
+  /// text and hints to the LLM for final structuring.
+  Future<RecipeDraft> structureRecipe(String rawText, LlmConfig config) async {
+    final hints = OcrRecipeParser.parse(rawText);
+    return _cleanupWithLlm(rawText, hints, config);
   }
 
   IngredientDraft _normaliseUnit(IngredientDraft ing) => IngredientDraft(
@@ -112,18 +121,40 @@ class RecipeOcrService {
   );
 
   Future<RecipeDraft> _cleanupWithLlm(
-    PrestructuredRecipe prestructured,
+    String rawText,
+    RecipeDraft hints,
     LlmConfig config,
   ) async {
-    final hintsJson = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(prestructured.toJson()..remove('rawText'));
+    final hintsJson = const JsonEncoder.withIndent('  ').convert({
+      'title': hints.name,
+      'ingredients': hints.ingredients
+          .map(
+            (i) =>
+                '${i.qty != null ? '${i.qty} ' : ''}'
+                '${i.unit != null ? '${i.unit} ' : ''}'
+                '${i.name}',
+          )
+          .toList(),
+      'sections': hints.sections
+          .map(
+            (s) => {
+              'name': s.name,
+              'ingredients': s.ingredients
+                  .map(
+                    (i) =>
+                        '${i.qty != null ? '${i.qty} ' : ''}'
+                        '${i.unit != null ? '${i.unit} ' : ''}'
+                        '${i.name}',
+                  )
+                  .toList(),
+            },
+          )
+          .toList(),
+      'instructionLines': hints.steps,
+    });
 
     final userMessage =
-        'RAW OCR TEXT:\n'
-        '${prestructured.rawText}\n\n'
-        'PRE-PARSED HINTS:\n'
-        '$hintsJson';
+        'RAW OCR TEXT:\n$rawText\n\nPRE-PARSED HINTS:\n$hintsJson';
 
     late String content;
     try {

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
-import 'package:pantry/core/ingredients/ingredient_parser.dart';
+import 'package:pantry/core/recipes/recipe_text_parser.dart';
 import 'package:pantry/features/recipes/models/recipe_draft.dart';
 
 class UrlImportException implements Exception {
@@ -37,7 +37,7 @@ class RecipeUrlService {
     }
     if (response.statusCode != 200) {
       throw UrlImportException(
-        'Site returned ${response.statusCode} — check the URL',
+        'Site returned ${response.statusCode}, please check the URL',
       );
     }
     return response.body;
@@ -69,66 +69,20 @@ class RecipeUrlService {
   // Converts a raw schema.org Recipe map into a RecipeDraft.
   // Missing or malformed fields produce null/empty values rather than exceptions.
   RecipeDraft _normaliseFields(Map<String, dynamic> r) {
-    final (sections, unsectioned) = _parseIngredientListWithSections(
-      r['recipeIngredient'],
-    );
+    final ingredientStrings = r['recipeIngredient'];
+    final (sections, unsectioned) = ingredientStrings is List
+        ? RecipeTextParser.parseIngredientLines(
+            ingredientStrings.whereType<String>().toList(),
+          )
+        : (const <RecipeSectionDraft>[], const <IngredientDraft>[]);
+
     return RecipeDraft(
       name: r['name'] as String?,
-      servings: _parseServings(r['recipeYield']),
+      servings: RecipeTextParser.parseServings(r['recipeYield']),
       sections: sections,
       ingredients: unsectioned,
       steps: _parseInstructions(r['recipeInstructions']),
     );
-  }
-
-  // Scans the schema.org recipeIngredient array for section header strings
-  // (lines ending with ":" that have no leading quantity) and groups following
-  // ingredient strings under that section.
-  (List<RecipeSectionDraft>, List<IngredientDraft>)
-  _parseIngredientListWithSections(dynamic raw) {
-    if (raw is! List) return (const [], const []);
-
-    final sections = <RecipeSectionDraft>[];
-    final unsectioned = <IngredientDraft>[];
-    String? currentSectionName;
-    final currentItems = <IngredientDraft>[];
-    final headerPattern = RegExp(r'^[^0-9¼½¾⅓⅔⅛⅜⅝⅞].*:$');
-
-    for (final item in raw.whereType<String>()) {
-      final s = item.trim();
-      if (s.isEmpty) continue;
-      if (headerPattern.hasMatch(s)) {
-        // Flush previous group
-        if (currentSectionName != null && currentItems.isNotEmpty) {
-          sections.add(
-            RecipeSectionDraft(
-              name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
-              ingredients: List.of(currentItems),
-            ),
-          );
-        } else if (currentSectionName == null && currentItems.isNotEmpty) {
-          unsectioned.addAll(currentItems);
-        }
-        currentItems.clear();
-        currentSectionName = s;
-      } else {
-        currentItems.add(_parseIngredientString(s));
-      }
-    }
-
-    // Flush final group
-    if (currentSectionName != null && currentItems.isNotEmpty) {
-      sections.add(
-        RecipeSectionDraft(
-          name: currentSectionName.replaceFirst(RegExp(r':$'), '').trim(),
-          ingredients: List.of(currentItems),
-        ),
-      );
-    } else {
-      unsectioned.addAll(currentItems);
-    }
-
-    return (sections, unsectioned);
   }
 
   Map<String, dynamic>? _findRecipeNode(dynamic data) {
@@ -155,18 +109,6 @@ class RecipeUrlService {
     }
     return false;
   }
-
-  int? _parseServings(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is num) return value.round();
-    if (value is List && value.isNotEmpty) return _parseServings(value.first);
-    final match = RegExp(r'\d+').firstMatch(value.toString());
-    return match != null ? int.tryParse(match.group(0)!) : null;
-  }
-
-  /// Delegate to the deterministic [IngredientParser].
-  IngredientDraft _parseIngredientString(String s) => IngredientParser.parse(s);
 
   // Returns each instruction as a separate string.
   // Schema.org HowToStep lists produce one element per step.
