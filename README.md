@@ -1,6 +1,6 @@
 # Pantry
 
-iOS-first recipe management, shopping lists, and meal planning app. Local-AI assisted, offline-capable.
+Recipe management, shopping lists, and meal planning app. Local-AI assisted, offline-capable.
 
 Built with **Flutter** + **Drift** (SQLite ORM) + **Riverpod** state management.
 
