@@ -5784,6 +5784,425 @@ class PantryStockCompanion extends UpdateCompanion<PantryStockData> {
   }
 }
 
+class $OcrTrainingDataTable extends OcrTrainingData
+    with TableInfo<$OcrTrainingDataTable, OcrTrainingDataData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OcrTrainingDataTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _rawJsonMeta = const VerificationMeta(
+    'rawJson',
+  );
+  @override
+  late final GeneratedColumn<String> rawJson = GeneratedColumn<String>(
+    'raw_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _correctedJsonMeta = const VerificationMeta(
+    'correctedJson',
+  );
+  @override
+  late final GeneratedColumn<String> correctedJson = GeneratedColumn<String>(
+    'corrected_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _imageWidthMeta = const VerificationMeta(
+    'imageWidth',
+  );
+  @override
+  late final GeneratedColumn<int> imageWidth = GeneratedColumn<int>(
+    'image_width',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _imageHeightMeta = const VerificationMeta(
+    'imageHeight',
+  );
+  @override
+  late final GeneratedColumn<int> imageHeight = GeneratedColumn<int>(
+    'image_height',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    rawJson,
+    correctedJson,
+    imageWidth,
+    imageHeight,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ocr_training_data';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OcrTrainingDataData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('raw_json')) {
+      context.handle(
+        _rawJsonMeta,
+        rawJson.isAcceptableOrUnknown(data['raw_json']!, _rawJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rawJsonMeta);
+    }
+    if (data.containsKey('corrected_json')) {
+      context.handle(
+        _correctedJsonMeta,
+        correctedJson.isAcceptableOrUnknown(
+          data['corrected_json']!,
+          _correctedJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_correctedJsonMeta);
+    }
+    if (data.containsKey('image_width')) {
+      context.handle(
+        _imageWidthMeta,
+        imageWidth.isAcceptableOrUnknown(data['image_width']!, _imageWidthMeta),
+      );
+    }
+    if (data.containsKey('image_height')) {
+      context.handle(
+        _imageHeightMeta,
+        imageHeight.isAcceptableOrUnknown(
+          data['image_height']!,
+          _imageHeightMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OcrTrainingDataData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OcrTrainingDataData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      rawJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_json'],
+      )!,
+      correctedJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_json'],
+      )!,
+      imageWidth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}image_width'],
+      ),
+      imageHeight: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}image_height'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OcrTrainingDataTable createAlias(String alias) {
+    return $OcrTrainingDataTable(attachedDatabase, alias);
+  }
+}
+
+class OcrTrainingDataData extends DataClass
+    implements Insertable<OcrTrainingDataData> {
+  final int id;
+  final String rawJson;
+  final String correctedJson;
+  final int? imageWidth;
+  final int? imageHeight;
+  final DateTime createdAt;
+  const OcrTrainingDataData({
+    required this.id,
+    required this.rawJson,
+    required this.correctedJson,
+    this.imageWidth,
+    this.imageHeight,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['raw_json'] = Variable<String>(rawJson);
+    map['corrected_json'] = Variable<String>(correctedJson);
+    if (!nullToAbsent || imageWidth != null) {
+      map['image_width'] = Variable<int>(imageWidth);
+    }
+    if (!nullToAbsent || imageHeight != null) {
+      map['image_height'] = Variable<int>(imageHeight);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  OcrTrainingDataCompanion toCompanion(bool nullToAbsent) {
+    return OcrTrainingDataCompanion(
+      id: Value(id),
+      rawJson: Value(rawJson),
+      correctedJson: Value(correctedJson),
+      imageWidth: imageWidth == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageWidth),
+      imageHeight: imageHeight == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageHeight),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory OcrTrainingDataData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OcrTrainingDataData(
+      id: serializer.fromJson<int>(json['id']),
+      rawJson: serializer.fromJson<String>(json['rawJson']),
+      correctedJson: serializer.fromJson<String>(json['correctedJson']),
+      imageWidth: serializer.fromJson<int?>(json['imageWidth']),
+      imageHeight: serializer.fromJson<int?>(json['imageHeight']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'rawJson': serializer.toJson<String>(rawJson),
+      'correctedJson': serializer.toJson<String>(correctedJson),
+      'imageWidth': serializer.toJson<int?>(imageWidth),
+      'imageHeight': serializer.toJson<int?>(imageHeight),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  OcrTrainingDataData copyWith({
+    int? id,
+    String? rawJson,
+    String? correctedJson,
+    Value<int?> imageWidth = const Value.absent(),
+    Value<int?> imageHeight = const Value.absent(),
+    DateTime? createdAt,
+  }) => OcrTrainingDataData(
+    id: id ?? this.id,
+    rawJson: rawJson ?? this.rawJson,
+    correctedJson: correctedJson ?? this.correctedJson,
+    imageWidth: imageWidth.present ? imageWidth.value : this.imageWidth,
+    imageHeight: imageHeight.present ? imageHeight.value : this.imageHeight,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  OcrTrainingDataData copyWithCompanion(OcrTrainingDataCompanion data) {
+    return OcrTrainingDataData(
+      id: data.id.present ? data.id.value : this.id,
+      rawJson: data.rawJson.present ? data.rawJson.value : this.rawJson,
+      correctedJson: data.correctedJson.present
+          ? data.correctedJson.value
+          : this.correctedJson,
+      imageWidth: data.imageWidth.present
+          ? data.imageWidth.value
+          : this.imageWidth,
+      imageHeight: data.imageHeight.present
+          ? data.imageHeight.value
+          : this.imageHeight,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OcrTrainingDataData(')
+          ..write('id: $id, ')
+          ..write('rawJson: $rawJson, ')
+          ..write('correctedJson: $correctedJson, ')
+          ..write('imageWidth: $imageWidth, ')
+          ..write('imageHeight: $imageHeight, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    rawJson,
+    correctedJson,
+    imageWidth,
+    imageHeight,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OcrTrainingDataData &&
+          other.id == this.id &&
+          other.rawJson == this.rawJson &&
+          other.correctedJson == this.correctedJson &&
+          other.imageWidth == this.imageWidth &&
+          other.imageHeight == this.imageHeight &&
+          other.createdAt == this.createdAt);
+}
+
+class OcrTrainingDataCompanion extends UpdateCompanion<OcrTrainingDataData> {
+  final Value<int> id;
+  final Value<String> rawJson;
+  final Value<String> correctedJson;
+  final Value<int?> imageWidth;
+  final Value<int?> imageHeight;
+  final Value<DateTime> createdAt;
+  const OcrTrainingDataCompanion({
+    this.id = const Value.absent(),
+    this.rawJson = const Value.absent(),
+    this.correctedJson = const Value.absent(),
+    this.imageWidth = const Value.absent(),
+    this.imageHeight = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  OcrTrainingDataCompanion.insert({
+    this.id = const Value.absent(),
+    required String rawJson,
+    required String correctedJson,
+    this.imageWidth = const Value.absent(),
+    this.imageHeight = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : rawJson = Value(rawJson),
+       correctedJson = Value(correctedJson);
+  static Insertable<OcrTrainingDataData> custom({
+    Expression<int>? id,
+    Expression<String>? rawJson,
+    Expression<String>? correctedJson,
+    Expression<int>? imageWidth,
+    Expression<int>? imageHeight,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (rawJson != null) 'raw_json': rawJson,
+      if (correctedJson != null) 'corrected_json': correctedJson,
+      if (imageWidth != null) 'image_width': imageWidth,
+      if (imageHeight != null) 'image_height': imageHeight,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  OcrTrainingDataCompanion copyWith({
+    Value<int>? id,
+    Value<String>? rawJson,
+    Value<String>? correctedJson,
+    Value<int?>? imageWidth,
+    Value<int?>? imageHeight,
+    Value<DateTime>? createdAt,
+  }) {
+    return OcrTrainingDataCompanion(
+      id: id ?? this.id,
+      rawJson: rawJson ?? this.rawJson,
+      correctedJson: correctedJson ?? this.correctedJson,
+      imageWidth: imageWidth ?? this.imageWidth,
+      imageHeight: imageHeight ?? this.imageHeight,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (rawJson.present) {
+      map['raw_json'] = Variable<String>(rawJson.value);
+    }
+    if (correctedJson.present) {
+      map['corrected_json'] = Variable<String>(correctedJson.value);
+    }
+    if (imageWidth.present) {
+      map['image_width'] = Variable<int>(imageWidth.value);
+    }
+    if (imageHeight.present) {
+      map['image_height'] = Variable<int>(imageHeight.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OcrTrainingDataCompanion(')
+          ..write('id: $id, ')
+          ..write('rawJson: $rawJson, ')
+          ..write('correctedJson: $correctedJson, ')
+          ..write('imageWidth: $imageWidth, ')
+          ..write('imageHeight: $imageHeight, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5812,6 +6231,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PantryStockCategoriesTable pantryStockCategories =
       $PantryStockCategoriesTable(this);
   late final $PantryStockTable pantryStock = $PantryStockTable(this);
+  late final $OcrTrainingDataTable ocrTrainingData = $OcrTrainingDataTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5834,6 +6256,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pantryItems,
     pantryStockCategories,
     pantryStock,
+    ocrTrainingData,
   ];
 }
 
@@ -9179,6 +9602,235 @@ typedef $$PantryStockTableProcessedTableManager =
       PantryStockData,
       PrefetchHooks Function()
     >;
+typedef $$OcrTrainingDataTableCreateCompanionBuilder =
+    OcrTrainingDataCompanion Function({
+      Value<int> id,
+      required String rawJson,
+      required String correctedJson,
+      Value<int?> imageWidth,
+      Value<int?> imageHeight,
+      Value<DateTime> createdAt,
+    });
+typedef $$OcrTrainingDataTableUpdateCompanionBuilder =
+    OcrTrainingDataCompanion Function({
+      Value<int> id,
+      Value<String> rawJson,
+      Value<String> correctedJson,
+      Value<int?> imageWidth,
+      Value<int?> imageHeight,
+      Value<DateTime> createdAt,
+    });
+
+class $$OcrTrainingDataTableFilterComposer
+    extends Composer<_$AppDatabase, $OcrTrainingDataTable> {
+  $$OcrTrainingDataTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawJson => $composableBuilder(
+    column: $table.rawJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedJson => $composableBuilder(
+    column: $table.correctedJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get imageWidth => $composableBuilder(
+    column: $table.imageWidth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get imageHeight => $composableBuilder(
+    column: $table.imageHeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OcrTrainingDataTableOrderingComposer
+    extends Composer<_$AppDatabase, $OcrTrainingDataTable> {
+  $$OcrTrainingDataTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawJson => $composableBuilder(
+    column: $table.rawJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedJson => $composableBuilder(
+    column: $table.correctedJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get imageWidth => $composableBuilder(
+    column: $table.imageWidth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get imageHeight => $composableBuilder(
+    column: $table.imageHeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OcrTrainingDataTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OcrTrainingDataTable> {
+  $$OcrTrainingDataTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get rawJson =>
+      $composableBuilder(column: $table.rawJson, builder: (column) => column);
+
+  GeneratedColumn<String> get correctedJson => $composableBuilder(
+    column: $table.correctedJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get imageWidth => $composableBuilder(
+    column: $table.imageWidth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get imageHeight => $composableBuilder(
+    column: $table.imageHeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$OcrTrainingDataTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OcrTrainingDataTable,
+          OcrTrainingDataData,
+          $$OcrTrainingDataTableFilterComposer,
+          $$OcrTrainingDataTableOrderingComposer,
+          $$OcrTrainingDataTableAnnotationComposer,
+          $$OcrTrainingDataTableCreateCompanionBuilder,
+          $$OcrTrainingDataTableUpdateCompanionBuilder,
+          (
+            OcrTrainingDataData,
+            BaseReferences<
+              _$AppDatabase,
+              $OcrTrainingDataTable,
+              OcrTrainingDataData
+            >,
+          ),
+          OcrTrainingDataData,
+          PrefetchHooks Function()
+        > {
+  $$OcrTrainingDataTableTableManager(
+    _$AppDatabase db,
+    $OcrTrainingDataTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OcrTrainingDataTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OcrTrainingDataTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OcrTrainingDataTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> rawJson = const Value.absent(),
+                Value<String> correctedJson = const Value.absent(),
+                Value<int?> imageWidth = const Value.absent(),
+                Value<int?> imageHeight = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => OcrTrainingDataCompanion(
+                id: id,
+                rawJson: rawJson,
+                correctedJson: correctedJson,
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String rawJson,
+                required String correctedJson,
+                Value<int?> imageWidth = const Value.absent(),
+                Value<int?> imageHeight = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => OcrTrainingDataCompanion.insert(
+                id: id,
+                rawJson: rawJson,
+                correctedJson: correctedJson,
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OcrTrainingDataTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OcrTrainingDataTable,
+      OcrTrainingDataData,
+      $$OcrTrainingDataTableFilterComposer,
+      $$OcrTrainingDataTableOrderingComposer,
+      $$OcrTrainingDataTableAnnotationComposer,
+      $$OcrTrainingDataTableCreateCompanionBuilder,
+      $$OcrTrainingDataTableUpdateCompanionBuilder,
+      (
+        OcrTrainingDataData,
+        BaseReferences<
+          _$AppDatabase,
+          $OcrTrainingDataTable,
+          OcrTrainingDataData
+        >,
+      ),
+      OcrTrainingDataData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9224,4 +9876,6 @@ class $AppDatabaseManager {
       $$PantryStockCategoriesTableTableManager(_db, _db.pantryStockCategories);
   $$PantryStockTableTableManager get pantryStock =>
       $$PantryStockTableTableManager(_db, _db.pantryStock);
+  $$OcrTrainingDataTableTableManager get ocrTrainingData =>
+      $$OcrTrainingDataTableTableManager(_db, _db.ocrTrainingData);
 }

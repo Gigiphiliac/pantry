@@ -1,0 +1,27 @@
+// Feature configuration exported from the trained model pipeline.
+// Must match FeatureExtractor.featureNames in lib/core/ocr/feature_extractor.dart.
+{
+  "feature_names": [
+    "relative_top",
+    "relative_left",
+    "relative_width",
+    "relative_height",
+    "relative_font_size",
+    "block_index",
+    "lines_in_block",
+    "line_index_in_block",
+    "starts_with_digit",
+    "starts_with_unicode_fraction",
+    "ends_with_colon",
+    "word_count",
+    "char_count",
+    "starts_with_imperative_verb",
+    "contains_number",
+    "ends_with_punctuation",
+    "has_mixed_case",
+    "confidence",
+    "is_first_in_block",
+    "is_last_in_block"
+  ],
+  "num_features": 20
+}

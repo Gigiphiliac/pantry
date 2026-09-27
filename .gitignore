@@ -58,3 +58,6 @@ app.*.map.json
 
 # Desktop platform ephemeral build files (Linux, macOS, Windows)
 **/flutter/ephemeral/
+
+# Training .venv
+.venv

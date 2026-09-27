@@ -6,6 +6,7 @@ import 'features/recipes/recipes_screen.dart';
 import 'features/pantry/pantry_screen.dart';
 import 'features/meal_plans/meal_plans_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/recipes/ocr/ocr_providers.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_mode_provider.dart';
 
@@ -31,15 +32,24 @@ class PantryApp extends ConsumerWidget {
   }
 }
 
-class _NavShell extends StatefulWidget {
+class _NavShell extends ConsumerStatefulWidget {
   const _NavShell();
 
   @override
-  State<_NavShell> createState() => _NavShellState();
+  ConsumerState<_NavShell> createState() => _NavShellState();
 }
 
-class _NavShellState extends State<_NavShell> {
+class _NavShellState extends ConsumerState<_NavShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialise the OCR line classifier (loads LightGBM model from assets).
+    // This is non-blocking — the classifier falls back to the heuristic stub
+    // if the model asset isn't ready yet.
+    ref.read(onnxClassifierProvider).init();
+  }
 
   static const _screens = [
     ShoppingListsScreen(),

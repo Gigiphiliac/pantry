@@ -1,0 +1,11 @@
+lightgbm>=4.0
+scikit-learn>=1.2
+numpy>=1.24
+pandas>=2.0
+onnx>=1.14
+onnxruntime>=1.15
+onnxmltools>=1.11
+coremltools>=7.0
+pillow>=10.0
+matplotlib>=3.7
+

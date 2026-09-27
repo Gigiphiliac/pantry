@@ -140,7 +140,7 @@ class RecipeTextParser {
     // Extract title from pre-lines: first non-ingredient-like line
     String? title;
     for (final line in preLines) {
-      if (!_startsWithQuantity(line) &&
+      if (!startsWithQuantity(line) &&
           !_isZoneMarker(line, _ingredientsMarkers)) {
         title = line;
         break;
@@ -154,13 +154,13 @@ class RecipeTextParser {
     );
   }
 
-  static bool _startsWithQuantity(String line) =>
+  static bool startsWithQuantity(String line) =>
       RegExp(r'^[\d¼½¾⅓⅔⅛⅜⅝⅞]').hasMatch(line);
 
   /// Cooking-instruction imperative verbs. A line starting with one of these
   /// (base/imperative form) is almost certainly an instruction, not an
   /// ingredient.
-  static const _imperativeVerbs = {
+  static const imperativeVerbs = {
     'add',
     'bake',
     'beat',
@@ -240,7 +240,7 @@ class RecipeTextParser {
     // Step 1: extract title — first line that doesn't start with a quantity
     String? title;
     int startIdx = 0;
-    if (_startsWithQuantity(lines.first)) {
+    if (startsWithQuantity(lines.first)) {
       startIdx = 0;
     } else {
       title = lines.first;
@@ -260,7 +260,7 @@ class RecipeTextParser {
         break;
       }
       final firstWord = line.split(RegExp(r'\s+')).first.toLowerCase();
-      if (_imperativeVerbs.contains(firstWord)) {
+      if (imperativeVerbs.contains(firstWord)) {
         splitIdx = i;
         break;
       }
