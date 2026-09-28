@@ -14,49 +14,57 @@ class MealPlansScreen extends ConsumerStatefulWidget {
 }
 
 class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
+  late final PageController _pageCtrl;
   late DateTime _weekStart;
-  bool _showDeleteZone = false;
+  bool _isDragging = false;
 
   @override
   void initState() {
     super.initState();
     _weekStart = _computeWeekStart(DateTime.now());
+    _pageCtrl = PageController(initialPage: 104);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
   }
 
   DateTime _computeWeekStart(DateTime date) {
     final normalised = DateTime(date.year, date.month, date.day);
-    final dow = normalised.weekday; // 1=Mon ... 7=Sun
+    final dow = normalised.weekday;
     return normalised.subtract(Duration(days: dow - 1));
   }
 
-  void _goPrevious() =>
-      setState(() => _weekStart = _weekStart.subtract(const Duration(days: 7)));
-
-  void _goNext() =>
-      setState(() => _weekStart = _weekStart.add(const Duration(days: 7)));
-
-  void _goToday() =>
-      setState(() => _weekStart = _computeWeekStart(DateTime.now()));
-
-  String _dayName(int weekday) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[weekday - 1];
+  void _goPrevious() {
+    _pageCtrl.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
-  String _dateKey(DateTime dt) =>
-      '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  void _goNext() {
+    _pageCtrl.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
-  bool _isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
+  void _goToday() {
+    final target = _computeWeekStart(DateTime.now());
+    final offset = target.difference(_weekStart).inDays ~/ 7;
+    final current = _pageCtrl.page?.round() ?? 0;
+    _pageCtrl.animateToPage(
+      current + offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final slotsAsync = ref.watch(mealSlotsForWeekProvider(_weekStart));
 
     return Scaffold(
       appBar: AppBar(
@@ -66,62 +74,45 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       ),
       body: Column(
         children: [
-          // ── Week cycling header ──────────────────────────────────
           WeekHeader(
             weekStart: _weekStart,
             onPrevious: _goPrevious,
             onNext: _goNext,
             onToday: _goToday,
           ),
-
-          // ── Week grid ────────────────────────────────────────────
           Expanded(
-            child: slotsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (slots) => _buildWeekGrid(theme, slots),
+            child: PageView(
+              controller: _pageCtrl,
+              onPageChanged: (page) {
+                setState(() {
+                  _weekStart = _computeWeekStart(
+                    DateTime.now(),
+                  ).add(Duration(days: 7 * (page - 104)));
+                });
+              },
+              children: List.generate(
+                // 208 pages = ~4 years of weeks centred on current week.
+                208,
+                (i) => _WeekPage(
+                  weekStart: _computeWeekStart(
+                    DateTime.now(),
+                  ).add(Duration(days: 7 * (i - 104))),
+                  isDragging: _isDragging,
+                  onDragChanged: (v) => setState(() => _isDragging = v),
+                ),
+              ),
             ),
           ),
         ],
       ),
-
-      // ── Floating delete zone ─────────────────────────────────────
-      floatingActionButton: _showDeleteZone ? _buildDeleteFab(theme) : null,
-    );
-  }
-
-  Widget _buildWeekGrid(ThemeData theme, Map<String, MealSlotData> slots) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      itemCount: 7,
-      itemBuilder: (context, index) {
-        final date = _weekStart.add(Duration(days: index));
-        final isToday = _isToday(date);
-        final dateStr = _dateKey(date);
-
-        return _DayRow(
-          date: date,
-          dayName: _dayName(date.weekday),
-          isToday: isToday,
-          mealTypeKeys: const ['breakfast', 'lunch', 'dinner'],
-          slots: slots,
-          dateStr: dateStr,
-          onTapSlot: (mealType) => _openSlotDetail(date, mealType, slots),
-          onDeleteSlot: (mealType) => _deleteSlot(dateStr, mealType, slots),
-          onDragStarted: (_) => setState(() => _showDeleteZone = true),
-          onDragEnded: () => setState(() => _showDeleteZone = false),
-          onAcceptDrop: (data, mealType) =>
-              _handleDrop(data, date, mealType, slots),
-          isOtherDragging: _showDeleteZone,
-        );
-      },
+      floatingActionButton: _isDragging ? _buildDeleteFab(theme) : null,
     );
   }
 
   Widget _buildDeleteFab(ThemeData theme) {
     return DragTarget<MealSlotData>(
       onAcceptWithDetails: (details) async {
-        setState(() => _showDeleteZone = false);
+        setState(() => _isDragging = false);
         final ops = ref.read(mealPlanOpsProvider);
         await ops.clearSlot(details.data.id);
         if (mounted) {
@@ -150,44 +141,49 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       },
     );
   }
+}
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+// ── Week page ────────────────────────────────────────────────────────────────
 
-  void _openSlotDetail(
-    DateTime date,
-    String mealType,
-    Map<String, MealSlotData> slots,
-  ) {
-    final key = '${_dateKey(date)}_$mealType';
-    final existing = slots[key];
+class _WeekPage extends ConsumerWidget {
+  final DateTime weekStart;
+  final bool isDragging;
+  final ValueChanged<bool> onDragChanged;
+
+  const _WeekPage({
+    required this.weekStart,
+    required this.isDragging,
+    required this.onDragChanged,
+  });
+
+  String _dayName(int weekday) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[weekday - 1];
+  }
+
+  String _dateKey(DateTime dt) =>
+      '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  void _openSlotDetail(BuildContext context, DateTime date, String mealType) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SlotDetailScreen(
-          date: date,
-          mealType: mealType,
-          existingSlot: existing,
-        ),
+        builder: (_) => SlotDetailScreen(date: date, mealType: mealType),
       ),
     );
   }
 
-  Future<void> _deleteSlot(
-    String dateStr,
-    String mealType,
-    Map<String, MealSlotData> slots,
-  ) async {
-    final key = '${dateStr}_$mealType';
-    final slot = slots[key];
-    if (slot == null) return;
-    final ops = ref.read(mealPlanOpsProvider);
-    await ops.clearSlot(slot.id);
-  }
-
   Future<void> _handleDrop(
+    WidgetRef ref,
     MealSlotData source,
     DateTime targetDate,
     String targetMealType,
-    Map<String, MealSlotData> slots,
   ) async {
     final ops = ref.read(mealPlanOpsProvider);
     await ops.swapSlots(
@@ -198,37 +194,64 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       targetMealType: targetMealType,
     );
   }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final slots =
+        ref.watch(mealSlotsForWeekProvider(weekStart)).valueOrNull ?? {};
+
+    return Column(
+      children: List.generate(7, (index) {
+        final date = weekStart.add(Duration(days: index));
+
+        return Expanded(
+          child: _DayRow(
+            date: date,
+            dayName: _dayName(date.weekday),
+            dateStr: _dateKey(date),
+            isToday: _isToday(date),
+            mealTypeKeys: const ['breakfast', 'lunch', 'dinner'],
+            slots: slots,
+            isDragging: isDragging,
+            onDragStarted: () => onDragChanged(true),
+            onDragEnded: () => onDragChanged(false),
+            onTapSlot: (mealType) => _openSlotDetail(context, date, mealType),
+            onAcceptDrop: (data, mealType) =>
+                _handleDrop(ref, data, date, mealType),
+          ),
+        );
+      }),
+    );
+  }
 }
 
-// ── Day Row Widget ──────────────────────────────────────────────────────────
+// ── Day Row ──────────────────────────────────────────────────────────────────
 
 class _DayRow extends StatelessWidget {
   final DateTime date;
   final String dayName;
+  final String dateStr;
   final bool isToday;
   final List<String> mealTypeKeys;
   final Map<String, MealSlotData> slots;
-  final String dateStr;
+  final bool isDragging;
+  final VoidCallback onDragStarted;
+  final VoidCallback onDragEnded;
   final void Function(String mealType) onTapSlot;
-  final void Function(String mealType) onDeleteSlot;
-  final ValueChanged<MealSlotData>? onDragStarted;
-  final VoidCallback? onDragEnded;
   final void Function(MealSlotData data, String targetMealType) onAcceptDrop;
-  final bool isOtherDragging;
 
   const _DayRow({
     required this.date,
     required this.dayName,
+    required this.dateStr,
     required this.isToday,
     required this.mealTypeKeys,
     required this.slots,
-    required this.dateStr,
+    required this.isDragging,
+    required this.onDragStarted,
+    required this.onDragEnded,
     required this.onTapSlot,
-    required this.onDeleteSlot,
-    this.onDragStarted,
-    this.onDragEnded,
     required this.onAcceptDrop,
-    required this.isOtherDragging,
   });
 
   @override
@@ -236,14 +259,15 @@ class _DayRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Day label ─────────────────────────────────────────────
           SizedBox(
             width: 44,
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   dayName,
@@ -283,16 +307,17 @@ class _DayRow extends StatelessWidget {
                             mealType: mealType,
                             slot: slot,
                             isToday: isToday,
-                            onDragStarted: onDragStarted,
+                            isDragActive: isDragging,
+                            onDragStarted: (_) => onDragStarted(),
                             onDragEnded: onDragEnded,
                             onAcceptDrop: (dropped) =>
                                 onAcceptDrop(dropped, mealType),
-                            onDelete: () => onDeleteSlot(mealType),
+                            onTap: () => onTapSlot(mealType),
                           )
                         : MealSlotCell(
                             mealType: mealType,
                             isToday: isToday,
-                            isDragActive: isOtherDragging,
+                            isDragActive: isDragging,
                             onAcceptDrop: (dropped) =>
                                 onAcceptDrop(dropped, mealType),
                             onTap: () => onTapSlot(mealType),

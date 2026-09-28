@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:pantry/features/meal_plans/meal_plan_providers.dart';
 
-/// Describes a single cell in the week grid — either a placeholder
+/// A single cell in the week grid — either a placeholder
 /// ("Breakfast", "Lunch", "Dinner") or an active meal slot.
+///
+/// When [isDragActive] is true, the cell renders as a [DragTarget] so other
+/// slots can be dropped onto it. The hover highlight is controlled by the
+/// DragTarget's builder (only shows when a drag hovers over this cell).
 class MealSlotCell extends StatelessWidget {
   final String mealType;
   final MealSlotData? slot;
   final bool isToday;
   final bool isDragActive;
-  final bool isDropCandidate;
   final VoidCallback onTap;
   final void Function(MealSlotData data)? onAcceptDrop;
 
@@ -18,7 +21,6 @@ class MealSlotCell extends StatelessWidget {
     this.slot,
     this.isToday = false,
     this.isDragActive = false,
-    this.isDropCandidate = false,
     required this.onTap,
     this.onAcceptDrop,
   });
@@ -41,24 +43,18 @@ class MealSlotCell extends StatelessWidget {
     final theme = Theme.of(context);
     final filled = slot != null;
 
-    // ── Base cell decoration ───────────────────────────────────────────
     final cell = Container(
       decoration: BoxDecoration(
         color: _cellColor(theme, filled),
-        border: Border.all(
-          color: _borderColor(theme, filled),
-          width: isDropCandidate ? 1.5 : 0.5,
-        ),
+        border: Border.all(color: _borderColor(theme, filled), width: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       child: filled ? _filledContent(theme) : _placeholderContent(theme),
     );
 
-    // ── Wrap in DragTarget only when drag is active ────────────────────
-    if (isDragActive && filled) {
-      // When there IS content, we want to show childWhenDragging from the
-      // LongPressDraggable. DragTarget just wraps for accepting drops.
+    // Wrap in DragTarget during active drag so drops can land here.
+    if (isDragActive) {
       return DragTarget<MealSlotData>(
         onAcceptWithDetails: (details) {
           onAcceptDrop?.call(details.data);
@@ -73,21 +69,22 @@ class MealSlotCell extends StatelessWidget {
                   ? theme.colorScheme.primaryContainer.withValues(alpha: 0.25)
                   : Colors.transparent,
             ),
-            child: cell,
+            child: GestureDetector(onTap: onTap, child: cell),
           );
         },
       );
     }
 
-    // ── No drag active → simple tappable cell ─────────────────────────
+    // No drag active → simple tappable cell.
     return GestureDetector(onTap: onTap, child: cell);
   }
 
-  // ── Empty placeholder content ──────────────────────────────────────────
+  // ── Content builders ──────────────────────────────────────────────────
+
   Widget _placeholderContent(ThemeData theme) {
     return Text(
       _placeholder,
-      style: theme.textTheme.bodySmall?.copyWith(
+      style: theme.textTheme.bodyMedium?.copyWith(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
       ),
       textAlign: TextAlign.center,
@@ -96,14 +93,13 @@ class MealSlotCell extends StatelessWidget {
     );
   }
 
-  // ── Filled slot content ────────────────────────────────────────────────
   Widget _filledContent(ThemeData theme) {
     return Row(
       children: [
         Expanded(
           child: Text(
             slot!.slotName,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
@@ -148,17 +144,19 @@ class MealSlotCell extends StatelessWidget {
   }
 }
 
-/// The draggable wrapper — used only for filled slots in the week view.
-/// Needs to be a StatefulWidget so we can manage drag state (show delete zone).
+/// A draggable meal slot cell — wraps [MealSlotCell] in a
+/// [LongPressDraggable] for drag-and-drop reordering.
+///
+/// A short tap calls [onTap]; a long press (400ms) starts a drag.
 class DraggableMealSlotCell extends StatefulWidget {
   final String mealType;
   final MealSlotData slot;
   final bool isToday;
+  final bool isDragActive;
   final ValueChanged<MealSlotData>? onDragStarted;
   final VoidCallback? onDragEnded;
   final void Function(MealSlotData data)? onAcceptDrop;
-
-  /// Called when the user drops this slot onto the delete target.
+  final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
   const DraggableMealSlotCell({
@@ -166,9 +164,11 @@ class DraggableMealSlotCell extends StatefulWidget {
     required this.mealType,
     required this.slot,
     this.isToday = false,
+    this.isDragActive = false,
     this.onDragStarted,
     this.onDragEnded,
     this.onAcceptDrop,
+    this.onTap,
     this.onDelete,
   });
 
@@ -177,7 +177,7 @@ class DraggableMealSlotCell extends StatefulWidget {
 }
 
 class _DraggableMealSlotCellState extends State<DraggableMealSlotCell> {
-  bool _isDragging = false;
+  bool _selfDragging = false;
 
   @override
   Widget build(BuildContext context) {
@@ -187,15 +187,15 @@ class _DraggableMealSlotCellState extends State<DraggableMealSlotCell> {
       data: widget.slot,
       delay: const Duration(milliseconds: 400),
       onDragStarted: () {
-        setState(() => _isDragging = true);
+        setState(() => _selfDragging = true);
         widget.onDragStarted?.call(widget.slot);
       },
       onDragEnd: (_) {
-        setState(() => _isDragging = false);
+        setState(() => _selfDragging = false);
         widget.onDragEnded?.call();
       },
       onDraggableCanceled: (_, __) {
-        setState(() => _isDragging = false);
+        setState(() => _selfDragging = false);
         widget.onDragEnded?.call();
       },
       feedback: Material(
@@ -209,7 +209,7 @@ class _DraggableMealSlotCellState extends State<DraggableMealSlotCell> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: theme.colorScheme.primary),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -249,11 +249,11 @@ class _DraggableMealSlotCellState extends State<DraggableMealSlotCell> {
         mealType: widget.mealType,
         slot: widget.slot,
         isToday: widget.isToday,
-        isDragActive: _isDragging,
+        // Show as DragTarget when THIS cell is being dragged OR another
+        // cell is being dragged (isDragActive from parent).
+        isDragActive: _selfDragging || widget.isDragActive,
         onAcceptDrop: widget.onAcceptDrop,
-        onTap: () {
-          // Tap while dragging is handled by LongPressDraggable.
-        },
+        onTap: widget.onTap ?? () {},
       ),
     );
   }

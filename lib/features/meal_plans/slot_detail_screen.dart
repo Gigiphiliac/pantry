@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
@@ -14,13 +15,11 @@ import 'package:pantry/main.dart';
 class SlotDetailScreen extends ConsumerStatefulWidget {
   final DateTime date;
   final String mealType; // 'breakfast' | 'lunch' | 'dinner'
-  final MealSlotData? existingSlot;
 
   const SlotDetailScreen({
     super.key,
     required this.date,
     required this.mealType,
-    this.existingSlot,
   });
 
   @override
@@ -33,15 +32,40 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
   MealSlotData? _slot;
   bool _dirty = false;
   bool _hasSaved = false;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _slot = widget.existingSlot;
-    _nameCtrl = TextEditingController(text: _slot?.slotName ?? '');
-    _notesCtrl = TextEditingController(text: _slot?.notes ?? '');
+    _nameCtrl = TextEditingController();
+    _notesCtrl = TextEditingController();
     _nameCtrl.addListener(_markDirty);
     _notesCtrl.addListener(_markDirty);
+    _loadExistingSlot();
+  }
+
+  Future<void> _loadExistingSlot() async {
+    final db = ref.read(dbProvider);
+    final normalised = normaliseDate(widget.date);
+    final rows =
+        await (db.select(db.mealSlots)..where(
+              (t) =>
+                  t.date.equals(normalised) &
+                  t.mealType.equals(widget.mealType),
+            ))
+            .get();
+    if (!mounted) return;
+    if (rows.isNotEmpty) {
+      final slot = rows.first;
+      setState(() {
+        _slot = MealSlotData.fromMealSlot(slot);
+        _nameCtrl.text = slot.slotName;
+        _notesCtrl.text = slot.notes ?? '';
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+    }
   }
 
   @override
@@ -71,9 +95,56 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
     }
   }
 
+  String get _subtitleText {
+    final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final dayName = dayNames[widget.date.weekday - 1];
+    final dateStr = '${dayName} ${widget.date.day} ${_monthAbbr(widget.date)}';
+    return '$dateStr · $_mealLabel';
+  }
+
+  String _monthAbbr(DateTime dt) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[dt.month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_mealLabel),
+              Text(
+                _subtitleText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return PopScope(
       canPop: true,
@@ -83,9 +154,27 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Meal Slot'),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_slot?.slotName ?? _mealLabel),
+              Text(
+                _subtitleText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
           actions: [
             if (_slot != null) ...[
+              IconButton(
+                icon: const Icon(Icons.swap_horiz),
+                tooltip: 'Swap with…',
+                onPressed: () => _openSwapSheet(context),
+              ),
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Clear slot',
@@ -97,16 +186,6 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // ── Meal type chip ─────────────────────────────────────
-            Align(
-              alignment: Alignment.centerRight,
-              child: Chip(
-                label: Text(_mealLabel, style: theme.textTheme.labelSmall),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            const SizedBox(height: 8),
-
             // ── Slot name ─────────────────────────────────────────
             TextField(
               controller: _nameCtrl,
@@ -122,15 +201,6 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
             // ── Recipe link ───────────────────────────────────────
             _buildRecipeSection(context, theme),
             const SizedBox(height: 16),
-
-            // ── Swap with… ─────────────────────────────────────────
-            if (_slot != null)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.swap_horiz, size: 18),
-                label: const Text('Swap with…'),
-                onPressed: () => _openSwapSheet(context),
-              ),
-            if (_slot != null) const SizedBox(height: 16),
 
             // ── Notes ──────────────────────────────────────────────
             TextField(
@@ -301,6 +371,9 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
       targetDate: targetDate,
       targetMealType: result.mealType,
     );
+    // Invalidate the local stale slot so _saveIfNeeded doesn't
+    // upsert at the old (date, mealType) and re-create it.
+    _hasSaved = true;
 
     // If the swap moved us away, pop back to week view
     if (result.targetSlot != null &&
@@ -312,12 +385,14 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
 
   Future<void> _clearSlot(BuildContext context) async {
     if (_slot == null) return;
+    _hasSaved = true; // Prevent auto-save from re-creating
     final ops = ref.read(mealPlanOpsProvider);
     await ops.clearSlot(_slot!.id);
     if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _saveIfNeeded() async {
+    if (_loading) return;
     if (_hasSaved) return; // Already saved via a direct action
     if (!_dirty) return;
 
