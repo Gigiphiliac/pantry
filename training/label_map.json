@@ -1,0 +1,13 @@
+// Label mapping for the ONNX classifier output.
+// Index in array = model output class index.
+[
+  "title",
+  "servings",
+  "section_header",
+  "ingredient",
+  "method_step",
+  "method_continuation",
+  "nutrition",
+  "notes",
+  "ignore"
+]

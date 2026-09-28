@@ -164,6 +164,19 @@ class PantryStock extends Table {
   ];
 }
 
+/// Training data captured from OCR scans with user corrections.
+///
+/// Raw OCR input and the final structured recipe are stored as JSON so they
+/// can be exported and fed back into the training pipeline.
+class OcrTrainingData extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get rawJson => text()();
+  TextColumn get correctedJson => text()();
+  IntColumn get imageWidth => integer().nullable()();
+  IntColumn get imageHeight => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 
 @DriftDatabase(
@@ -185,6 +198,7 @@ class PantryStock extends Table {
     PantryItems,
     PantryStockCategories,
     PantryStock,
+    OcrTrainingData,
   ],
 )
 class AppDatabase extends _$AppDatabase {

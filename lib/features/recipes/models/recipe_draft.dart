@@ -33,6 +33,15 @@ class IngredientDraft {
 
   static String? _nullIfEmpty(String? s) =>
       (s == null || s.trim().isEmpty) ? null : s.trim();
+
+  Map<String, dynamic> toJson() => {
+    'qty': qty,
+    'unit': unit,
+    'name': name,
+    'notes': notes,
+    if (alternatives.isNotEmpty)
+      'alternatives': alternatives.map((a) => a.toJson()).toList(),
+  };
 }
 
 class RecipeSectionDraft {
@@ -54,6 +63,11 @@ class RecipeSectionDraft {
       ingredients: ingredients,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'ingredients': ingredients.map((i) => i.toJson()).toList(),
+  };
 }
 
 class RecipeDraft {
@@ -121,4 +135,12 @@ class RecipeDraft {
 
   static String? _nullIfEmpty(String? s) =>
       (s == null || s.trim().isEmpty) ? null : s.trim();
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'servings': servings,
+    'ingredients': ingredients.map((i) => i.toJson()).toList(),
+    'sections': sections.map((s) => s.toJson()).toList(),
+    'steps': steps,
+  };
 }
