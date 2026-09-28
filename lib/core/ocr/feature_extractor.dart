@@ -82,8 +82,9 @@ class FeatureExtractor {
     final relativeLeft = box.left / imgW;
     final relativeWidth = box.width / imgW;
     final relativeHeight = box.height / imgH;
-    final relativeFontSize =
-        avgLineHeight > 0 ? box.height / avgLineHeight : 1.0;
+    final relativeFontSize = avgLineHeight > 0
+        ? box.height / avgLineHeight
+        : 1.0;
 
     // ── Block membership ───────────────────────────────────────────────
     final blockIdx = line.blockIndex.toDouble();
@@ -93,11 +94,11 @@ class FeatureExtractor {
     // ── Text heuristics ────────────────────────────────────────────────
     final trimmed = text.trim();
 
-    bool startsWithDigit = trimmed.isNotEmpty &&
-        RegExp(r'^[\d]').hasMatch(trimmed);
+    bool startsWithDigit =
+        trimmed.isNotEmpty && RegExp(r'^[\d]').hasMatch(trimmed);
 
-    bool startsWithFraction = trimmed.isNotEmpty &&
-        RegExp(r'^[¼½¾⅓⅔⅛⅜⅝⅞]').hasMatch(trimmed);
+    bool startsWithFraction =
+        trimmed.isNotEmpty && RegExp(r'^[¼½¾⅓⅔⅛⅜⅝⅞]').hasMatch(trimmed);
 
     bool endsWithColon = trimmed.endsWith(':');
 
@@ -105,14 +106,14 @@ class FeatureExtractor {
     final wordCount = words.length.toDouble();
     final charCount = trimmed.length.toDouble();
 
-    bool startsWithVerb = trimmed.isNotEmpty &&
-        RecipeTextParser.imperativeVerbs
-            .contains(words.first.toLowerCase());
+    bool startsWithVerb =
+        trimmed.isNotEmpty &&
+        RecipeTextParser.imperativeVerbs.contains(words.first.toLowerCase());
 
     bool containsNumber = RegExp(r'\d').hasMatch(trimmed);
 
-    bool endsWithPunctuation = trimmed.isNotEmpty &&
-        RegExp(r'[.!?]$').hasMatch(trimmed);
+    bool endsWithPunctuation =
+        trimmed.isNotEmpty && RegExp(r'[.!?]$').hasMatch(trimmed);
 
     // Mixed case: has both upper and lower chars (likely a title)
     bool hasMixedCase = _hasMixedCase(trimmed);
@@ -122,8 +123,9 @@ class FeatureExtractor {
 
     // Position within block
     final isFirstInBlock = line.lineIndexInBlock == 0 ? 1.0 : 0.0;
-    final isLastInBlock =
-        line.lineIndexInBlock == line.linesInBlock - 1 ? 1.0 : 0.0;
+    final isLastInBlock = line.lineIndexInBlock == line.linesInBlock - 1
+        ? 1.0
+        : 0.0;
 
     return [
       relativeTop,

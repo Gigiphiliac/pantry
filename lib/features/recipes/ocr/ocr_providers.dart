@@ -39,14 +39,16 @@ class OcrTrainingDataService {
     required RecipeDraft correctedDraft,
   }) async {
     try {
-      await _db.into(_db.ocrTrainingData).insert(
-        OcrTrainingDataCompanion.insert(
-          rawJson: jsonEncode(_serializeOcrInput(ocrInput)),
-          correctedJson: jsonEncode(correctedDraft.toJson()),
-          imageWidth: Value(ocrInput.imageSize.width.round()),
-          imageHeight: Value(ocrInput.imageSize.height.round()),
-        ),
-      );
+      await _db
+          .into(_db.ocrTrainingData)
+          .insert(
+            OcrTrainingDataCompanion.insert(
+              rawJson: jsonEncode(_serializeOcrInput(ocrInput)),
+              correctedJson: jsonEncode(correctedDraft.toJson()),
+              imageWidth: Value(ocrInput.imageSize.width.round()),
+              imageHeight: Value(ocrInput.imageSize.height.round()),
+            ),
+          );
     } catch (_) {
       // Silently fail — training data capture is non-critical
     }

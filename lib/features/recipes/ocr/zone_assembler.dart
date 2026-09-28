@@ -96,7 +96,7 @@ class ZoneAssembler {
           notesLines.add(text);
 
         case OcrLineLabel.ignore:
-          // Skip entirely
+        // Skip entirely
       }
     }
 
@@ -124,8 +124,9 @@ class ZoneAssembler {
   /// [OcrRecipeParser].
   static RecipeDraft toRecipeDraft(AssembledRecipe assembled) {
     // Parse ingredients with section detection (colon headers create sections)
-    final (sections, unsectioned) =
-        RecipeTextParser.parseIngredientLines(assembled.ingredientLines);
+    final (sections, unsectioned) = RecipeTextParser.parseIngredientLines(
+      assembled.ingredientLines,
+    );
 
     // Parse method lines into individual steps
     final steps = RecipeTextParser.parseInstructions(assembled.methodLines);
@@ -145,4 +146,3 @@ class ZoneAssembler {
     );
   }
 }
-

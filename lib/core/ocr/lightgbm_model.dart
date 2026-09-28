@@ -27,7 +27,9 @@ class LightgbmModel {
   // ── Loading ─────────────────────────────────────────────────────────────
 
   /// Load model from a JSON asset path.
-  Future<void> load({String assetPath = 'assets/ml/recipe_classifier.json'}) async {
+  Future<void> load({
+    String assetPath = 'assets/ml/recipe_classifier.json',
+  }) async {
     try {
       final jsonStr = await rootBundle.loadString(assetPath);
       final data = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -72,7 +74,10 @@ class LightgbmModel {
     for (var ti = 0; ti < numTrees; ti++) {
       final classIdx = ti % _numTreePerIteration;
       final tree = _treeInfo[ti];
-      final leafValue = _walkTree(tree['tree_structure'] as Map<String, dynamic>, features);
+      final leafValue = _walkTree(
+        tree['tree_structure'] as Map<String, dynamic>,
+        features,
+      );
       scores[classIdx] += leafValue;
     }
 
@@ -93,7 +98,9 @@ class LightgbmModel {
     final decisionType = node['decision_type'] as String? ?? '<=';
 
     final featValue = features[splitFeature];
-    final goLeft = decisionType == '<=' ? featValue <= threshold : featValue <= threshold;
+    final goLeft = decisionType == '<='
+        ? featValue <= threshold
+        : featValue <= threshold;
 
     if (goLeft) {
       return _walkTree(node['left_child'] as Map<String, dynamic>, features);

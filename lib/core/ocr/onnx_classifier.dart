@@ -91,23 +91,23 @@ class OnnxClassifier {
   }
 
   /// Run the LightGBM model on [features].
-  Future<OcrClassificationResult> _runModel(
-    List<List<double>> features,
-  ) async {
+  Future<OcrClassificationResult> _runModel(List<List<double>> features) async {
     final results = _model.predict(features);
     final labels = <OcrLineClassification>[];
 
     for (final (classIdx, confidence) in results) {
-      final labelName = _model.labelNames != null &&
-              classIdx < _model.labelNames!.length
+      final labelName =
+          _model.labelNames != null && classIdx < _model.labelNames!.length
           ? _model.labelNames![classIdx]
           : 'ignore';
 
-      labels.add(OcrLineClassification(
-        label: _labelFromName(labelName),
-        confidence: confidence,
-        labelName: labelName,
-      ));
+      labels.add(
+        OcrLineClassification(
+          label: _labelFromName(labelName),
+          confidence: confidence,
+          labelName: labelName,
+        ),
+      );
     }
 
     return OcrClassificationResult(lineLabels: labels, usedStub: false);
@@ -154,11 +154,13 @@ class OnnxClassifier {
         label = OcrLineLabel.ingredient;
       }
 
-      labels.add(OcrLineClassification(
-        label: label,
-        confidence: 0.9,
-        labelName: label.name,
-      ));
+      labels.add(
+        OcrLineClassification(
+          label: label,
+          confidence: 0.9,
+          labelName: label.name,
+        ),
+      );
     }
 
     return OcrClassificationResult(lineLabels: labels, usedStub: true);
