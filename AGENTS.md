@@ -1,6 +1,6 @@
 # Pantry — Agent Context
 
-Personal iOS app: recipe management, shopping lists, meal planning. Local-AI assisted. iPhone-first, offline-capable.
+Personal iOS app: offline-first recipe management, shopping lists, meal planning.
 
 ---
 
@@ -11,10 +11,9 @@ Personal iOS app: recipe management, shopping lists, meal planning. Local-AI ass
 | Framework | Flutter (Dart) |
 | Local DB | Drift (SQLite ORM) |
 | OCR | Google ML Kit (on-device, `google_mlkit_text_recognition`) |
-| LLM | Configurable endpoint — Ollama on LAN or any OpenAI-compat API |
 | Nutrition | Open Food Facts API + USDA FoodData Central fallback + schema.org scrape (Planned) |
-| Backend | None (Phase 1–2); local-first, direct API calls |
-| Recipe import | User-initiated URL paste — fetch HTML client-side, parse with LLM or schema.org JSON-LD |
+| Backend | None (local-first, direct API calls) |
+| Recipe import | User-initiated URL paste — fetch HTML client-side, parse with schema.org JSON-LD or heuristic OCR |
 | State management | Riverpod |
 | API key storage | `flutter_secure_storage` |
 
@@ -111,19 +110,7 @@ The database class exposes `AppDatabase.connect(QueryExecutor)` for testing.
    - ≥ 0.92 → auto-merge silently
    - 0.75–0.91 → prompt user: [Merge] or [New ingredient]
    - < 0.75 → new ingredient
-4. LLM (if configured) handles low-confidence cases
 5. Unit aggregation: convert to canonical unit; flag mismatched unit families
-
----
-
-## LLM Feature Gating
-
-All LLM features check `LlmConfig.isConfigured`. If false:
-- Show inline banner: "[Feature] requires LLM — [Go to Settings]"
-- schema.org-only URL import still works without LLM
-- On-device OCR still works without LLM (structuring step is gated)
-
-LLM config stored in `flutter_secure_storage`: endpoint URL, API key, model name.
 
 ---
 

@@ -336,7 +336,25 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
     final recipes = await (db.select(
       db.recipes,
     )..where((t) => t.id.equals(_slot!.recipeId!))).get();
-    if (recipes.isEmpty || !mounted) return;
+    if (recipes.isEmpty) {
+      // Recipe was deleted — show a message and clear the stale link
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This recipe has been deleted.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      final ops = ref.read(mealPlanOpsProvider);
+      await ops.linkRecipe(_slot!.id, null);
+      if (!mounted) return;
+      setState(() {
+        _slot = _slot!.copyWith(recipeId: null);
+        _dirty = false;
+      });
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RecipeDetailScreen(recipe: recipes.first),

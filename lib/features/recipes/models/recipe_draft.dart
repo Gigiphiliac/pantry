@@ -103,7 +103,7 @@ class RecipeDraft {
               .toList()
         : <IngredientDraft>[];
 
-    // Support both 'steps' (new) and 'instructions' (legacy LLM output)
+    // Support both 'steps' (new) and 'instructions'
     List<String> steps;
     final rawSteps = json['steps'];
     if (rawSteps is List) {

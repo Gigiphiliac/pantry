@@ -30,8 +30,8 @@ The meal planner (Phase 3 initial scope) was implemented without tests. Needs:
 
 The schema has `recipes.nutrition_json` and `ingredients.nutrition_ref` columns
 but no code populates them. Intended pipeline:
-- schema.org JSON-LD scrape from recipe URL (no LLM needed)
+- schema.org JSON-LD scrape from recipe URL
 - Open Food Facts API per-ingredient lookup
 - USDA FoodData Central fallback
 
-**Status:** Deferred — not started, no LLM dependency
+**Status:** Deferred — not started

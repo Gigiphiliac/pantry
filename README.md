@@ -1,6 +1,6 @@
 # Pantry
 
-Recipe management, shopping lists, and meal planning app. Local-AI assisted, offline-capable.
+Recipe management, shopping lists, and meal planning app.
 
 Built with **Flutter** + **Drift** (SQLite ORM) + **Riverpod** state management.
 
@@ -84,7 +84,7 @@ lib/
 │   ├── recipes/        # Recipe CRUD + URL import + OCR
 │   ├── meal_plans/     # Meal planning (week view, drag-and-drop slots)
 │   ├── pantry/         # Ingredient library + stock tracking
-│   └── settings/       # LLM endpoint config
+│   └── settings/       # Unit & theme preferences
 ├── utils/              # Ingredient dedup (Jaro-Winkler)
 └── app.dart            # App shell + navigation
 ```
@@ -96,7 +96,6 @@ lib/
 | Framework | Flutter (Dart) |
 | Local DB | Drift (SQLite ORM) |
 | OCR | Google ML Kit (on-device) |
-| LLM | Ollama / OpenAI-compatible endpoint |
 | State | Riverpod |
 | API keys | flutter_secure_storage |
 | Nutrition | Open Food Facts + USDA + schema.org (Planned) |

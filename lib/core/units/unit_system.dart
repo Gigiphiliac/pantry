@@ -277,7 +277,7 @@ class UnitRegistry {
     'fillet': fillet,
   };
 
-  // Alias map: normalises strings from LLM/OCR/free-text to unit IDs
+  // Alias map: normalises strings from OCR/free-text to unit IDs
   static const Map<String, String> _aliases = {
     // Weight
     'gram': 'g', 'grams': 'g', 'g': 'g',
@@ -321,7 +321,7 @@ class UnitRegistry {
     'fillet': 'fillet', 'fillets': 'fillet',
   };
 
-  /// Parse a unit string (from LLM output, free-text, or stored ID) to a Unit.
+  /// Parse a unit string (free-text, or stored ID) to a Unit.
   /// Returns null for empty/unrecognised strings.
   static Unit? parse(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;

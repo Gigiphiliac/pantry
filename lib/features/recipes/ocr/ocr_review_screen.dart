@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:pantry/features/settings/settings_screen.dart';
 import 'ocr_providers.dart';
 import '../recipe_form_screen.dart';
 
@@ -17,7 +16,6 @@ class OcrReviewScreen extends ConsumerStatefulWidget {
 class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
   late final TextEditingController _textCtrl;
   bool _processing = false;
-  String _overlayText = 'Structuring recipe…';
 
   @override
   void initState() {
@@ -42,158 +40,31 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
       return;
     }
 
-    final llmAsync = ref.read(llmConfigProvider);
-    final providerConfig = llmAsync.valueOrNull;
-    final config = providerConfig?.activeLlmConfig;
-    final llmConfigured = providerConfig?.isConfigured == true;
-
-    if (!llmConfigured) {
-      // Offline fallback: deterministic parser
-      final service = ref.read(recipeOcrServiceProvider);
-      final draft = service.parseRaw(text);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
-        ),
-      );
-      return;
-    }
-
-    // LLM path
-    setState(() {
-      _processing = true;
-      _overlayText = 'Structuring recipe…';
-    });
+    setState(() => _processing = true);
 
     final service = ref.read(recipeOcrServiceProvider);
-    try {
-      final draft = await service.structureRecipe(text, config!);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      // LLM failed — offer fallback to deterministic parser
-      final useFallback = await _showFallbackDialog(e.toString());
-      if (useFallback != true || !mounted) {
-        setState(() => _processing = false);
-        return;
-      }
+    final draft = service.parseRaw(text);
 
-      setState(() => _overlayText = 'LLM failed; using basic parser');
-      final draft = service.parseRaw(text);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
-        ),
-      );
-    }
-  }
-
-  /// Show a dialog asking the user whether to fall back to the basic parser.
-  /// Returns true if the user opted for fallback, false if cancelled.
-  Future<bool?> _showFallbackDialog(String error) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('LLM Parsing Failed'),
-        content: Text(
-          'The AI could not structure this recipe.\n\n$error\n\n'
-          'Use the basic parser instead? Results may be less accurate.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Use basic parser'),
-          ),
-        ],
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            RecipeFormScreen(initialDraft: draft, sourceType: 'ocr'),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final llmAsync = ref.watch(llmConfigProvider);
-    final providerConfig = llmAsync.valueOrNull;
-    final llmConfigured = providerConfig?.isConfigured == true;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Review Scanned Text')),
       body: Stack(
         children: [
-          // Main content
           Positioned.fill(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Subtle info banner when no LLM
-                if (providerConfig != null && !llmConfigured)
-                  Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'No LLM configured; basic parsing only',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 0,
-                            ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SettingsScreen(),
-                            ),
-                          ),
-                          child: const Text(
-                            'Settings',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
                 // Editable OCR text
                 Expanded(
                   child: Padding(
@@ -211,7 +82,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                   ),
                 ),
 
-                // Create Recipe button — always enabled
+                // Create Recipe button
                 SafeArea(
                   top: false,
                   child: Padding(
@@ -221,9 +92,7 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text(
-                        llmConfigured ? 'Create Recipe' : 'Create Recipe',
-                      ),
+                      child: const Text('Create Recipe'),
                     ),
                   ),
                 ),
@@ -241,9 +110,9 @@ class _OcrReviewScreenState extends ConsumerState<OcrReviewScreen> {
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 20),
-                    Text(
-                      _overlayText,
-                      style: const TextStyle(
+                    const Text(
+                      'Creating recipe…',
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,

@@ -32,6 +32,22 @@ class MealSlotData {
     recipeId: s.recipeId,
     notes: s.notes,
   );
+
+  MealSlotData copyWith({
+    int? id,
+    DateTime? date,
+    String? mealType,
+    String? slotName,
+    int? Function()? recipeId,
+    String? Function()? notes,
+  }) => MealSlotData(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    mealType: mealType ?? this.mealType,
+    slotName: slotName ?? this.slotName,
+    recipeId: recipeId != null ? recipeId() : this.recipeId,
+    notes: notes != null ? notes() : this.notes,
+  );
 }
 
 // ── Queries ──────────────────────────────────────────────────────────────────
