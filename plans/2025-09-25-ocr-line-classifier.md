@@ -1,7 +1,7 @@
 # OCR Line Classifier — Design Document
 
 Date: 2025-09-25
-Status: Decision record (pre-implementation)
+Status: Implemented — core components built (feature extractor, ONNX classifier, zone assembler). NN upgrade deferred.
 
 ## Summary
 

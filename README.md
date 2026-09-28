@@ -76,12 +76,13 @@ and switch `signingConfig` to `signingConfigs.release`.
 lib/
 ├── core/
 │   ├── ingredients/    # Ingredient name and line parsers
+│   ├── ocr/            # OCR feature extraction + ONNX classifier
 │   └── units/          # Unit system (weight, volume, count)
 ├── db/                 # Drift database schema and migrations
 ├── features/
 │   ├── shopping/       # Shopping lists
 │   ├── recipes/        # Recipe CRUD + URL import + OCR
-│   ├── meal_plans/     # Meal planning
+│   ├── meal_plans/     # Meal planning (week view, drag-and-drop slots)
 │   ├── pantry/         # Ingredient library + stock tracking
 │   └── settings/       # LLM endpoint config
 ├── utils/              # Ingredient dedup (Jaro-Winkler)
@@ -98,12 +99,13 @@ lib/
 | LLM | Ollama / OpenAI-compatible endpoint |
 | State | Riverpod |
 | API keys | flutter_secure_storage |
-| Nutrition | Open Food Facts + USDA + schema.org |
+| Nutrition | Open Food Facts + USDA + schema.org (Planned) |
 
 ## Phase Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Shopping lists + ingredient dictionary | Current |
-| 2 | Recipes + AI import (URL, OCR) + nutrition | Pending |
-| 3 | Meal planning + nutrition goals + suggestions | Pending |
+| 1 | Shopping lists + ingredient dictionary | Complete |
+| 2 | Recipes + AI import (URL, OCR) | Current |
+| 3 | Meal planning — week view, drag-and-drop slots, recipe linking | In Progress |
+| 4 | Nutrition goals + smart suggestions + pantry integration | Pending |

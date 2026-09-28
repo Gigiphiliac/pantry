@@ -1,3 +1,8 @@
+> **Note:** This plan describes the original Phase 1–3 scope. The meal plan
+> schema has since been simplified: see `AGENTS.md` for the current flat
+> `MealSlots` table. Nutrition auto-population (Open Food Facts / USDA) is
+> deferred to Phase 4. The remainder of this document is historical context.
+
 # Pantry — Project Plan
 
 ## Context
