@@ -1,6 +1,6 @@
 # Pantry — Agent Context
 
-Personal iOS app: recipe management, shopping lists, meal planning. Local-AI assisted. iPhone-first, offline-capable.
+Personal iOS app: offline-first recipe management, shopping lists, meal planning.
 
 ---
 
@@ -11,10 +11,9 @@ Personal iOS app: recipe management, shopping lists, meal planning. Local-AI ass
 | Framework | Flutter (Dart) |
 | Local DB | Drift (SQLite ORM) |
 | OCR | Google ML Kit (on-device, `google_mlkit_text_recognition`) |
-| LLM | Configurable endpoint — Ollama on LAN or any OpenAI-compat API |
-| Nutrition | Open Food Facts API + USDA FoodData Central fallback + schema.org scrape |
-| Backend | None (Phase 1–2); local-first, direct API calls |
-| Recipe import | User-initiated URL paste — fetch HTML client-side, parse with LLM or schema.org JSON-LD |
+| Nutrition | Open Food Facts API + USDA FoodData Central fallback + schema.org scrape (Planned) |
+| Backend | None (local-first, direct API calls) |
+| Recipe import | User-initiated URL paste — fetch HTML client-side, parse with schema.org JSON-LD or heuristic OCR |
 | State management | Riverpod |
 | API key storage | `flutter_secure_storage` |
 
@@ -87,16 +86,16 @@ shopping_lists         id, name, created_at, archived_at
 shopping_list_stores   list_id, store_name, sort_order
 shopping_list_sections store_id, section_name, sort_order
 shopping_list_items    section_id, ingredient_id (nullable), raw_text, qty, unit, checked
-recipes                id, name, source_url, source_type (manual/url/ocr), servings, instructions, nutrition_json
+recipes                id, name, source_url, source_type (manual/url/ocr), servings, nutrition_json
 recipe_ingredients     recipe_id, ingredient_id, qty, unit, notes
-recipe_ingredient_alternatives  ingredient_id, qty, unit, sort_order
-recipe_steps                    recipe_id, step_number, content
-meal_plans             id, name, start_date, end_date
-meal_plan_days         plan_id, date
-meal_slots             day_id, slot_name, recipe_id (nullable), notes
+recipe_ingredient_sections     recipe_id, name, sort_order
+recipe_ingredient_alternatives recipe_ingredient_id, ingredient_id, qty, unit, sort_order
+recipe_steps           recipe_id, step_number, content
+meal_slots             id, date, meal_type (breakfast/lunch/dinner), slot_name, recipe_id (nullable), notes
 pantry_items           ingredient_id, tier, user_confirmed
 pantry_stock_categories        name, sort_order
 pantry_stock          ingredient_id, category_id, on_hand_qty, on_hand_unit, notes
+ocr_training_data      raw_json, corrected_json, image_width, image_height, created_at
 ```
 
 The database class exposes `AppDatabase.connect(QueryExecutor)` for testing.
@@ -111,19 +110,7 @@ The database class exposes `AppDatabase.connect(QueryExecutor)` for testing.
    - ≥ 0.92 → auto-merge silently
    - 0.75–0.91 → prompt user: [Merge] or [New ingredient]
    - < 0.75 → new ingredient
-4. LLM (if configured) handles low-confidence cases
 5. Unit aggregation: convert to canonical unit; flag mismatched unit families
-
----
-
-## LLM Feature Gating
-
-All LLM features check `LlmConfig.isConfigured`. If false:
-- Show inline banner: "[Feature] requires LLM — [Go to Settings]"
-- schema.org-only URL import still works without LLM
-- On-device OCR still works without LLM (structuring step is gated)
-
-LLM config stored in `flutter_secure_storage`: endpoint URL, API key, model name.
 
 ---
 
@@ -131,16 +118,17 @@ LLM config stored in `flutter_secure_storage`: endpoint URL, API key, model name
 
 | Phase | Scope | Status |
 |---|---|---|
-| **1** | **Shopping lists — full UI + ingredient dictionary** | **Current** |
-| 2 | Recipes + AI import (URL, OCR) + nutrition | Pending |
-| 3 | Meal planning + nutrition goals + smart suggestions | Pending |
+| **1** | **Shopping lists — full UI + ingredient dictionary** | **Complete** |
+| **2** | **Recipes + AI import (URL, OCR)** | **Current** |
+| 3 | Meal planning — week view, drag-and-drop slots, recipe linking | In Progress |
+| 4 | Nutrition goals + smart suggestions + pantry integration | Pending |
 
 ---
 
 ## Conventions
 
 - **Dart style**: follow `dart format`, no trailing commas suppressed, prefer `final`
-- **File structure**: `lib/features/<feature>/` — one directory per feature (shopping, recipes, meal_plans, settings)
+- **File structure**: `lib/features/<feature>/` — one directory per feature (shopping, recipes, meal_plans, pantry, settings)
 - **Drift migrations**: always versioned; never modify a past migration file
 - **Plans**: all plans stored in `pantry/plans/YYYY-MM-DD-<slug>.md`; append-only, never delete
 - **No org prefix**: personal project, no reverse-domain identifier

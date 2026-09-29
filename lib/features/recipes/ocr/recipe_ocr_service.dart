@@ -1,15 +1,11 @@
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:pantry/core/llm/llm_client.dart';
 import 'package:pantry/core/ocr/feature_extractor.dart';
 import 'package:pantry/core/ocr/onnx_classifier.dart';
 import 'package:pantry/core/ocr/recipe_ocr_input.dart';
-import 'package:pantry/core/units/unit_system.dart';
-import 'package:pantry/features/settings/settings_screen.dart';
 import '../models/recipe_draft.dart';
 import 'ocr_recipe_parser.dart';
 import 'zone_assembler.dart';
@@ -20,62 +16,6 @@ class OcrException implements Exception {
   @override
   String toString() => message;
 }
-
-class LlmParseException implements Exception {
-  final String message;
-  const LlmParseException(this.message);
-  @override
-  String toString() => message;
-}
-
-const _systemPrompt =
-    '''You are a recipe extraction assistant. You will receive raw OCR text and a pre-parsed structure as hints. Clean up errors, fill in missing fields, and return ONLY valid JSON — no markdown fences, no explanation.
-
-JSON format:
-{
-  "name": "string or null",
-  "servings": integer or null,
-  "steps": ["step one text", "step two text"],
-  "sections": [
-    {
-      "name": "string (section label, e.g. 'For the sauce')",
-      "ingredients": [
-        {
-          "qty": number or null,
-          "unit": "string or null",
-          "name": "string",
-          "notes": "string or null",
-          "alternatives": [
-            { "qty": number or null, "unit": "string or null", "name": "string" }
-          ]
-        }
-      ]
-    }
-  ],
-  "ingredients": [
-    {
-      "qty": number or null,
-      "unit": "string or null",
-      "name": "string",
-      "notes": "string or null",
-      "alternatives": [
-        { "qty": number or null, "unit": "string or null", "name": "string" }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Use the raw text as the source of truth; treat pre-parsed hints as guidance only
-- "name" is the recipe title
-- "servings" is a whole number or null
-- "steps" is an ordered list of instruction steps — each step is a separate string
-- If the recipe has labelled ingredient groups (e.g. "For the sauce:", "Dough:", "Topping:"), put each group's ingredients under "sections" with the label as "name" (strip the trailing colon). Use top-level "ingredients" for any remaining ungrouped ingredients. If there are no groups, use only "ingredients" and omit "sections"
-- CRITICAL — ingredient "name" must be the bare ingredient ONLY: no prep instructions, no cooking state, no descriptors. Examples: "eggs" not "whisked eggs", "white rice" not "cooked day old white rice", "butter" not "melted butter"
-- "notes" captures ALL prep instructions, cooking states, and descriptors that were stripped from the name. Examples: "whisked", "cooked, day old", "melted", "finely chopped, at room temperature"
-- When an ingredient offers alternatives (e.g. "1 cup beer or beef stock", "olive oil / vegetable oil", "chicken - tofu"), set "name" to the first option and list the others in "alternatives". Each alternative may include its own "qty" and "unit"; omit them if the same as the parent
-- "alternatives" may be an empty array or omitted when there are no alternatives
-- When a quantity is given as a range (e.g. "800g - 1kg", "2-3 cups"), use the lower bound as "qty" and "unit"; discard the upper bound''';
 
 class RecipeOcrService {
   /// Run ML Kit OCR on [image] and return the raw recognised text.
@@ -101,8 +41,6 @@ class RecipeOcrService {
   }
 
   /// Run ML Kit OCR and return enriched input with per-line spatial data.
-  ///
-  /// Use this when you want to run the full classifier → ZoneAssembler pipeline.
   Future<RecipeOcrInput> extractDetailed(XFile image) async {
     final inputImage = InputImage.fromFilePath(image.path);
     final recogniser = TextRecognizer(script: TextRecognitionScript.latin);
@@ -133,9 +71,6 @@ class RecipeOcrService {
         }
       }
 
-      // Estimate image dimensions from the max bounding box extent.
-      // When metadata isn't available (file-path input), the OCR block
-      // geometry provides a close approximation for relative normalisation.
       double maxW = 0, maxH = 0;
       for (final block in recognised.blocks) {
         final r = block.boundingBox;
@@ -158,15 +93,6 @@ class RecipeOcrService {
   }
 
   /// Parse [input] using the classifier pipeline.
-  ///
-  /// 1. Extract features via [FeatureExtractor]
-  /// 2. Classify each line via [OnnxClassifier]
-  /// 3. Assemble zones via [ZoneAssembler]
-  /// 4. Convert to [RecipeDraft]
-  ///
-  /// Falls back to [OcrRecipeParser] if the classifier returns stub results
-  /// (heuristic fallback). Callers can check `result.usedStub` if they need
-  /// to know whether real ML was involved.
   Future<({RecipeDraft draft, bool usedStub})> parseWithClassifier(
     RecipeOcrInput input,
     OnnxClassifier classifier,
@@ -182,98 +108,8 @@ class RecipeOcrService {
     return (draft: draft, usedStub: result.usedStub);
   }
 
-  /// Deterministic fallback: parse raw text into a [RecipeDraft] without LLM.
-  ///
-  /// Uses [OcrRecipeParser] for dual-pass zone segmentation and ingredient/
-  /// instruction parsing. Serves as the offline fallback path.
+  /// Deterministic fallback: parse raw text into a [RecipeDraft].
   RecipeDraft parseRaw(String rawText) {
     return OcrRecipeParser.parse(rawText);
-  }
-
-  /// Structure recipe text using an LLM for cleanup and enrichment.
-  ///
-  /// First runs [OcrRecipeParser] to produce hints, then sends both the raw
-  /// text and hints to the LLM for final structuring.
-  Future<RecipeDraft> structureRecipe(String rawText, LlmConfig config) async {
-    final hints = OcrRecipeParser.parse(rawText);
-    return _cleanupWithLlm(rawText, hints, config);
-  }
-
-  IngredientDraft _normaliseUnit(IngredientDraft ing) => IngredientDraft(
-    qty: ing.qty,
-    unit: UnitRegistry.parse(ing.unit)?.id ?? ing.unit,
-    name: ing.name,
-    notes: ing.notes,
-    alternatives: ing.alternatives.map(_normaliseUnit).toList(),
-  );
-
-  Future<RecipeDraft> _cleanupWithLlm(
-    String rawText,
-    RecipeDraft hints,
-    LlmConfig config,
-  ) async {
-    final hintsJson = const JsonEncoder.withIndent('  ').convert({
-      'title': hints.name,
-      'ingredients': hints.ingredients
-          .map(
-            (i) =>
-                '${i.qty != null ? '${i.qty} ' : ''}'
-                '${i.unit != null ? '${i.unit} ' : ''}'
-                '${i.name}',
-          )
-          .toList(),
-      'sections': hints.sections
-          .map(
-            (s) => {
-              'name': s.name,
-              'ingredients': s.ingredients
-                  .map(
-                    (i) =>
-                        '${i.qty != null ? '${i.qty} ' : ''}'
-                        '${i.unit != null ? '${i.unit} ' : ''}'
-                        '${i.name}',
-                  )
-                  .toList(),
-            },
-          )
-          .toList(),
-      'instructionLines': hints.steps,
-    });
-
-    final userMessage =
-        'RAW OCR TEXT:\n$rawText\n\nPRE-PARSED HINTS:\n$hintsJson';
-
-    late String content;
-    try {
-      content = await LlmClient.complete(_systemPrompt, userMessage, config);
-    } catch (e) {
-      throw LlmParseException(e.toString());
-    }
-
-    try {
-      final cleaned = content
-          .replaceAll(RegExp(r'```json\s*', multiLine: true), '')
-          .replaceAll(RegExp(r'```\s*', multiLine: true), '')
-          .trim();
-
-      final json = jsonDecode(cleaned) as Map<String, dynamic>;
-      final draft = RecipeDraft.fromJson(json);
-      return RecipeDraft(
-        name: draft.name,
-        servings: draft.servings,
-        steps: draft.steps,
-        sections: draft.sections
-            .map(
-              (sec) => RecipeSectionDraft(
-                name: sec.name,
-                ingredients: sec.ingredients.map(_normaliseUnit).toList(),
-              ),
-            )
-            .toList(),
-        ingredients: draft.ingredients.map(_normaliseUnit).toList(),
-      );
-    } catch (e) {
-      throw LlmParseException('Failed to parse LLM response: $e');
-    }
   }
 }

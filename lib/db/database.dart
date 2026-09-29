@@ -3,6 +3,19 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'database.g.dart';
 
+/// The three fixed meal types in a day.
+enum MealType {
+  breakfast('breakfast'),
+  lunch('lunch'),
+  dinner('dinner');
+
+  const MealType(this.value);
+  final String value;
+
+  static MealType fromString(String s) =>
+      MealType.values.firstWhere((m) => m.value == s);
+}
+
 // ── Tables ────────────────────────────────────────────────────────────────────
 
 class Ingredients extends Table {
@@ -108,25 +121,18 @@ class RecipeIngredientAlternatives extends Table {
   IntColumn get sortOrder => integer()();
 }
 
-class MealPlans extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text()();
-  DateTimeColumn get startDate => dateTime()();
-  DateTimeColumn get endDate => dateTime()();
-}
-
-class MealPlanDays extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get planId => integer().references(MealPlans, #id)();
-  DateTimeColumn get date => dateTime()();
-}
-
 class MealSlots extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get dayId => integer().references(MealPlanDays, #id)();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get mealType => text()();
   TextColumn get slotName => text()();
   IntColumn get recipeId => integer().references(Recipes, #id).nullable()();
   TextColumn get notes => text().nullable()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {date, mealType},
+  ];
 }
 
 class PantryItems extends Table {
@@ -192,8 +198,6 @@ class OcrTrainingData extends Table {
     RecipeIngredientSections,
     RecipeIngredients,
     RecipeIngredientAlternatives,
-    MealPlans,
-    MealPlanDays,
     MealSlots,
     PantryItems,
     PantryStockCategories,
@@ -209,7 +213,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.connect(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
