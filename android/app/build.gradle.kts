@@ -62,12 +62,6 @@ android {
             )
         }
     }
-
-    applicationVariants.configureEach { variant ->
-        variant.outputs.configureEach { output ->
-            output.outputFileName = "pantry-v${variant.versionName}.apk"
-        }
-    }
 }
 
 kotlin {
