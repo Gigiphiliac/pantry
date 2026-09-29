@@ -14,15 +14,28 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    setProperty("archivesBaseName", "pantry")
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.gigi.pantry"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "app"
+    productFlavors {
+        create("prod") {
+            dimension = "app"
+            applicationId = "com.gigi.pantry"
+            resValue("string", "app_name", "pantry")
+        }
+        create("dev") {
+            dimension = "app"
+            applicationId = "com.gigi.pantry.dev"
+            resValue("string", "app_name", "pantry-dev")
+        }
     }
 
     signingConfigs {
@@ -47,6 +60,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
+            output.outputFileName = "pantry-v${variant.versionName}.apk"
         }
     }
 }

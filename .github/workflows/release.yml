@@ -63,5 +63,5 @@ jobs:
 
             <!-- Summarise changes in this release -->
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/pantry-${{ github.ref_name }}.apk
           fail_on_unmatched_files: true

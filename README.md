@@ -27,10 +27,12 @@ All common tasks are available through `make`:
 | `make analyze` | Run `flutter analyze` |
 | `make test` | Run unit tests |
 | `make check` | Full pre-commit check: format + analyze + tests |
-| `make run` | Launch debug app on default device |
-| `make build` | Build Android release APK |
+| `make run` | Launch dev flavour on default device |
+| `make run-prod` | Launch prod flavour (side-by-side with dev) |
+| `make build` | Build prod release APK |
+| `make build-dev` | Build dev release APK for sideloading |
 | `make clean` | Remove build artifacts |
-| `make tag VERSION=0.1.0` | Create annotated `v0.1.0` tag (runs checks first) |
+| `make tag VERSION=0.1.0` | Bump version, run checks, create annotated `v0.1.0` tag |
 | `make release VERSION=0.1.0` | Tag + push — triggers GitHub Actions release |
 
 > **Pre-commit**: the repo also ships a `githooks/pre-commit` hook that runs
@@ -40,17 +42,33 @@ All common tasks are available through `make`:
 ## Creating a Release
 
 ```bash
-# Ensure everything is committed and pushed
-git push origin main
-
-# Tag and push — this triggers release.yml on GitHub Actions
-make release VERSION=0.1.0
+# Everything is already committed on main — one command does it all:
+make release VERSION=0.3.0
 ```
 
-The CI pipeline will:
-1. Run format check, analyze, and tests
-2. Build an Android release APK (signed with debug keystore)
-3. Create a GitHub Release with the APK attached
+This single command:
+1. Runs `make check` (format + analyze + tests)
+2. Updates `pubspec.yaml` `version:` to `0.3.0+1` and commits it
+3. Creates annotated tag `v0.3.0`
+4. Pushes the tag and branch to GitHub
+
+The CI pipeline (`.github/workflows/release.yml`) then:
+1. Runs format check, analyze, and tests
+2. Builds a prod APK with `--build-name=0.3.0 --build-number=1`
+3. Creates a GitHub Release with the APK attached as `pantry-v0.3.0.apk`
+
+> **Version format**: `pubspec.yaml` uses `major.minor.patch+build`.
+> The build number resets to `1` each release. The tag always gets a `v` prefix
+> (`v0.3.0`) but the version inside the app omits it (`0.3.0`).
+
+### Manual version override (if needed)
+
+The version from `pubspec.yaml` is passed as `--build-name` and `--build-number`
+to `flutter build apk`. To override for a one-off build:
+
+```bash
+make build BUILD_NAME=0.4.0 BUILD_NUMBER=1
+```
 
 ## Android Signing
 

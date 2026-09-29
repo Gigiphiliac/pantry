@@ -1,7 +1,13 @@
 FLUTTER := flutter
 VERSION ?=
+FLAVOR ?= dev
 
-.PHONY: help get format format-check analyze test check run build clean tag release
+# Extract version components from pubspec.yaml
+_version := $(shell grep '^version:' pubspec.yaml | sed 's/version: *//')
+BUILD_NAME ?= $(word 1,$(subst +, ,$(_version)))
+BUILD_NUMBER ?= $(word 2,$(subst +, ,$(_version)))
+
+.PHONY: help get format format-check analyze test check run run-prod build build-dev clean tag release
 
 help:           ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | \
@@ -24,11 +30,21 @@ test:           ## Run unit tests
 
 check: format-check analyze test   ## Run all checks (format-check + analyze + tests)
 
-run:            ## Launch debug application on default device
-	$(FLUTTER) run
+run:            ## Launch dev flavour on default device (flutter run --flavor dev)
+	$(FLUTTER) run --flavor dev --dart-define=FLAVOR=dev
 
-build:          ## Build Android release APK
-	$(FLUTTER) build apk --release
+run-prod:       ## Launch prod flavour on default device
+	$(FLUTTER) run --flavor prod --dart-define=FLAVOR=prod
+
+build:          ## Build prod release APK (flutter build apk --release --flavor prod)
+	$(FLUTTER) build apk --release --flavor prod \
+		--dart-define=FLAVOR=prod \
+		--build-name=$(BUILD_NAME) --build-number=$(BUILD_NUMBER)
+
+build-dev:      ## Build dev release APK for sideloading
+	$(FLUTTER) build apk --release --flavor dev \
+		--dart-define=FLAVOR=dev \
+		--build-name=$(BUILD_NAME) --build-number=$(BUILD_NUMBER)
 
 clean:          ## Remove build artifacts (flutter clean)
 	$(FLUTTER) clean
@@ -51,6 +67,9 @@ tag:            ## Create an annotated release tag: make tag VERSION=0.1.0
 		exit 1; \
 	fi
 	$(MAKE) check
+	sed -i '' 's/^version: .*/version: $(VERSION)+1/' pubspec.yaml
+	git add pubspec.yaml
+	git commit -m "chore: bump version to $(VERSION)"
 	git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
 	@echo "Created tag v$(VERSION)"
 

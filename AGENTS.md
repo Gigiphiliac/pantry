@@ -1,6 +1,6 @@
 # Pantry — Agent Context
 
-Personal iOS app: offline-first recipe management, shopping lists, meal planning.
+Personal app: offline-first recipe management, shopping lists, meal planning.
 
 ---
 

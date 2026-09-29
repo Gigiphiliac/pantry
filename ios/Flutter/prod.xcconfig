@@ -1,0 +1,7 @@
+// Flutter xcconfig — prod flavour
+// Include this from the prod Xcode scheme's build settings.
+// This file is a stub; the Xcode scheme setup is documented in
+// plans/2025-07-18-flutter-flavours.md (iOS section).
+
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include "Generated.xcconfig"
