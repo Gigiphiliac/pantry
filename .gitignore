@@ -61,3 +61,6 @@ app.*.map.json
 
 # Training .venv
 .venv
+
+# Android keystore (local copy; CI injects via secrets)
+release-keystore.jks

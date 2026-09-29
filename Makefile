@@ -71,12 +71,15 @@ tag:            ## Create an annotated release tag: make tag VERSION=0.1.0
 		exit 1; \
 	fi
 	$(MAKE) check
-	@current=$$(grep '^version:' pubspec.yaml | sed 's/version: *//' | sed 's/+.*//'); \
-	if [ "$$current" != "$(VERSION)" ]; then \
-		sed -i '' 's/^version: .*/version: $(VERSION)+1/' pubspec.yaml; \
+	@current=$$(grep '^version:' pubspec.yaml | sed 's/version: *//'); \
+	current_version=$$(echo $$current | sed 's/+.*//'); \
+	current_build=$$(echo $$current | grep -o '\+[0-9]*' | sed 's/+//'); \
+	if [ "$$current_version" != "$(VERSION)" ]; then \
+		new_build=$$(( $${current_build:-0} + 1 )); \
+		sed -i '' 's/^version: .*/version: $(VERSION)+'$$new_build'/' pubspec.yaml; \
 		git add pubspec.yaml; \
 		git commit -m "chore: bump version to $(VERSION)"; \
-		echo "Bumped pubspec.yaml to $(VERSION) and committed."; \
+		echo "Bumped pubspec.yaml to $(VERSION)+$$new_build and committed."; \
 	else \
 		echo "pubspec.yaml already at $(VERSION) — skipping bump."; \
 	fi

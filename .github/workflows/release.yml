@@ -22,20 +22,19 @@ jobs:
           flutter-version: '3.x'
           channel: 'stable'
 
-      - name: 🔧 Ensure debug keystore exists
+      - name: 🔐 Decode release keystore
         run: |
-          mkdir -p "$HOME/.android"
-          KEYSTORE="$HOME/.android/debug.keystore"
-          if [ ! -f "$KEYSTORE" ]; then
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d \
+            > ./release-keystore.jks
+          # Fallback for local/PR builds: generate if secret missing
+          if [ ! -s ./release-keystore.jks ]; then
             keytool -genkey -v \
-              -keystore "$KEYSTORE" \
-              -storepass android \
-              -alias androiddebugkey \
-              -keypass android \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+              -keystore ./release-keystore.jks \
+              -storepass pantry-release \
+              -alias pantry-release-key \
+              -keypass pantry-release \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=, O=, C="
           fi
 
       - name: 📦 Install dependencies
@@ -52,6 +51,10 @@ jobs:
 
       - name: 📱 Build release APK
         run: make build
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 📦 Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -41,11 +41,13 @@ android {
     }
 
     signingConfigs {
-        create("ci") {
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        create("release") {
+            // For local builds: place release-keystore.jks in project root.
+            // CI injects via KEYSTORE_BASE64 secret (see .github/workflows/release.yml).
+            storeFile = rootProject.file("../release-keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "pantry-release"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "pantry-release-key"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "pantry-release"
         }
     }
 
@@ -53,10 +55,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            // Signed with the auto-generated debug keystore initially.
-            // For production, replace with secrets-based signing:
-            //   run signingConfig = signingConfigs.release
-            signingConfig = signingConfigs["ci"]
+            // Signed with the project-level release keystore.
+            // CI injects the keystore + credentials via secrets.
+            signingConfig = signingConfigs["release"]
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
