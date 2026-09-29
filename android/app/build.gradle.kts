@@ -14,8 +14,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    setProperty("archivesBaseName", "pantry")
-
     defaultConfig {
         applicationId = "com.gigi.pantry"
         minSdk = flutter.minSdkVersion

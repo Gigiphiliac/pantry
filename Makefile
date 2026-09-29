@@ -40,14 +40,14 @@ build:          ## Build prod release APK (flutter build apk --release --flavor 
 	$(FLUTTER) build apk --release --flavor prod \
 		--dart-define=FLAVOR=prod \
 		--build-name=$(BUILD_NAME) --build-number=$(BUILD_NUMBER)
-	@mv build/app/outputs/flutter-apk/pantry-prod-release.apk \
+	@mv build/app/outputs/flutter-apk/app-prod-release.apk \
 	   build/app/outputs/flutter-apk/pantry-v$(BUILD_NAME).apk
 
 build-dev:      ## Build dev release APK for sideloading
 	$(FLUTTER) build apk --release --flavor dev \
 		--dart-define=FLAVOR=dev \
 		--build-name=$(BUILD_NAME) --build-number=$(BUILD_NUMBER)
-	@mv build/app/outputs/flutter-apk/pantry-dev-release.apk \
+	@mv build/app/outputs/flutter-apk/app-dev-release.apk \
 	   build/app/outputs/flutter-apk/pantry-v$(BUILD_NAME)-dev.apk
 
 clean:          ## Remove build artifacts (flutter clean)
