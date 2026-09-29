@@ -10,10 +10,15 @@
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions$Builder
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 
-# ML Kit uses ServiceLoader / reflection to register text recognizers.
-# R8 strips these entries during minification, causing getClient() to
-# return null and crash with a NullPointerException in release builds.
--keep class com.google.mlkit.vision.text.latin.** { *; }
--keep class com.google.mlkit.vision.text.TextRecognition { *; }
--keep class com.google.mlkit.vision.text.TextRecognizer { *; }
--keep class com.google.mlkit.vision.common.** { *; }
+# ML Kit uses ServiceLoader / reflection to register text recognizers
+# and loads internal implementations via class name resolution.
+# R8 strips these entries during minification, causing methods like
+# getClient() and InputImage.fromFilePath() to return null and crash
+# with NullPointerException in release builds.
+#
+# Both the public API layer and the Google Play Services internal
+# implementation packages must be kept.
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_common.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_text.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_text_common.** { *; }
