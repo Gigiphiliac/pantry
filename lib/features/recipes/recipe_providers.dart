@@ -322,9 +322,23 @@ class RecipeOps {
 
       for (final draft in ingredients) {
         if (draft.rawText.trim().isEmpty) continue;
-        final ingredientId =
-            draft.resolvedIngredientId ??
-            await getOrCreateIngredient(db, draft.rawText);
+        final ingredientId = await (() async {
+          if (draft.resolvedIngredientId != null) {
+            // Check whether the user edited the ingredient name. If the
+            // raw text no longer matches the FK'd canonical ingredient,
+            // re-resolve through the dedup pipeline instead of keeping
+            // the stale link.
+            final rows = await (db.select(
+              db.ingredients,
+            )..where((t) => t.id.equals(draft.resolvedIngredientId!))).get();
+            if (rows.isNotEmpty &&
+                rows.first.name.trim().toLowerCase() ==
+                    draft.rawText.trim().toLowerCase()) {
+              return draft.resolvedIngredientId!;
+            }
+          }
+          return getOrCreateIngredient(db, draft.rawText);
+        })();
         await pantryOps.autoCreatePantryItem(ingredientId);
         final sectionId = draft.sectionIndex != null
             ? sectionIdMap[draft.sectionIndex]
