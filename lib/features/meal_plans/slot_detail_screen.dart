@@ -98,7 +98,7 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
   String get _subtitleText {
     final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayName = dayNames[widget.date.weekday - 1];
-    final dateStr = '${dayName} ${widget.date.day} ${_monthAbbr(widget.date)}';
+    final dateStr = '$dayName ${widget.date.day} ${_monthAbbr(widget.date)}';
     return '$dateStr · $_mealLabel';
   }
 
@@ -331,6 +331,9 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
 
   Future<void> _openRecipe(BuildContext context) async {
     if (_slot?.recipeId == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    final navigator = Navigator.of(context);
     // Fetch the full recipe to navigate to it
     final db = ref.read(dbProvider);
     final recipes = await (db.select(
@@ -339,10 +342,10 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
     if (recipes.isEmpty) {
       // Recipe was deleted — show a message and clear the stale link
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: const Text('This recipe has been deleted.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
+          backgroundColor: errorColor,
         ),
       );
       final ops = ref.read(mealPlanOpsProvider);
@@ -355,7 +358,7 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
       return;
     }
     if (!mounted) return;
-    Navigator.of(context).push(
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => RecipeDetailScreen(recipe: recipes.first),
       ),
@@ -365,7 +368,9 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
   Future<void> _openSwapSheet(BuildContext context) async {
     if (_slot == null) return;
     final weekStart = weekStartFor(widget.date);
+    final nav = Navigator.of(context);
     final slots = await ref.read(mealSlotsForWeekProvider(weekStart).future);
+    if (!context.mounted) return;
 
     final result = await showModalBottomSheet<SwapResult>(
       context: context,
@@ -377,7 +382,7 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
       ),
     );
 
-    if (result == null || !mounted) return;
+    if (result == null || !context.mounted) return;
 
     final ops = ref.read(mealPlanOpsProvider);
     final targetDate = weekStart.add(Duration(days: result.dayOffset));
@@ -397,16 +402,17 @@ class _SlotDetailScreenState extends ConsumerState<SlotDetailScreen> {
     if (result.targetSlot != null &&
         (result.dayOffset != widget.date.difference(weekStart).inDays ||
             result.mealType != widget.mealType)) {
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) nav.pop();
     }
   }
 
   Future<void> _clearSlot(BuildContext context) async {
     if (_slot == null) return;
     _hasSaved = true; // Prevent auto-save from re-creating
+    final nav = Navigator.of(context);
     final ops = ref.read(mealPlanOpsProvider);
     await ops.clearSlot(_slot!.id);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) nav.pop();
   }
 
   Future<void> _saveIfNeeded() async {

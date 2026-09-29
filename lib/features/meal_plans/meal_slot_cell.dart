@@ -194,7 +194,7 @@ class _DraggableMealSlotCellState extends State<DraggableMealSlotCell> {
         setState(() => _selfDragging = false);
         widget.onDragEnded?.call();
       },
-      onDraggableCanceled: (_, __) {
+      onDraggableCanceled: (_, _) {
         setState(() => _selfDragging = false);
         widget.onDragEnded?.call();
       },
