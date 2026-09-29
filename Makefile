@@ -67,13 +67,19 @@ tag:            ## Create an annotated release tag: make tag VERSION=0.1.0
 		exit 1; \
 	fi
 	@if git rev-parse "v$(VERSION)" >/dev/null 2>&1; then \
-		echo "ERROR: Tag v$(VERSION) already exists."; \
+		echo "ERROR: Tag v$(VERSION) already exists locally."; \
 		exit 1; \
 	fi
 	$(MAKE) check
-	sed -i '' 's/^version: .*/version: $(VERSION)+1/' pubspec.yaml
-	git add pubspec.yaml
-	git commit -m "chore: bump version to $(VERSION)"
+	@current=$$(grep '^version:' pubspec.yaml | sed 's/version: *//' | sed 's/+.*//'); \
+	if [ "$$current" != "$(VERSION)" ]; then \
+		sed -i '' 's/^version: .*/version: $(VERSION)+1/' pubspec.yaml; \
+		git add pubspec.yaml; \
+		git commit -m "chore: bump version to $(VERSION)"; \
+		echo "Bumped pubspec.yaml to $(VERSION) and committed."; \
+	else \
+		echo "pubspec.yaml already at $(VERSION) — skipping bump."; \
+	fi
 	git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
 	@echo "Created tag v$(VERSION)"
 
