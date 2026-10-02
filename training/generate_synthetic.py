@@ -5,10 +5,11 @@ generate_synthetic.py — Generate labelled training data from recipe websites.
 Pipeline:
   1. Fetch sitemap(s) to discover recipe URLs
   2. Fetch each recipe page and extract schema.org JSON-LD
-  3. Render each recipe as structured text with known line labels
-  4. Compute all 20 features per line (text-derived from real content,
-     spatial features simulated via linear layout with noise)
-  5. Export labelled CSV for training
+  3. Render each recipe as a clean card image via Pillow
+  4. Run Tesseract OCR on the image to get real bounding boxes + blocks
+  5. Match OCR lines back to ground-truth labels using Y-position overlap
+  6. Compute all 20 features from the *real* OCR spatial data
+  7. Export labelled CSV for training
 
 Usage:
   python generate_synthetic.py \
@@ -26,16 +27,25 @@ import argparse
 import csv
 import json
 import math
+import os
 import random
 import sys
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections import Counter
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-# ── Constants ────────────────────────────────────────────────────────────────
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = None  # type: ignore
+
+import pytesseract
+
+# ── Constants ──────────────────────────────────────────────────────────────
 
 # Must match FeatureExtractor.featureNames in lib/core/ocr/feature_extractor.dart
 FEATURE_NAMES = [
@@ -86,14 +96,96 @@ IMPERATIVE_VERBS = {
     "toss", "trim", "whisk",
 }
 
-# Simulated image dimensions (arbitrary, for normalised spatial features)
-PAGE_W = 800.0
-PAGE_H = 1200.0
+# Render / OCR constants
+PAGE_W = 800       # rendered page width (px)
+MARGIN_X = 32      # left/right margin
+MARGIN_Y = 24      # top margin
+LINE_GAP = 6       # gap between lines (px)
+TITLE_SIZE = 32    # title font size
+BODY_SIZE = 18     # body text font size (ingredients, steps)
+HEADING_SIZE = 22  # section heading font size
 
 # User-agent for requests
 UA = "PantryTraining/1.0 (recipe classifier data collection)"
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Font setup ─────────────────────────────────────────────────────────────
+
+def _load_font(size: int):
+    """Load a system TrueType font at the requested size."""
+    candidates = [
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    # Ultimate fallback — Pillow's built-in bitmap font
+    return ImageFont.load_default()
+
+_TITLE_FONT = _load_font(TITLE_SIZE)
+_BODY_FONT = _load_font(BODY_SIZE)
+_HEADING_FONT = _load_font(HEADING_SIZE)
+
+# ── Noise line templates (labelled "ignore") ──────────────────────────────
+
+# Recipe-blog noise that commonly appears in OCR output.  A random subset is
+# injected per recipe so the model learns the `ignore` class.
+NOISE_TEMPLATES: list[str] = [
+    # Prep / cook / total time
+    "Prep Time: 5 mins",
+    "Prep Time 10 minutes",
+    "Cook Time: 15 mins",
+    "Cook Time 30 minutes",
+    "Total Time: 20 mins",
+    "Total Time: 45 minutes",
+    # Ratings
+    "4.90 from 219 votes",
+    "5.0 from 100 ratings",
+    "4.5 from 50 votes",
+    "Rated 4.8 out of 5",
+    # Author / source
+    "Author: Nagi",
+    "Recipe by John",
+    "By Mary Smith",
+    "Source: allrecipes.com",
+    # Video / media
+    "Recipe video above",
+    "Watch the video",
+    "Tap to view video",
+    # Social / navigation
+    "Print Recipe",
+    "Share this recipe",
+    "Pin Recipe",
+    "Jump to Recipe",
+    "Skip to Recipe",
+    "Save Recipe",
+    "Email Recipe",
+    # Nutrition buzzers
+    "Calories: 250 per serving",
+    "Calories: 108cal",
+    "Nutrition per serve",
+    "Nutrition Facts",
+    # Serving-size notes
+    "Servings: 4",
+    "Serves 4-6",
+    "Makes 12 portions",
+    # Miscellaneous noise
+    "This recipe is reader favourite!",
+    "Why this recipe works",
+    "Frequently Asked Questions",
+    "Pro tip: don't overmix",
+    "Storage instructions",
+]
+
+# Up to this many noise lines are injected per recipe (random count)
+MAX_NOISE_LINES = 6
+
+# ── Helpers ────────────────────────────────────────────────────────────────
 
 
 def fetch(url: str) -> str:
@@ -111,9 +203,7 @@ def extract_recipe_urls_from_sitemap(sitemap_url: str) -> list[str]:
         line = line.strip()
         if line.startswith("<loc>") and line.endswith("</loc>"):
             url = line[5:-6].strip()
-            # Filter to recipe-like paths (not pages, categories, tags)
             path = urlparse(url).path
-            # Skip non-recipe pages
             skip_patterns = [
                 "/blog/", "/about/", "/contact/", "/privacy",
                 "/category/", "/tag/", "/author/", "/page/",
@@ -127,7 +217,6 @@ def extract_recipe_urls_from_sitemap(sitemap_url: str) -> list[str]:
 def extract_recipe_jsonld(html: str, url: str) -> dict[str, Any] | None:
     """Find the Recipe node in schema.org JSON-LD embedded in HTML."""
     import re
-    # Find all JSON-LD script blocks
     for match in re.finditer(
         r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
         html, re.DOTALL | re.IGNORECASE,
@@ -140,7 +229,6 @@ def extract_recipe_jsonld(html: str, url: str) -> dict[str, Any] | None:
         except json.JSONDecodeError:
             continue
 
-        # Walk @graph arrays looking for Recipe type
         def find_recipe(node):
             if isinstance(node, dict):
                 if isinstance(node.get("@type"), str) and "Recipe" in node["@type"]:
@@ -193,7 +281,10 @@ def parse_instructions(instructions: Any) -> list[dict[str, Any]]:
     return steps
 
 
-def extract_label(
+# ── Recipe rendering → image ───────────────────────────────────────────────
+
+
+def render_label(
     line_text: str,
     known_labels: dict[int, str],
     line_idx: int,
@@ -215,102 +306,92 @@ def extract_label(
         return "ingredient"
     if is_method_section:
         return "method_step"
-
-    # Lines known_labels override (future use)
     if line_idx in known_labels:
         return known_labels[line_idx]
-
     return "ignore"
 
 
-# ── Feature computation ──────────────────────────────────────────────────────
+class RenderedRecipe:
+    """One recipe rendered to an image with ground-truth metadata."""
+
+    def __init__(self, image: Image.Image, lines: list[dict[str, Any]]):
+        self.image = image
+        # lines = [{"text": ..., "label": ..., "y_top": int, "y_bottom": int}, ...]
+        self.lines = lines
+
+    @property
+    def width(self):
+        return self.image.width
+
+    @property
+    def height(self):
+        return self.image.height
 
 
-def compute_features(text: str, line_idx: int, num_lines: int) -> list[float]:
-    """Compute the 20 normalised features for a single line.
+def render_recipe_image(
+    recipe: dict,
+    *,
+    inject_noise: bool = True,
+    rng: random.Random | None = None,
+) -> RenderedRecipe | None:
+    """Render a recipe as a clean card image.
 
-    Spatial features are simulated with a linear layout plus Gaussian noise
-    so the model learns robust patterns, not exact positions.
+    Optionally injects non-recipe noise lines labelled "ignore" so the model
+    learns to filter them out.
+
+    Returns a RenderedRecipe with the image and per-line position metadata,
+    or None if the recipe has no renderable content.
     """
-    # Simulated bounding box — linear Y with noise, fixed X-margin
-    noise_y = random.gauss(0, 0.003)  # small jitter
-    noise_h = random.gauss(0, 0.001)
+    labelled = render_recipe(recipe)
+    if not labelled:
+        return None
 
-    line_height = 0.04 + noise_h  # ~48 px on 1200px page
-    top = (line_idx / max(num_lines, 1)) * 0.85 + 0.05 + noise_y
-    left = 0.08
-    width = 0.84
+    _rng = rng or random
 
-    # Title gets bigger font (wider, taller, top-aligned)
-    if line_idx == 0:
-        line_height = 0.06
-        top = 0.03
-        left = 0.10
+    # ── Optionally inject noise lines ──────────────────────────────────
+    if inject_noise and NOISE_TEMPLATES:
+        num_noise = _rng.randint(1, MAX_NOISE_LINES)
+        chosen = _rng.sample(NOISE_TEMPLATES, k=min(num_noise, len(NOISE_TEMPLATES)))
+        for nl in chosen:
+            # Pick a random insertion index: before first line, between any
+            # two lines, or after last line.
+            pos = _rng.randint(0, len(labelled))
+            labelled.insert(pos, (nl, "ignore"))
 
-    # Relative font size vs average
-    avg_line_height = 0.04
-    relative_font_size = line_height / avg_line_height
+    # Estimate total height — render twice: first to measure, second to draw
+    y = MARGIN_Y
+    measured: list[dict[str, Any]] = []
+    for text, label in labelled:
+        font = _TITLE_FONT if label == "title" else (
+            _HEADING_FONT if label == "section_header" else _BODY_FONT
+        )
+        # Use getbbox for accurate bounding
+        bbox = font.getbbox(text)
+        line_h = bbox[3] - bbox[1] + LINE_GAP
+        measured.append({"text": text, "label": label, "y_top": y, "font": font, "line_h": line_h})
+        y += line_h
 
-    # Block membership — simulate 3 blocks: header, ingredients, method
-    # Rough heuristic: first 2-3 lines are block 0, ingredients block 1,
-    # method block 2
-    if line_idx <= 2 and num_lines > 3:
-        block_idx = 0.0
-    elif line_idx < num_lines // 2:
-        block_idx = 1.0
-    else:
-        block_idx = 2.0
-    lines_in_block = float(num_lines)
-    line_index_in_block = float(line_idx)
+    page_h = y + MARGIN_Y
 
-    # Text-derived features
-    trimmed = text.strip()
-    words = trimmed.split() if trimmed else []
-    word_count = float(len(words))
-    char_count = float(len(trimmed))
+    # Create image
+    img = Image.new("RGB", (PAGE_W, max(page_h, 100)), "white")
+    draw = ImageDraw.Draw(img)
 
-    starts_with_digit = 1.0 if trimmed and trimmed[0].isdigit() else 0.0
-    starts_with_fraction = 1.0 if trimmed and trimmed[0] in "¼½¾⅓⅔⅛⅜⅝⅞" else 0.0
-    ends_with_colon = 1.0 if trimmed.endswith(":") else 0.0
-    starts_with_verb = 1.0 if words and words[0].lower().strip("(") in IMPERATIVE_VERBS else 0.0
-    contains_number = 1.0 if any(c.isdigit() for c in trimmed) else 0.0
-    ends_with_punctuation = 1.0 if trimmed and trimmed[-1] in ".!?" else 0.0
-    has_mixed_case = 1.0 if any(c.isupper() for c in trimmed) and any(c.islower() for c in trimmed) else 0.0
-    confidence = 0.95  # Simulated: synthetic data is "clean"
+    lines_out: list[dict[str, Any]] = []
+    for m in measured:
+        draw.text((MARGIN_X, m["y_top"]), m["text"], fill="black", font=m["font"])
+        bbox = m["font"].getbbox(m["text"])
+        text_w = bbox[2] - bbox[0]
+        lines_out.append({
+            "text": m["text"],
+            "label": m["label"],
+            "y_top": m["y_top"],
+            "y_bottom": m["y_top"] + m["line_h"],
+            "x_left": MARGIN_X,
+            "x_right": MARGIN_X + text_w,
+        })
 
-    is_first_in_block = 1.0 if line_index_in_block == 0 else 0.0
-    is_last_in_block = 1.0 if line_index_in_block == lines_in_block - 1 else 0.0
-
-    # Augment: add variance for lines that look OCR-noisy (low confidence)
-    # to teach the model that low-confidence lines may have errors
-    if random.random() < 0.02:
-        confidence = round(random.uniform(0.4, 0.7), 2)
-
-    return [
-        top,
-        left,
-        width,
-        line_height,
-        relative_font_size,
-        block_idx,
-        lines_in_block,
-        line_index_in_block,
-        starts_with_digit,
-        starts_with_fraction,
-        ends_with_colon,
-        word_count,
-        char_count,
-        starts_with_verb,
-        contains_number,
-        ends_with_punctuation,
-        has_mixed_case,
-        confidence,
-        is_first_in_block,
-        is_last_in_block,
-    ]
-
-
-# ── Recipe rendering ─────────────────────────────────────────────────────────
+    return RenderedRecipe(image=img, lines=lines_out)
 
 
 def render_recipe(recipe: dict) -> list[tuple[str, str]]:
@@ -341,30 +422,237 @@ def render_recipe(recipe: dict) -> list[tuple[str, str]]:
             if isinstance(ing, str) and ing.strip():
                 lines.append((ing.strip(), "ingredient"))
 
-    # Handle sections inside ingredients (from HowToSection)
-    instructions = recipe.get("recipeInstructions", [])
-    section_names_found = set()
-    for step in parse_instructions(instructions):
-        if step.get("name"):
-            section_names_found.add(step["name"])
-
     # Instructions (method steps)
+    instructions = recipe.get("recipeInstructions", [])
     steps = parse_instructions(instructions)
     if steps:
         lines.append(("Method:", "section_header"))
-        for i, step in enumerate(steps):
+        for step in steps:
             text = step.get("text", "").strip()
             if text:
-                # Check if this step has a section name (HowToSection group)
-                step_name = step.get("name", "")
-                if step_name:
-                    lines.append((step_name, "section_header"))
                 lines.append((text, "method_step"))
 
     return lines
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# ── OCR and feature extraction ──────────────────────────────────────────────
+
+
+def ocr_recipe_image(rendered: RenderedRecipe) -> list[dict[str, Any]]:
+    """Run Tesseract OCR on the rendered image and return per-line data.
+
+    Returns list of dicts with:
+      text, left, top, width, height, block_num, line_num, conf
+    """
+    data = pytesseract.image_to_data(
+        rendered.image,
+        output_type=pytesseract.Output.DICT,
+    )
+
+    # Group word-level data into lines by (block_num, par_num)
+    # NOTE: Tesseract's line_num resets in each paragraph, so we key
+    # on paragraph number instead.
+    lines_map: dict[tuple[int, int], dict[str, Any]] = {}
+    for i in range(len(data["text"])):
+        text = (data["text"][i] or "").strip()
+        if not text:
+            continue
+        key = (data["block_num"][i], data["par_num"][i])
+        if key not in lines_map:
+            lines_map[key] = {
+                "texts": [],
+                "left": data["left"][i],
+                "top": data["top"][i],
+                "right": data["left"][i] + data["width"][i],
+                "bottom": data["top"][i] + data["height"][i],
+                "block_num": data["block_num"][i],
+                "line_num": data["line_num"][i],
+                "confs": [],
+            }
+        entry = lines_map[key]
+        entry["texts"].append(text)
+        entry["left"] = min(entry["left"], data["left"][i])
+        entry["top"] = min(entry["top"], data["top"][i])
+        entry["right"] = max(entry["right"], data["left"][i] + data["width"][i])
+        entry["bottom"] = max(entry["bottom"], data["top"][i] + data["height"][i])
+        entry["confs"].append(data.get("conf", [0])[i] if "conf" in data else 0)
+
+    # Sort lines: top-to-bottom, then left-to-right (for multiple columns)
+    sorted_keys = sorted(lines_map.keys(), key=lambda k: (
+        lines_map[k]["top"],
+        lines_map[k]["left"],
+    ))
+
+    results = []
+    for key in sorted_keys:
+        entry = lines_map[key]
+        avg_conf = sum(entry["confs"]) / max(len(entry["confs"]), 1) / 100.0
+        results.append({
+            "text": " ".join(entry["texts"]),
+            "left": entry["left"],
+            "top": entry["top"],
+            "width": entry["right"] - entry["left"],
+            "height": entry["bottom"] - entry["top"],
+            "block_num": entry["block_num"],
+            "conf": avg_conf,
+        })
+
+    return results
+
+
+def match_ocr_to_ground_truth(
+    ocr_lines: list[dict[str, Any]],
+    rendered: RenderedRecipe,
+) -> list[dict[str, Any]]:
+    """Match OCR output lines to ground-truth labels by Y-position overlap.
+
+    Each OCR line receives the label of the rendered line whose Y-range
+    most overlaps with it.  Returns the same list as ocr_lines but with
+    'label' and 'label_idx' added.
+    """
+    if not ocr_lines or not rendered.lines:
+        return []
+
+    labelled: list[dict[str, Any]] = []
+
+    def overlap(a_start, a_end, b_start, b_end):
+        return max(0, min(a_end, b_end) - max(a_start, b_start))
+
+    for ocr_line in ocr_lines:
+        ocr_cy = ocr_line["top"] + ocr_line["height"] / 2
+        best_overlap = 0
+        best_label = "ignore"
+        best_label_idx = 8  # ignore index
+
+        for gt_idx, gt in enumerate(rendered.lines):
+            o = overlap(
+                ocr_line["top"], ocr_line["top"] + ocr_line["height"],
+                gt["y_top"], gt["y_bottom"],
+            )
+            if o > best_overlap and (
+                # Also check that the Y-centre is within the GT line
+                gt["y_top"] <= ocr_cy <= gt["y_bottom"]
+            ):
+                best_overlap = o
+                best_label = gt["label"]
+                best_label_idx = LABEL_NAMES.index(best_label) if best_label in LABEL_NAMES else 8
+
+        labelled.append({**ocr_line, "label": best_label, "label_idx": best_label_idx})
+
+    return labelled
+
+
+def compute_features_from_ocr(
+    ocr_line: dict[str, Any],
+    image_size: tuple[int, int],
+    all_lines: list[dict[str, Any]],
+) -> list[float]:
+    """Compute the 20 normalised features for a single OCR line.
+
+    This replaces the old simulated compute_features() — all spatial values
+    come from the real Tesseract bounding boxes.
+    """
+    img_w, img_h = image_size
+    h_avg = sum(l["height"] for l in all_lines) / max(len(all_lines), 1)
+
+    text = ocr_line["text"]
+    trimmed = text.strip()
+    words = trimmed.split() if trimmed else []
+
+    # ── Spatial features (normalised to image) ────────────────────────
+    relative_top = ocr_line["top"] / img_h
+    relative_left = ocr_line["left"] / img_w
+    relative_width = ocr_line["width"] / img_w
+    relative_height = ocr_line["height"] / img_h
+    relative_font_size = ocr_line["height"] / h_avg if h_avg > 0 else 1.0
+
+    # Block membership from Tesseract
+    block_idx = float(ocr_line.get("block_num", 1))
+    lines_in_block = sum(
+        1 for l in all_lines if l.get("block_num") == ocr_line.get("block_num")
+    )
+    same_block_lines = sorted(
+        [l for l in all_lines if l.get("block_num") == ocr_line.get("block_num")],
+        key=lambda l: l["top"],
+    )
+    try:
+        line_index_in_block = float(
+            next(i for i, l in enumerate(same_block_lines) if l is ocr_line)
+        )
+    except StopIteration:
+        line_index_in_block = 0.0
+
+    # ── Text-derived features ─────────────────────────────────────────
+    starts_with_digit = 1.0 if trimmed and trimmed[0].isdigit() else 0.0
+    starts_with_fraction = 1.0 if trimmed and trimmed[0] in "¼½¾⅓⅔⅛⅜⅝⅞" else 0.0
+    ends_with_colon = 1.0 if trimmed.endswith(":") else 0.0
+    word_count = float(len(words))
+    char_count = float(len(trimmed))
+    starts_with_verb = 1.0 if words and words[0].lower().strip("(") in IMPERATIVE_VERBS else 0.0
+    contains_number = 1.0 if any(c.isdigit() for c in trimmed) else 0.0
+    ends_with_punctuation = 1.0 if trimmed and trimmed[-1] in ".!?" else 0.0
+    has_mixed_case = 1.0 if (any(c.isupper() for c in trimmed) and any(c.islower() for c in trimmed)) else 0.0
+    confidence = ocr_line.get("conf", 0.95)
+
+    is_first_in_block = 1.0 if line_index_in_block == 0 else 0.0
+    is_last_in_block = 1.0 if line_index_in_block == max(lines_in_block - 1, 0) else 0.0
+
+    return [
+        round(relative_top, 6),
+        round(relative_left, 6),
+        round(relative_width, 6),
+        round(relative_height, 6),
+        round(relative_font_size, 6),
+        block_idx,
+        float(lines_in_block),
+        line_index_in_block,
+        starts_with_digit,
+        starts_with_fraction,
+        ends_with_colon,
+        word_count,
+        char_count,
+        starts_with_verb,
+        contains_number,
+        ends_with_punctuation,
+        has_mixed_case,
+        round(confidence, 4),
+        is_first_in_block,
+        is_last_in_block,
+    ]
+
+
+# ── Data augmentation (optional) ──────────────────────────────────────────
+
+def augment_image(image: Image.Image) -> Image.Image:
+    """Apply mild augmentation to make the model robust to OCR noise.
+
+    Randomly rotates, shifts contrast, or adds blur.  Each augmentation
+    is applied independently with 30 % probability.
+    """
+    import random
+
+    # Rotate slightly
+    if random.random() < 0.3:
+        angle = random.uniform(-1.0, 1.0)
+        image = image.rotate(angle, expand=True, fillcolor="white")
+
+    # Adjust contrast
+    if random.random() < 0.3:
+        from PIL import ImageEnhance
+        factor = random.uniform(0.85, 1.15)
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(factor)
+
+    # Gaussian blur (simulates slight camera blur)
+    if random.random() < 0.15:
+        from PIL import ImageFilter
+        radius = random.uniform(0.3, 1.0)
+        image = image.filter(ImageFilter.GaussianBlur(radius=radius))
+
+    return image
+
+
+# ── Main ─────────────────────────────────────────────────────────────────
 
 
 def scrape_from_sitemap(sitemap_url: str, max_recipes: int) -> list[dict]:
@@ -372,7 +660,6 @@ def scrape_from_sitemap(sitemap_url: str, max_recipes: int) -> list[dict]:
     print(f"Fetching sitemap: {sitemap_url}")
     recipe_urls = extract_recipe_urls_from_sitemap(sitemap_url)
     print(f"Found {len(recipe_urls)} URLs in sitemap")
-    # Check for additional sitemaps (numbered ones: post-sitemap2.xml, etc.)
     base_sitemap = sitemap_url.replace(".xml", "")
     for i in range(2, 10):
         alt_url = f"{base_sitemap}{i}.xml"
@@ -401,7 +688,7 @@ def scrape_from_sitemap(sitemap_url: str, max_recipes: int) -> list[dict]:
             else:
                 print(f"    → No Recipe JSON-LD found")
                 errors += 1
-            time.sleep(0.3)  # Polite delay
+            time.sleep(0.3)
         except Exception as e:
             print(f"    → Error: {e}")
             errors += 1
@@ -448,58 +735,101 @@ def main():
         help="Output CSV path (default: ./data/labelled_lines.csv)",
     )
     parser.add_argument(
+        "--augment",
+        action="store_true",
+        default=True,
+        help="Apply mild image augmentation (default: on)",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
-        help="Random seed for reproducible layout simulation (default: 42)",
+        help="Random seed for reproducibility (default: 42)",
     )
     args = parser.parse_args()
 
     random.seed(args.seed)
 
-    # ── Load recipes ────────────────────────────────────────────────────
+    if Image is None:
+        print("ERROR: Pillow is required. Install with: pip install Pillow")
+        sys.exit(1)
+
+    # ── Load recipes ──────────────────────────────────────────────────
     if args.recipes:
         recipes = load_recipes_from_jsonl(args.recipes)
         print(f"Loaded {len(recipes)} recipes from {args.recipes}")
     elif args.sitemap:
         recipes = scrape_from_sitemap(args.sitemap, args.max_recipes)
     else:
-        print("ERROR: Provide either --sitemap or --recipes")
-        sys.exit(1)
+        # Fall back to a small built-in test set for quick verification
+        recipes = _builtin_test_recipes()
+        print(f"Using {len(recipes)} built-in test recipes")
 
     if not recipes:
         print("No recipes found. Check your input.")
         sys.exit(1)
 
-    # ── Render and extract features ──────────────────────────────────────
+    # ── Render, OCR, extract features ─────────────────────────────────
     csv_rows = []
     total_lines = 0
+    skipped = 0
+    ocr_failures = 0
 
-    for recipe in recipes:
-        labelled_lines = render_recipe(recipe)
-        num_lines = len(labelled_lines)
+    for recipe_idx, recipe in enumerate(recipes):
+        recipe_name = recipe.get("name", "?")
+        print(f"\n[{recipe_idx + 1}/{len(recipes)}] {recipe_name}")
 
-        for line_idx, (text, label) in enumerate(labelled_lines):
-            features = compute_features(text, line_idx, num_lines)
+        # Render (uses the seeded `random` module for reproducible noise)
+        rendered = render_recipe_image(recipe, inject_noise=args.augment, rng=random)
+        if rendered is None:
+            print("  → No renderable content")
+            skipped += 1
+            continue
+
+        # Optional augmentation
+        img = rendered.image
+        if args.augment:
+            img = augment_image(img)
+
+        # OCR
+        ocr_lines = ocr_recipe_image(RenderedRecipe(image=img, lines=rendered.lines))
+        if not ocr_lines:
+            print("  → OCR returned no lines")
+            ocr_failures += 1
+            continue
+
+        # Match OCR lines to ground-truth labels
+        # We need to re-create RenderedRecipe with the augmented image's lines
+        # Actually, the image augmentation doesn't change the rendered positions
+        labelled_ocr = match_ocr_to_ground_truth(
+            ocr_lines,
+            rendered,  # original rendered positions still apply
+        )
+
+        # Compute features for each labelled OCR line
+        img_size = (img.width, img.height)
+        for line_idx, ocr_line in enumerate(labelled_ocr):
+            features = compute_features_from_ocr(
+                ocr_line, img_size, labelled_ocr,
+            )
             if len(features) != len(FEATURE_NAMES):
-                print(f"ERROR: Feature count mismatch for '{text[:40]}'")
+                print(f"  → Feature count mismatch for '{ocr_line['text'][:40]}'")
                 continue
 
             row = {
-                "label": LABEL_NAMES.index(label) if label in LABEL_NAMES else -1,
-                "label_name": label,
-                "text": text,
-                "recipe_name": recipe.get("name", "?"),
+                "label": ocr_line["label_idx"],
+                "label_name": ocr_line["label"],
+                "text": ocr_line["text"],
+                "recipe_name": recipe_name,
                 "recipe_url": recipe.get("_source_url", ""),
             }
             for fname, fval in zip(FEATURE_NAMES, features):
-                row[fname] = round(fval, 6)
+                row[fname] = fval
 
             csv_rows.append(row)
             total_lines += 1
 
-    # ── Write CSV ────────────────────────────────────────────────────────
-    import os
+    # ── Write CSV ──────────────────────────────────────────────────────
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
 
     fieldnames = ["label", "label_name", "text", "recipe_name", "recipe_url"] + FEATURE_NAMES
@@ -508,19 +838,86 @@ def main():
         writer.writeheader()
         writer.writerows(csv_rows)
 
-    # ── Summary ──────────────────────────────────────────────────────────
-    label_counts = {}
+    # ── Summary ────────────────────────────────────────────────────────
+    label_counts: dict[str, int] = {}
     for row in csv_rows:
         lbl = row["label_name"]
         label_counts[lbl] = label_counts.get(lbl, 0) + 1
 
-    print(f"\nGenerated {total_lines} labelled lines from {len(recipes)} recipes")
+    print(f"\n{'=' * 60}")
+    print(f"Generated {total_lines} labelled lines from {len(recipes)} recipes")
+    print(f"Skipped: {skipped}   OCR failures: {ocr_failures}")
     print(f"Output: {args.output}")
-    print("\nLabel distribution:")
+    print(f"\nLabel distribution:")
     for name in LABEL_NAMES:
         count = label_counts.get(name, 0)
         pct = count / total_lines * 100 if total_lines else 0
         print(f"  {name:25s} {count:6d} ({pct:5.1f}%)")
+
+    if total_lines == 0:
+        print("\n⚠ No training data generated. Try running with --sitemap or --recipes.")
+
+
+def _builtin_test_recipes() -> list[dict]:
+    """Return a small set of built-in test recipes for quick verification."""
+    return [
+        {
+            "name": "Simple Pancakes",
+            "recipeYield": ["4 servings"],
+            "recipeIngredient": [
+                "1 cup plain flour",
+                "2 tbsp sugar",
+                "2 tsp baking powder",
+                "Pinch of salt",
+                "1 cup milk",
+                "1 egg",
+                "2 tbsp butter",
+            ],
+            "recipeInstructions": [
+                {"@type": "HowToStep", "text": "Mix flour, sugar, baking powder and salt in a bowl."},
+                {"@type": "HowToStep", "text": "Add milk and egg, whisk until smooth."},
+                {"@type": "HowToStep", "text": "Heat a pan over medium heat and melt some butter."},
+                {"@type": "HowToStep", "text": "Pour batter and cook until bubbles form on surface."},
+                {"@type": "HowToStep", "text": "Flip and cook until golden. Serve with toppings."},
+            ],
+        },
+        {
+            "name": "Garlic Pasta",
+            "recipeYield": ["2"],
+            "recipeIngredient": [
+                "200g spaghetti",
+                "4 cloves garlic, minced",
+                "2 tbsp olive oil",
+                "1/4 cup parmesan",
+                "Salt to taste",
+            ],
+            "recipeInstructions": [
+                {"@type": "HowToStep", "text": "Boil pasta in salted water until al dente."},
+                {"@type": "HowToStep", "text": "Sauté garlic in olive oil until fragrant."},
+                {"@type": "HowToStep", "text": "Toss pasta with garlic oil and parmesan. Serve immediately."},
+            ],
+        },
+        {
+            "name": "Classic Margherita Pizza",
+            "recipeYield": ["1 large pizza"],
+            "recipeIngredient": [
+                "2 1/2 cups bread flour",
+                "1 tsp instant yeast",
+                "1 tsp salt",
+                "1 cup warm water",
+                "1/2 cup tomato sauce",
+                "200g fresh mozzarella",
+                "Fresh basil leaves",
+            ],
+            "recipeInstructions": [
+                {"@type": "HowToStep", "text": "Mix flour, yeast and salt. Add warm water and knead 10 minutes."},
+                {"@type": "HowToStep", "text": "Let dough rise for 1 hour in a warm spot."},
+                {"@type": "HowToStep", "text": "Preheat oven to 250°C with a pizza stone inside."},
+                {"@type": "HowToStep", "text": "Shape dough into a 12-inch circle. Spread sauce, tear mozzarella on top."},
+                {"@type": "HowToStep", "text": "Bake 8-10 minutes until crust is golden. Top with fresh basil."},
+            ],
+        },
+    ]
 
 
 if __name__ == "__main__":

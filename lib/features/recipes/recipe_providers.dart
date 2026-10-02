@@ -239,6 +239,11 @@ class RecipeOps {
     String? sourceUrl,
     String sourceType = 'manual',
     List<String> sections = const [],
+    String? notes,
+    String? nutritionJson,
+    String? prepTime,
+    String? cookTime,
+    String? totalTime,
     required List<RecipeIngredientDraft> ingredients,
   }) async {
     return db.transaction(() async {
@@ -252,6 +257,11 @@ class RecipeOps {
                 servings: Value(servings),
                 sourceUrl: Value(sourceUrl),
                 sourceType: Value(sourceType),
+                notes: Value(notes),
+                nutritionJson: Value(nutritionJson),
+                prepTime: Value(prepTime),
+                cookTime: Value(cookTime),
+                totalTime: Value(totalTime),
               ),
             );
       } else {
@@ -261,6 +271,11 @@ class RecipeOps {
             name: Value(name),
             servings: Value(servings),
             sourceUrl: Value(sourceUrl),
+            notes: Value(notes),
+            nutritionJson: Value(nutritionJson),
+            prepTime: Value(prepTime),
+            cookTime: Value(cookTime),
+            totalTime: Value(totalTime),
           ),
         );
         // Delete alternatives → ingredients → sections (FK order)

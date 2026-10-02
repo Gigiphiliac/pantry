@@ -85,17 +85,36 @@ class OnnxClassifier {
     List<String> lineTexts,
   ) async {
     if (_loaded) {
-      return _runModel(features);
+      return _runModel(features, lineTexts);
     }
     return _stubClassify(features, lineTexts);
   }
 
-  /// Run the LightGBM model on [features].
-  Future<OcrClassificationResult> _runModel(List<List<double>> features) async {
+  /// Run the LightGBM model on [features], then post-filter any noise lines
+  /// the model would otherwise miss (since the training data has no `ignore`
+  /// examples).
+  Future<OcrClassificationResult> _runModel(
+    List<List<double>> features,
+    List<String> lineTexts,
+  ) async {
     final results = _model.predict(features);
     final labels = <OcrLineClassification>[];
 
-    for (final (classIdx, confidence) in results) {
+    for (var i = 0; i < results.length; i++) {
+      final (classIdx, confidence) = results[i];
+
+      // Post-filter: override model prediction if the line looks like noise
+      if (_isNoise(lineTexts[i])) {
+        labels.add(
+          OcrLineClassification(
+            label: OcrLineLabel.ignore,
+            confidence: 0.98,
+            labelName: 'ignore',
+          ),
+        );
+        continue;
+      }
+
       final labelName =
           _model.labelNames != null && classIdx < _model.labelNames!.length
           ? _model.labelNames![classIdx]
@@ -113,6 +132,32 @@ class OnnxClassifier {
     return OcrClassificationResult(lineLabels: labels, usedStub: false);
   }
 
+  /// Lines whose lower-cased text contains any of these substrings are
+  /// extremely unlikely to be recipe content and should be ignored.
+  static final Set<String> _ignorePatterns = {
+    'prep time',
+    'cook time',
+    'total time',
+    'calories:',
+    'author:',
+    'recipe video',
+    'jump to recipe',
+    'skip to recipe',
+    'rate this recipe',
+    'print recipe',
+    'share recipe',
+    'nutrition facts',
+  };
+
+  /// Matches rating lines like "4.90 from 219 votes".
+  static final RegExp _ratingPattern =
+      RegExp(r'^[\d.]+ from \d+ votes\b', caseSensitive: false);
+
+  /// Matches standalone "Print" or "Share" button labels.
+  static final RegExp _standaloneNoise =
+      RegExp(r'^(print|share|pin|tweet|email|save)\b',
+          caseSensitive: false);
+
   /// Stub classifier: assigns labels using heuristics from [OcrRecipeParser].
   /// Used when the model asset is not available.
   Future<OcrClassificationResult> _stubClassify(
@@ -125,6 +170,16 @@ class OnnxClassifier {
     for (var i = 0; i < lineTexts.length; i++) {
       final text = lineTexts[i];
       final feat = features[i];
+
+      // ---- Check for ignore patterns first ----
+      if (_isNoise(text)) {
+        labels.add(OcrLineClassification(
+          label: OcrLineLabel.ignore,
+          confidence: 0.95,
+          labelName: 'ignore',
+        ));
+        continue;
+      }
 
       const idxDigit = 8;
       const idxFraction = 9;
@@ -164,6 +219,18 @@ class OnnxClassifier {
     }
 
     return OcrClassificationResult(lineLabels: labels, usedStub: true);
+  }
+
+  /// Returns true if [text] looks like non-recipe noise (ratings, timers,
+  /// social buttons, etc.).
+  bool _isNoise(String text) {
+    final lower = text.trim().toLowerCase();
+    for (final pattern in _ignorePatterns) {
+      if (lower.contains(pattern)) return true;
+    }
+    if (_ratingPattern.hasMatch(text)) return true;
+    if (_standaloneNoise.hasMatch(text.trim())) return true;
+    return false;
   }
 
   OcrLineLabel _labelFromName(String name) {

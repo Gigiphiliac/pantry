@@ -1,0 +1,40 @@
+label,label_name,text,recipe_name,recipe_url,relative_top,relative_left,relative_width,relative_height,relative_font_size,block_index,lines_in_block,line_index_in_block,starts_with_digit,starts_with_unicode_fraction,ends_with_colon,word_count,char_count,starts_with_imperative_verb,contains_number,ends_with_punctuation,has_mixed_case,confidence,is_first_in_block,is_last_in_block
+0,title,Simple Pancakes,Simple Pancakes,,0.052265,0.047146,0.30397,0.052265,1.276596,1.0,18.0,0.0,0.0,0.0,0.0,2.0,15.0,0.0,0.0,0.0,1.0,0.96,1.0,0.0
+8,ignore,Total Time: 20 mins,Simple Pancakes,,0.109756,0.045906,0.191067,0.026132,0.638298,1.0,18.0,1.0,0.0,0.0,0.0,4.0,19.0,0.0,1.0,0.0,1.0,0.9525,0.0,0.0
+1,servings,Serves 4 servings,Simple Pancakes,,0.144599,0.047146,0.174938,0.033101,0.808511,1.0,18.0,2.0,0.0,0.0,0.0,3.0,17.0,0.0,1.0,0.0,1.0,0.9567,0.0,0.0
+8,ignore,Print Recipe,Simple Pancakes,,0.184669,0.047146,0.119107,0.031359,0.765957,1.0,18.0,3.0,0.0,0.0,0.0,2.0,12.0,0.0,0.0,0.0,1.0,0.94,0.0,0.0
+2,section_header,Ingredients:,Simple Pancakes,,0.226481,0.047146,0.137717,0.036585,0.893617,1.0,18.0,4.0,0.0,0.0,1.0,1.0,12.0,0.0,0.0,0.0,1.0,0.91,0.0,0.0
+8,ignore,5.0 from 100 ratings,Simple Pancakes,,0.271777,0.045906,0.19603,0.033101,0.808511,1.0,18.0,5.0,1.0,0.0,0.0,4.0,20.0,0.0,1.0,0.0,0.0,0.96,0.0,0.0
+3,ingredient,1 cup plain flour,Simple Pancakes,,0.313589,0.047146,0.155087,0.031359,0.765957,1.0,18.0,6.0,1.0,0.0,0.0,4.0,17.0,0.0,1.0,0.0,0.0,0.87,0.0,0.0
+3,ingredient,2 tbsp sugar,Simple Pancakes,,0.353659,0.045906,0.121588,0.031359,0.765957,1.0,18.0,7.0,1.0,0.0,0.0,3.0,12.0,0.0,1.0,0.0,0.0,0.94,0.0,0.0
+3,ingredient,2 tsp baking powder,Simple Pancakes,,0.39547,0.044665,0.199752,0.031359,0.765957,1.0,18.0,8.0,1.0,0.0,0.0,4.0,19.0,0.0,1.0,0.0,0.0,0.955,0.0,0.0
+3,ingredient,Pinch of salt,Simple Pancakes,,0.437282,0.044665,0.120347,0.02439,0.595745,1.0,18.0,9.0,0.0,0.0,0.0,3.0,13.0,0.0,0.0,0.0,1.0,0.9533,0.0,0.0
+3,ingredient,1 cup milk,Simple Pancakes,,0.472125,0.045906,0.098015,0.031359,0.765957,1.0,18.0,10.0,1.0,0.0,0.0,3.0,10.0,0.0,1.0,0.0,0.0,0.8067,0.0,0.0
+3,ingredient,1 egg,Simple Pancakes,,0.512195,0.045906,0.052109,0.031359,0.765957,1.0,18.0,11.0,1.0,0.0,0.0,2.0,5.0,0.0,1.0,0.0,0.0,0.31,0.0,0.0
+3,ingredient,2 tbsp butter,Simple Pancakes,,0.552265,0.044665,0.122829,0.031359,0.765957,1.0,18.0,12.0,1.0,0.0,0.0,3.0,13.0,0.0,1.0,0.0,0.0,0.9267,0.0,0.0
+2,section_header,Method:,Simple Pancakes,,0.594077,0.043424,0.094293,0.029617,0.723404,1.0,18.0,13.0,0.0,0.0,1.0,1.0,7.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+8,ignore,Recipe video above,Simple Pancakes,,0.632404,0.043424,0.193548,0.031359,0.765957,1.0,18.0,14.0,0.0,0.0,0.0,3.0,18.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+4,method_step,"Mix flour, sugar, baking powder and salt in a bowl. Add milk and egg, whisk until smooth.",Simple Pancakes,,0.672474,0.042184,0.491315,0.074913,1.829787,1.0,18.0,15.0,0.0,0.0,0.0,17.0,89.0,1.0,0.0,1.0,1.0,0.9476,0.0,0.0
+4,method_step,Heat a pan over medium heat and meit some butter. Pour batter and cook until bubbles form on surface. Flip and cook until golden. Serve with toppings. Watch the video,Simple Pancakes,,0.756098,0.040943,0.513648,0.144599,3.531915,1.0,18.0,16.0,0.0,0.0,0.0,30.0,166.0,1.0,0.0,0.0,1.0,0.9447,0.0,0.0
+8,ignore,Prep Time 10 minutes,Simple Pancakes,,0.909408,0.042184,0.21464,0.031359,0.765957,1.0,18.0,17.0,0.0,0.0,0.0,4.0,20.0,0.0,1.0,0.0,1.0,0.96,0.0,1.0
+8,ignore,Pro tip: don't overmix,Garlic Pasta,,0.058947,0.047146,0.208437,0.037895,0.402985,1.0,1.0,0.0,0.0,0.0,0.0,4.0,22.0,0.0,0.0,0.0,1.0,0.94,1.0,1.0
+0,title,Garlic Pasta,Garlic Pasta,,0.105263,0.045906,0.2134,0.101053,1.074627,2.0,1.0,0.0,0.0,0.0,0.0,2.0,12.0,0.0,0.0,0.0,1.0,0.96,1.0,1.0
+3,ingredient,"Serves 2 Ingredients: 200g spaghetti Servings: 4 4 cloves garlic, minced 2 tbsp olive oil 1/4 cup parmesan Salt to taste Calories: 108cal Method:",Garlic Pasta,,0.170526,0.039702,0.229529,0.458947,4.880597,3.0,1.0,0.0,0.0,0.0,1.0,24.0,145.0,0.0,1.0,0.0,1.0,0.9167,1.0,1.0
+4,method_step,Boil pasta in salted water until al dente.,Garlic Pasta,,0.64,0.043424,0.384615,0.037895,0.402985,4.0,6.0,0.0,0.0,0.0,0.0,8.0,42.0,1.0,0.0,1.0,1.0,0.9475,1.0,0.0
+4,method_step,Saute garlic in olive oil until fragrant.,Garlic Pasta,,0.690526,0.043424,0.356079,0.042105,0.447761,4.0,6.0,1.0,0.0,0.0,0.0,7.0,41.0,0.0,0.0,1.0,1.0,0.9029,0.0,0.0
+8,ignore,Print Recipe,Garlic Pasta,,0.741053,0.043424,0.119107,0.037895,0.402985,4.0,6.0,2.0,0.0,0.0,0.0,2.0,12.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+8,ignore,Recipe video above,Garlic Pasta,,0.791579,0.042184,0.194789,0.037895,0.402985,4.0,6.0,3.0,0.0,0.0,0.0,3.0,18.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+8,ignore,Nutrition per serve,Garlic Pasta,,0.84,0.042184,0.179901,0.037895,0.402985,4.0,6.0,4.0,0.0,0.0,0.0,3.0,19.0,0.0,0.0,0.0,1.0,0.9567,0.0,0.0
+4,method_step,Toss pasta with garlic oil and parmesan. Serve immediately.,Garlic Pasta,,0.890526,0.040943,0.58933,0.054737,0.58209,4.0,6.0,5.0,0.0,0.0,0.0,9.0,59.0,1.0,0.0,1.0,1.0,0.9578,0.0,1.0
+1,servings,Classic Margherita Pizza Serves 1 large pizza Ingredients:,Classic Margherita Pizza,,0.05988,0.04125,0.43625,0.151697,2.458221,1.0,1.0,0.0,0.0,0.0,1.0,8.0,58.0,0.0,1.0,0.0,1.0,0.9437,1.0,1.0
+3,ingredient,Cook Time: 15 mins 2 1/2 cups bread flour,Classic Margherita Pizza,,0.223553,0.04125,0.21625,0.071856,1.16442,2.0,1.0,0.0,0.0,0.0,0.0,9.0,41.0,1.0,1.0,0.0,1.0,0.9511,1.0,1.0
+3,ingredient,1 tsp instant yeast,Classic Margherita Pizza,,0.307385,0.0425,0.17875,0.033932,0.549865,3.0,4.0,0.0,1.0,0.0,0.0,4.0,19.0,0.0,1.0,0.0,0.0,0.89,1.0,0.0
+3,ingredient,1 tsp salt,Classic Margherita Pizza,,0.355289,0.0425,0.0875,0.033932,0.549865,3.0,4.0,1.0,1.0,0.0,0.0,3.0,10.0,0.0,1.0,0.0,0.0,0.8,0.0,0.0
+3,ingredient,1 cup warm water,Classic Margherita Pizza,,0.403194,0.0425,0.175,0.033932,0.549865,3.0,4.0,2.0,1.0,0.0,0.0,4.0,16.0,0.0,1.0,0.0,0.0,0.8875,0.0,0.0
+3,ingredient,1/2 cup tomato sauce 200g fresh mozzarella Fresh basil leaves,Classic Margherita Pizza,,0.451098,0.04125,0.21875,0.11976,1.940701,3.0,4.0,3.0,1.0,0.0,0.0,10.0,61.0,0.0,1.0,0.0,1.0,0.954,0.0,1.0
+4,method_step,"Method: Mix flour, yeast and salt. Add warm water and knead 10 minutes.",Classic Margherita Pizza,,0.582834,0.04125,0.64,0.077844,1.261456,4.0,1.0,0.0,0.0,0.0,0.0,13.0,71.0,0.0,1.0,1.0,1.0,0.96,1.0,1.0
+4,method_step,Let dough rise for 1 hour in a warm spot.,Classic Margherita Pizza,,0.674651,0.04125,0.40125,0.033932,0.549865,5.0,5.0,0.0,0.0,0.0,0.0,10.0,41.0,0.0,1.0,1.0,1.0,0.96,1.0,0.0
+4,method_step,Preheat oven to 250°C with a pizza stone inside.,Classic Margherita Pizza,,0.722555,0.04125,0.4825,0.033932,0.549865,5.0,5.0,1.0,0.0,0.0,0.0,9.0,48.0,1.0,1.0,1.0,1.0,0.9578,0.0,0.0
+8,ignore,Save Recipe,Classic Margherita Pizza,,0.770459,0.04125,0.125,0.033932,0.549865,5.0,5.0,2.0,0.0,0.0,0.0,2.0,11.0,0.0,0.0,0.0,1.0,0.955,0.0,0.0
+4,method_step,"Shape dough into a 12-inch circle. Spread sauce, tear mozzarella on top. Bake 8-10 minutes until crust is golden. Top with fresh basil.",Classic Margherita Pizza,,0.816367,0.04125,0.725,0.081836,1.326146,5.0,5.0,3.0,0.0,0.0,0.0,23.0,135.0,0.0,1.0,1.0,1.0,0.9583,0.0,0.0
+8,ignore,Tap to view video,Classic Margherita Pizza,,0.912176,0.04,0.17125,0.033932,0.549865,5.0,5.0,4.0,0.0,0.0,0.0,4.0,17.0,0.0,0.0,0.0,1.0,0.96,0.0,1.0

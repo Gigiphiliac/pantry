@@ -82,6 +82,10 @@ class Recipes extends Table {
   TextColumn get sourceType => text().withDefault(const Constant('manual'))();
   IntColumn get servings => integer().nullable()();
   TextColumn get nutritionJson => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get prepTime => text().nullable()();
+  TextColumn get cookTime => text().nullable()();
+  TextColumn get totalTime => text().nullable()();
 }
 
 class RecipeSteps extends Table {
@@ -213,7 +217,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.connect(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

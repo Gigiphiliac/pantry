@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:pantry/core/ocr/onnx_classifier.dart';
 import 'package:pantry/core/recipes/recipe_text_parser.dart';
 import 'package:pantry/features/recipes/models/recipe_draft.dart';
@@ -116,6 +117,37 @@ class ZoneAssembler {
     );
   }
 
+  /// Parse a single nutrition line into a [NutritionDraft].
+  ///
+  /// Handles common formats:
+  ///   "Calories: 250 per serving" → (calories, 250 per serving)
+  ///   "Protein 10g" → (protein, 10g)
+  /// Falls back to (raw_line, "") for unparseable lines.
+  @visibleForTesting
+  static NutritionDraft parseNutritionLine(String line) {
+    final trimmed = line.trim();
+    // Try colon-separated: "Label: value"
+    final colonIdx = trimmed.indexOf(':');
+    if (colonIdx > 0) {
+      final label = trimmed.substring(0, colonIdx).trim();
+      final value = trimmed.substring(colonIdx + 1).trim();
+      if (label.isNotEmpty && value.isNotEmpty) {
+        return NutritionDraft(label: label, value: value);
+      }
+    }
+    // Try space-separated: "Label value" where Label starts with a letter
+    final spaceIdx = trimmed.indexOf(' ');
+    if (spaceIdx > 0) {
+      final candidate = trimmed.substring(0, spaceIdx).trim();
+      final rest = trimmed.substring(spaceIdx + 1).trim();
+      if (candidate.isNotEmpty && rest.isNotEmpty &&
+          RegExp(r'^[A-Za-z]').hasMatch(candidate)) {
+        return NutritionDraft(label: candidate, value: rest);
+      }
+    }
+    return NutritionDraft(label: trimmed, value: '');
+  }
+
   /// Convert an [AssembledRecipe] into a [RecipeDraft] suitable for the
   /// recipe form.
   ///
@@ -131,11 +163,17 @@ class ZoneAssembler {
     // Parse method lines into individual steps
     final steps = RecipeTextParser.parseInstructions(assembled.methodLines);
 
-    // Collate notes into a single string if any exist (stored separately;
-    // RecipeDraft currently has no dedicated notes field — future enhancement).
-    // final notesBlock = assembled.notesLines.isNotEmpty
-    //     ? assembled.notesLines.join('\n')
-    //     : null;
+    // Collate notes lines into a single text block
+    final notes = assembled.notesLines.isNotEmpty
+        ? assembled.notesLines.join('\n')
+        : null;
+
+    // Parse nutrition lines into key-value entries
+    final nutrition = assembled.nutritionLines.isNotEmpty
+        ? assembled.nutritionLines
+            .map(parseNutritionLine)
+            .toList()
+        : null;
 
     return RecipeDraft(
       name: assembled.title,
@@ -143,6 +181,8 @@ class ZoneAssembler {
       ingredients: unsectioned,
       sections: sections,
       steps: steps,
+      notes: notes,
+      nutrition: nutrition,
     );
   }
 }

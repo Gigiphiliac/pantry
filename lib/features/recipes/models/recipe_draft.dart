@@ -70,12 +70,38 @@ class RecipeSectionDraft {
   };
 }
 
+/// A single nutrition fact: e.g. label="Calories", value="108cal".
+///
+/// Stored as key-value pairs so the form can render editable rows without
+/// requiring the user to write raw JSON.
+class NutritionDraft {
+  final String label;
+  final String value;
+
+  const NutritionDraft({required this.label, required this.value});
+
+  factory NutritionDraft.fromJson(Map<String, dynamic> json) => NutritionDraft(
+    label: (json['label'] as String?) ?? '',
+    value: (json['value'] as String?) ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'value': value,
+  };
+}
+
 class RecipeDraft {
   final String? name;
   final int? servings;
   final List<IngredientDraft> ingredients;
   final List<RecipeSectionDraft> sections;
   final List<String> steps;
+  final String? notes;
+  final List<NutritionDraft>? nutrition;  // nullable — no nutrition parsed
+  final String? prepTime;
+  final String? cookTime;
+  final String? totalTime;
 
   const RecipeDraft({
     this.name,
@@ -83,6 +109,11 @@ class RecipeDraft {
     this.ingredients = const [],
     this.sections = const [],
     this.steps = const [],
+    this.notes,
+    this.nutrition,
+    this.prepTime,
+    this.cookTime,
+    this.totalTime,
   });
 
   factory RecipeDraft.fromJson(Map<String, dynamic> json) {
@@ -124,23 +155,52 @@ class RecipeDraft {
                 .toList();
     }
 
+    // Parse nutrition entries
+    final nutrition = _parseNutrition(json['nutrition']);
+
     return RecipeDraft(
       name: _nullIfEmpty(json['name'] as String?),
       servings: (json['servings'] as num?)?.toInt(),
       ingredients: ingredients,
       sections: sections,
       steps: steps,
+      notes: _nullIfEmpty(json['notes'] as String?),
+      nutrition: nutrition,
+      prepTime: _nullIfEmpty(json['prepTime'] as String?),
+      cookTime: _nullIfEmpty(json['cookTime'] as String?),
+      totalTime: _nullIfEmpty(json['totalTime'] as String?),
     );
+  }
+
+  static List<NutritionDraft>? _parseNutrition(dynamic raw) {
+    if (raw is! List) return null;
+    final entries = raw
+        .whereType<Map<String, dynamic>>()
+        .map(NutritionDraft.fromJson)
+        .where((n) => n.label.isNotEmpty)
+        .toList();
+    return entries.isEmpty ? null : entries;
   }
 
   static String? _nullIfEmpty(String? s) =>
       (s == null || s.trim().isEmpty) ? null : s.trim();
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'servings': servings,
-    'ingredients': ingredients.map((i) => i.toJson()).toList(),
-    'sections': sections.map((s) => s.toJson()).toList(),
-    'steps': steps,
-  };
+  Map<String, dynamic> toJson() {
+    final result = <String, dynamic>{
+      'name': name,
+      'servings': servings,
+      'ingredients': ingredients.map((i) => i.toJson()).toList(),
+      'sections': sections.map((s) => s.toJson()).toList(),
+      'steps': steps,
+    };
+    if (notes != null) result['notes'] = notes;
+    final nut = nutrition;
+    if (nut != null) {
+      result['nutrition'] = nut.map((n) => n.toJson()).toList();
+    }
+    if (prepTime != null) result['prepTime'] = prepTime;
+    if (cookTime != null) result['cookTime'] = cookTime;
+    if (totalTime != null) result['totalTime'] = totalTime;
+    return result;
+  }
 }

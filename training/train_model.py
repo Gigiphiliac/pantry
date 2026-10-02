@@ -338,9 +338,17 @@ def main():
     # ── Train/validation split ──────────────────────────────────────────
     from sklearn.model_selection import train_test_split
 
+    # Check if stratification is possible (every class needs >= 2 samples)
+    can_stratify = all(c >= 2 for c in label_counts.values())
+
+    split_kwargs = dict(
+        test_size=args.val_split, random_state=args.seed,
+    )
+    if can_stratify:
+        split_kwargs["stratify"] = y
+
     X_train, X_val, y_train, y_val, texts_train, texts_val = train_test_split(
-        X, y, texts, test_size=args.val_split, random_state=args.seed,
-        stratify=y,
+        X, y, texts, **split_kwargs,
     )
     print(f"\nTrain: {len(X_train)}  Val: {len(X_val)}")
 

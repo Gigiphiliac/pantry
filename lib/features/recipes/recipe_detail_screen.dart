@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
@@ -77,6 +79,72 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               const SizedBox(height: 8),
               ..._buildIngredientWidgets(context, ingredients, sectionNames),
             ],
+
+            // Timing
+            if (_recipe.prepTime?.isNotEmpty == true ||
+                _recipe.cookTime?.isNotEmpty == true ||
+                _recipe.totalTime?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Timing', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (_recipe.prepTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Prep',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600)),
+                          Text(_recipe.prepTime!),
+                        ],
+                      ),
+                    ),
+                  if (_recipe.cookTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Cook',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600)),
+                          Text(_recipe.cookTime!),
+                        ],
+                      ),
+                    ),
+                  if (_recipe.totalTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Total',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600)),
+                          Text(_recipe.totalTime!),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+
+            // Notes
+            if (_recipe.notes?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Notes', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(_recipe.notes!, textAlign: TextAlign.start),
+            ],
+
+            // Nutrition
+            if (_recipe.nutritionJson?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              _nutritionTable(_recipe.nutritionJson!),
+            ],
+
             ...steps.when(
               loading: () => const [],
               error: (_, _) => const [],
@@ -199,6 +267,39 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _nutritionTable(String json) {
+    try {
+      final parsed = jsonDecode(json) as Map<String, dynamic>;
+      if (parsed.isEmpty) return const SizedBox.shrink();
+      return Table(
+        columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(3)},
+        children: parsed.entries.map((e) {
+          final val = e.value;
+          return TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  e.key,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(val is String ? val : val.toString()),
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   void _showAddToList(BuildContext context) {

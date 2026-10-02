@@ -2049,6 +2049,48 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prepTimeMeta = const VerificationMeta(
+    'prepTime',
+  );
+  @override
+  late final GeneratedColumn<String> prepTime = GeneratedColumn<String>(
+    'prep_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cookTimeMeta = const VerificationMeta(
+    'cookTime',
+  );
+  @override
+  late final GeneratedColumn<String> cookTime = GeneratedColumn<String>(
+    'cook_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalTimeMeta = const VerificationMeta(
+    'totalTime',
+  );
+  @override
+  late final GeneratedColumn<String> totalTime = GeneratedColumn<String>(
+    'total_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2057,6 +2099,10 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     sourceType,
     servings,
     nutritionJson,
+    notes,
+    prepTime,
+    cookTime,
+    totalTime,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2108,6 +2154,30 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
         ),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('prep_time')) {
+      context.handle(
+        _prepTimeMeta,
+        prepTime.isAcceptableOrUnknown(data['prep_time']!, _prepTimeMeta),
+      );
+    }
+    if (data.containsKey('cook_time')) {
+      context.handle(
+        _cookTimeMeta,
+        cookTime.isAcceptableOrUnknown(data['cook_time']!, _cookTimeMeta),
+      );
+    }
+    if (data.containsKey('total_time')) {
+      context.handle(
+        _totalTimeMeta,
+        totalTime.isAcceptableOrUnknown(data['total_time']!, _totalTimeMeta),
+      );
+    }
     return context;
   }
 
@@ -2157,6 +2227,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   final String sourceType;
   final int? servings;
   final String? nutritionJson;
+  final String? notes;
+  final String? prepTime;
+  final String? cookTime;
+  final String? totalTime;
   const Recipe({
     required this.id,
     required this.name,
@@ -2164,6 +2238,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     required this.sourceType,
     this.servings,
     this.nutritionJson,
+    this.notes,
+    this.prepTime,
+    this.cookTime,
+    this.totalTime,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2179,6 +2257,18 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     }
     if (!nullToAbsent || nutritionJson != null) {
       map['nutrition_json'] = Variable<String>(nutritionJson);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || prepTime != null) {
+      map['prep_time'] = Variable<String>(prepTime);
+    }
+    if (!nullToAbsent || cookTime != null) {
+      map['cook_time'] = Variable<String>(cookTime);
+    }
+    if (!nullToAbsent || totalTime != null) {
+      map['total_time'] = Variable<String>(totalTime);
     }
     return map;
   }
@@ -2197,6 +2287,18 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       nutritionJson: nutritionJson == null && nullToAbsent
           ? const Value.absent()
           : Value(nutritionJson),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      prepTime: prepTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prepTime),
+      cookTime: cookTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cookTime),
+      totalTime: totalTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalTime),
     );
   }
 
@@ -2212,6 +2314,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       sourceType: serializer.fromJson<String>(json['sourceType']),
       servings: serializer.fromJson<int?>(json['servings']),
       nutritionJson: serializer.fromJson<String?>(json['nutritionJson']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      prepTime: serializer.fromJson<String?>(json['prepTime']),
+      cookTime: serializer.fromJson<String?>(json['cookTime']),
+      totalTime: serializer.fromJson<String?>(json['totalTime']),
     );
   }
   @override
@@ -2224,6 +2330,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       'sourceType': serializer.toJson<String>(sourceType),
       'servings': serializer.toJson<int?>(servings),
       'nutritionJson': serializer.toJson<String?>(nutritionJson),
+      'notes': serializer.toJson<String?>(notes),
+      'prepTime': serializer.toJson<String?>(prepTime),
+      'cookTime': serializer.toJson<String?>(cookTime),
+      'totalTime': serializer.toJson<String?>(totalTime),
     };
   }
 
@@ -2234,6 +2344,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     String? sourceType,
     Value<int?> servings = const Value.absent(),
     Value<String?> nutritionJson = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    Value<String?> prepTime = const Value.absent(),
+    Value<String?> cookTime = const Value.absent(),
+    Value<String?> totalTime = const Value.absent(),
   }) => Recipe(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -2243,6 +2357,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     nutritionJson: nutritionJson.present
         ? nutritionJson.value
         : this.nutritionJson,
+    notes: notes.present ? notes.value : this.notes,
+    prepTime: prepTime.present ? prepTime.value : this.prepTime,
+    cookTime: cookTime.present ? cookTime.value : this.cookTime,
+    totalTime: totalTime.present ? totalTime.value : this.totalTime,
   );
   Recipe copyWithCompanion(RecipesCompanion data) {
     return Recipe(
@@ -2256,6 +2374,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       nutritionJson: data.nutritionJson.present
           ? data.nutritionJson.value
           : this.nutritionJson,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      prepTime: data.prepTime.present ? data.prepTime.value : this.prepTime,
+      cookTime: data.cookTime.present ? data.cookTime.value : this.cookTime,
+      totalTime: data.totalTime.present ? data.totalTime.value : this.totalTime,
     );
   }
 
@@ -2284,7 +2406,11 @@ class Recipe extends DataClass implements Insertable<Recipe> {
           other.sourceUrl == this.sourceUrl &&
           other.sourceType == this.sourceType &&
           other.servings == this.servings &&
-          other.nutritionJson == this.nutritionJson);
+          other.nutritionJson == this.nutritionJson &&
+          other.notes == this.notes &&
+          other.prepTime == this.prepTime &&
+          other.cookTime == this.cookTime &&
+          other.totalTime == this.totalTime);
 }
 
 class RecipesCompanion extends UpdateCompanion<Recipe> {
@@ -2294,6 +2420,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   final Value<String> sourceType;
   final Value<int?> servings;
   final Value<String?> nutritionJson;
+  final Value<String?> notes;
+  final Value<String?> prepTime;
+  final Value<String?> cookTime;
+  final Value<String?> totalTime;
   const RecipesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2301,6 +2431,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     this.sourceType = const Value.absent(),
     this.servings = const Value.absent(),
     this.nutritionJson = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.prepTime = const Value.absent(),
+    this.cookTime = const Value.absent(),
+    this.totalTime = const Value.absent(),
   });
   RecipesCompanion.insert({
     this.id = const Value.absent(),
@@ -2309,6 +2443,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     this.sourceType = const Value.absent(),
     this.servings = const Value.absent(),
     this.nutritionJson = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.prepTime = const Value.absent(),
+    this.cookTime = const Value.absent(),
+    this.totalTime = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Recipe> custom({
     Expression<int>? id,
@@ -2317,6 +2455,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Expression<String>? sourceType,
     Expression<int>? servings,
     Expression<String>? nutritionJson,
+    Expression<String>? notes,
+    Expression<String>? prepTime,
+    Expression<String>? cookTime,
+    Expression<String>? totalTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2325,6 +2467,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
       if (sourceType != null) 'source_type': sourceType,
       if (servings != null) 'servings': servings,
       if (nutritionJson != null) 'nutrition_json': nutritionJson,
+      if (notes != null) 'notes': notes,
+      if (prepTime != null) 'prep_time': prepTime,
+      if (cookTime != null) 'cook_time': cookTime,
+      if (totalTime != null) 'total_time': totalTime,
     });
   }
 
@@ -2335,6 +2481,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Value<String>? sourceType,
     Value<int?>? servings,
     Value<String?>? nutritionJson,
+    Value<String?>? notes,
+    Value<String?>? prepTime,
+    Value<String?>? cookTime,
+    Value<String?>? totalTime,
   }) {
     return RecipesCompanion(
       id: id ?? this.id,
@@ -2343,6 +2493,10 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
       sourceType: sourceType ?? this.sourceType,
       servings: servings ?? this.servings,
       nutritionJson: nutritionJson ?? this.nutritionJson,
+      notes: notes ?? this.notes,
+      prepTime: prepTime ?? this.prepTime,
+      cookTime: cookTime ?? this.cookTime,
+      totalTime: totalTime ?? this.totalTime,
     );
   }
 
@@ -2367,6 +2521,18 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     if (nutritionJson.present) {
       map['nutrition_json'] = Variable<String>(nutritionJson.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (prepTime.present) {
+      map['prep_time'] = Variable<String>(prepTime.value);
+    }
+    if (cookTime.present) {
+      map['cook_time'] = Variable<String>(cookTime.value);
+    }
+    if (totalTime.present) {
+      map['total_time'] = Variable<String>(totalTime.value);
+    }
     return map;
   }
 
@@ -2378,7 +2544,11 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
           ..write('sourceUrl: $sourceUrl, ')
           ..write('sourceType: $sourceType, ')
           ..write('servings: $servings, ')
-          ..write('nutritionJson: $nutritionJson')
+          ..write('nutritionJson: $nutritionJson, ')
+          ..write('notes: $notes, ')
+          ..write('prepTime: $prepTime, ')
+          ..write('cookTime: $cookTime, ')
+          ..write('totalTime: $totalTime')
           ..write(')'))
         .toString();
   }

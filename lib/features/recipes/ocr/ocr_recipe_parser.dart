@@ -18,7 +18,7 @@ class OcrRecipeParser {
   /// by the caller.
   static RecipeDraft parse(String rawText) {
     if (rawText.trim().isEmpty) {
-      return const RecipeDraft();
+      return RecipeDraft(ingredients: [], sections: [], steps: []);
     }
 
     // Step 1: Dual-pass zone segmentation

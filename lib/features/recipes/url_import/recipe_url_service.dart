@@ -82,7 +82,68 @@ class RecipeUrlService {
       sections: sections,
       ingredients: unsectioned,
       steps: _parseInstructions(r['recipeInstructions']),
+      notes: _extractNotes(r),
+      nutrition: _extractNutrition(r),
+      prepTime: _isoDuration(r['prepTime'] as String?),
+      cookTime: _isoDuration(r['cookTime'] as String?),
+      totalTime: _isoDuration(r['totalTime'] as String?),
     );
+  }
+
+  /// Extract a notes‑like field from JSON-LD.
+  /// Many sites embed notes in the description, or in an extension field.
+  String? _extractNotes(Map<String, dynamic> r) {
+    final desc = r['description'] as String?;
+    if (desc != null && desc.trim().isNotEmpty) return desc.trim();
+    return null;
+  }
+
+  /// Convert schema.org nutrition object into a list of key-value pairs.
+  /// Schema.org NutritionInformation uses fields like:
+  ///   calories, proteinContent, fatContent, carbohydrateContent, etc.
+  List<NutritionDraft>? _extractNutrition(Map<String, dynamic> r) {
+    final raw = r['nutrition'];
+    if (raw is! Map) return null;
+    final entries = <NutritionDraft>[];
+
+    // Known schema.org nutrition field names
+    const nutritionFields = [
+      'calories', 'proteinContent', 'fatContent', 'carbohydrateContent',
+      'fiberContent', 'sugarContent', 'sodiumContent', 'cholesterolContent',
+      'saturatedFatContent', 'transFatContent', 'unsaturatedFatContent',
+      'servingSize',
+    ];
+
+    for (final field in nutritionFields) {
+      final value = raw[field];
+      if (value is String && value.trim().isNotEmpty) {
+        entries.add(NutritionDraft(label: field, value: value.trim()));
+      } else if (value is num) {
+        entries.add(NutritionDraft(label: field, value: value.toString()));
+      }
+    }
+
+    // Also pick up any additional non-standard fields
+    for (final entry in raw.entries) {
+      final key = entry.key;
+      if (nutritionFields.contains(key)) continue;
+      final value = entry.value;
+      if (value is String && value.trim().isNotEmpty) {
+        entries.add(NutritionDraft(label: key, value: value.trim()));
+      } else if (value is num) {
+        entries.add(NutritionDraft(label: key, value: value.toString()));
+      }
+    }
+
+    return entries.isNotEmpty ? entries : null;
+  }
+
+  /// Pass‑through for ISO 8601 duration strings (e.g. "PT15M").
+  /// Returns the raw string; display logic parses it for human-readable form.
+  String? _isoDuration(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   Map<String, dynamic>? _findRecipeNode(dynamic data) {
