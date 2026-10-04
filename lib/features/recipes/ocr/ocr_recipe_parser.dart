@@ -94,6 +94,7 @@ class OcrRecipeParser {
     return RecipeDraft(
       name: zones.title,
       servings: meta.servings,
+      description: zones.description,
       ingredients: unsectioned,
       sections: sections,
       steps: steps,
@@ -114,7 +115,6 @@ class OcrRecipeParser {
     if (lines.isEmpty) return const [];
 
     final remaining = <String>[];
-    final noteWords = <String>[];
 
     for (final rawLine in lines) {
       final line = rawLine.trim();
@@ -162,20 +162,8 @@ class OcrRecipeParser {
         continue;
       }
 
-      // ── Long narrative line → notes candidate ─────────────────────────
-      final wordCount = line.split(RegExp(r'\s+')).length;
-      if (wordCount > 10) {
-        noteWords.add(line);
-        continue;
-      }
-
       // Default: keep in remaining list
       remaining.add(line);
-    }
-
-    // Collate notes
-    if (noteWords.isNotEmpty) {
-      meta.notes = noteWords.join(' ');
     }
 
     return remaining;

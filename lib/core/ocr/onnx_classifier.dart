@@ -6,6 +6,7 @@ import 'package:pantry/core/ocr/lightgbm_model.dart';
 enum OcrLineLabel {
   title,
   servings,
+  description,
   sectionHeader,
   ingredient,
   methodStep,
@@ -194,6 +195,7 @@ class OnnxClassifier {
     List<String> lineTexts,
   ) async {
     final labels = <OcrLineClassification>[];
+    bool seenIngredient = false;
     bool seenMethod = false;
 
     for (var i = 0; i < lineTexts.length; i++) {
@@ -216,26 +218,34 @@ class OnnxClassifier {
       const idxFraction = 9;
       const idxColon = 10;
       const idxVerb = 13;
+      const idxWordCount = 11;
 
       final startsWithDigit = feat[idxDigit] > 0.5;
       final startsWithFraction = feat[idxFraction] > 0.5;
       final endsWithColon = feat[idxColon] > 0.5;
       final startsWithVerb = feat[idxVerb] > 0.5;
       final hasQuantity = startsWithDigit || startsWithFraction;
+      final wordCount = feat[idxWordCount];
 
       OcrLineLabel label;
 
       if (endsWithColon) {
         label = OcrLineLabel.sectionHeader;
-      } else if (hasQuantity && !seenMethod) {
-        label = OcrLineLabel.ingredient;
+      } else if (hasQuantity || startsWithDigit) {
+        if (!seenMethod) {
+          seenIngredient = true;
+          label = OcrLineLabel.ingredient;
+        } else {
+          label = OcrLineLabel.ingredient;
+        }
       } else if (startsWithVerb || RegExp(r'^\d+[.)]\s').hasMatch(text)) {
         seenMethod = true;
         label = OcrLineLabel.methodStep;
       } else if (seenMethod) {
         label = OcrLineLabel.methodContinuation;
-      } else if (hasQuantity) {
-        label = OcrLineLabel.ingredient;
+      } else if (wordCount > 10 && !seenIngredient) {
+        // Long narrative line before any ingredient → description
+        label = OcrLineLabel.description;
       } else {
         label = OcrLineLabel.ingredient;
       }
@@ -276,6 +286,8 @@ class OnnxClassifier {
         return OcrLineLabel.title;
       case 'servings':
         return OcrLineLabel.servings;
+      case 'description':
+        return OcrLineLabel.description;
       case 'section_header':
         return OcrLineLabel.sectionHeader;
       case 'ingredient':

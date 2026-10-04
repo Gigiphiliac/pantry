@@ -85,20 +85,18 @@ class NutritionDraft {
     value: (json['value'] as String?) ?? '',
   );
 
-  Map<String, dynamic> toJson() => {
-    'label': label,
-    'value': value,
-  };
+  Map<String, dynamic> toJson() => {'label': label, 'value': value};
 }
 
 class RecipeDraft {
   final String? name;
   final int? servings;
+  final String? description;
   final List<IngredientDraft> ingredients;
   final List<RecipeSectionDraft> sections;
   final List<String> steps;
   final String? notes;
-  final List<NutritionDraft>? nutrition;  // nullable — no nutrition parsed
+  final List<NutritionDraft>? nutrition; // nullable — no nutrition parsed
   final String? prepTime;
   final String? cookTime;
   final String? totalTime;
@@ -106,6 +104,7 @@ class RecipeDraft {
   const RecipeDraft({
     this.name,
     this.servings,
+    this.description,
     this.ingredients = const [],
     this.sections = const [],
     this.steps = const [],
@@ -161,6 +160,7 @@ class RecipeDraft {
     return RecipeDraft(
       name: _nullIfEmpty(json['name'] as String?),
       servings: (json['servings'] as num?)?.toInt(),
+      description: _nullIfEmpty(json['description'] as String?),
       ingredients: ingredients,
       sections: sections,
       steps: steps,
@@ -189,6 +189,7 @@ class RecipeDraft {
     final result = <String, dynamic>{
       'name': name,
       'servings': servings,
+      'description': description,
       'ingredients': ingredients.map((i) => i.toJson()).toList(),
       'sections': sections.map((s) => s.toJson()).toList(),
       'steps': steps,

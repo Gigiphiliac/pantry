@@ -52,6 +52,7 @@ FEATURE_NAMES = [
 LABEL_NAMES = [
     "title",
     "servings",
+    "description",
     "section_header",
     "ingredient",
     "method_step",

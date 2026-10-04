@@ -235,6 +235,7 @@ class RecipeOps {
     int? id,
     required String name,
     int? servings,
+    String? description,
     List<String> steps = const [],
     String? sourceUrl,
     String sourceType = 'manual',
@@ -255,6 +256,7 @@ class RecipeOps {
               RecipesCompanion.insert(
                 name: name,
                 servings: Value(servings),
+                description: Value(description),
                 sourceUrl: Value(sourceUrl),
                 sourceType: Value(sourceType),
                 notes: Value(notes),
@@ -270,6 +272,7 @@ class RecipeOps {
           RecipesCompanion(
             name: Value(name),
             servings: Value(servings),
+            description: Value(description),
             sourceUrl: Value(sourceUrl),
             notes: Value(notes),
             nutritionJson: Value(nutritionJson),

@@ -37,6 +37,7 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
 
 class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _nameCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   final _servingsCtrl = TextEditingController();
   final _sourceUrlCtrl = TextEditingController();
   final List<TextEditingController> _stepControllers = [];
@@ -64,6 +65,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final d = widget.initialDraft;
     if (r != null) {
       _nameCtrl.text = r.name;
+      _descriptionCtrl.text = r.description ?? '';
       _servingsCtrl.text = r.servings?.toString() ?? '';
       _sourceUrlCtrl.text = r.sourceUrl ?? '';
       _notesCtrl.text = r.notes ?? '';
@@ -75,10 +77,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           final parsed = jsonDecode(r.nutritionJson!) as Map<String, dynamic>;
           for (final entry in parsed.entries) {
             final val = entry.value;
-            _nutritionRows.add(_NutritionRow(
-              label: entry.key,
-              value: val is String ? val : val.toString(),
-            ));
+            _nutritionRows.add(
+              _NutritionRow(
+                label: entry.key,
+                value: val is String ? val : val.toString(),
+              ),
+            );
           }
         } catch (_) {}
       }
@@ -86,6 +90,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       _loadExistingSteps();
     } else if (d != null) {
       _nameCtrl.text = d.name ?? '';
+      _descriptionCtrl.text = d.description ?? '';
       _servingsCtrl.text = d.servings?.toString() ?? '';
       _sourceUrlCtrl.text = widget.sourceUrl ?? '';
       _notesCtrl.text = d.notes ?? '';
@@ -93,10 +98,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       _cookTimeCtrl.text = d.cookTime ?? '';
       _totalTimeCtrl.text = d.totalTime ?? '';
       for (final n in d.nutrition ?? []) {
-        _nutritionRows.add(_NutritionRow(
-          label: n.label,
-          value: n.value,
-        ));
+        _nutritionRows.add(_NutritionRow(label: n.label, value: n.value));
       }
       for (final step in d.steps) {
         _stepControllers.add(TextEditingController(text: step));
@@ -168,14 +170,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       notes: e.notesCtrl.text.trim().isEmpty ? null : e.notesCtrl.text.trim(),
       alternatives: e.alternatives
           .where((a) => a.nameCtrl.text.trim().isNotEmpty)
-          .map((a) => IngredientDraft(
-            name: a.nameCtrl.text.trim(),
-            qty: double.tryParse(a.qtyCtrl.text.trim()),
-            unit: a.selectedUnit?.id,
-            notes: a.notesCtrl.text.trim().isEmpty
-                ? null
-                : a.notesCtrl.text.trim(),
-          ))
+          .map(
+            (a) => IngredientDraft(
+              name: a.nameCtrl.text.trim(),
+              qty: double.tryParse(a.qtyCtrl.text.trim()),
+              unit: a.selectedUnit?.id,
+              notes: a.notesCtrl.text.trim().isEmpty
+                  ? null
+                  : a.notesCtrl.text.trim(),
+            ),
+          )
           .toList(),
     );
   }
@@ -263,6 +267,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
     _servingsCtrl.dispose();
     _sourceUrlCtrl.dispose();
     for (final c in _stepControllers) {
@@ -305,6 +310,18 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               labelText: 'Recipe name *',
               border: OutlineInputBorder(),
             ),
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 8),
+
+          // Description
+          TextField(
+            controller: _descriptionCtrl,
+            decoration: const InputDecoration(
+              hintText: 'A short description of the recipe…',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 16),
@@ -570,9 +587,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           TextButton.icon(
             icon: const Icon(Icons.add),
             label: const Text('Add nutrition row'),
-            onPressed: () => setState(
-              () => _nutritionRows.add(_NutritionRow()),
-            ),
+            onPressed: () =>
+                setState(() => _nutritionRows.add(_NutritionRow())),
           ),
           const SizedBox(height: 40),
         ],
@@ -664,21 +680,27 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           .where((s) => s.isNotEmpty)
           .toList();
 
+      final description = _nullIfEmpty(_descriptionCtrl.text.trim());
       final notes = _notesCtrl.text.trim().isEmpty
           ? null
           : _notesCtrl.text.trim();
-      final nutritionJson = _nutritionRows
+      final nutritionJson =
+          _nutritionRows
               .where((r) => r.labelCtrl.text.trim().isNotEmpty)
               .isEmpty
           ? null
-          : jsonEncode(Map.fromEntries(
-              _nutritionRows
-                  .where((r) => r.labelCtrl.text.trim().isNotEmpty)
-                  .map((r) => MapEntry(
-                    r.labelCtrl.text.trim(),
-                    r.valueCtrl.text.trim(),
-                  )),
-            ));
+          : jsonEncode(
+              Map.fromEntries(
+                _nutritionRows
+                    .where((r) => r.labelCtrl.text.trim().isNotEmpty)
+                    .map(
+                      (r) => MapEntry(
+                        r.labelCtrl.text.trim(),
+                        r.valueCtrl.text.trim(),
+                      ),
+                    ),
+              ),
+            );
       final prepTime = _nullIfEmpty(_prepTimeCtrl.text.trim());
       final cookTime = _nullIfEmpty(_cookTimeCtrl.text.trim());
       final totalTime = _nullIfEmpty(_totalTimeCtrl.text.trim());
@@ -687,6 +709,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         id: widget.recipe?.id,
         name: name,
         servings: servings,
+        description: description,
         steps: steps,
         notes: notes,
         nutritionJson: nutritionJson,
@@ -715,6 +738,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           final correctedDraft = RecipeDraft(
             name: name.isEmpty ? null : name,
             servings: servings,
+            description: description,
             ingredients: _ingredients
                 .where((e) => e.nameCtrl.text.trim().isNotEmpty)
                 .map((e) => _ingredientDraftFromEntry(e))
@@ -736,10 +760,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             notes: notes,
             nutrition: _nutritionRows
                 .where((r) => r.labelCtrl.text.trim().isNotEmpty)
-                .map((r) => NutritionDraft(
-                  label: r.labelCtrl.text.trim(),
-                  value: r.valueCtrl.text.trim(),
-                ))
+                .map(
+                  (r) => NutritionDraft(
+                    label: r.labelCtrl.text.trim(),
+                    value: r.valueCtrl.text.trim(),
+                  ),
+                )
                 .toList(),
             prepTime: prepTime,
             cookTime: cookTime,
@@ -748,6 +774,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           trainingService.saveCorrection(
             ocrInput: widget.ocrInput!,
             correctedDraft: correctedDraft,
+            sourceType: 'ocr',
           );
         }
 
@@ -769,8 +796,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
   }
 
-  static String? _nullIfEmpty(String s) =>
-      s.trim().isEmpty ? null : s.trim();
+  static String? _nullIfEmpty(String s) => s.trim().isEmpty ? null : s.trim();
 }
 
 // ── Section entry state ───────────────────────────────────────────────────────
@@ -826,11 +852,9 @@ class _NutritionRow {
   final TextEditingController labelCtrl;
   final TextEditingController valueCtrl;
 
-  _NutritionRow({
-    String label = '',
-    String value = '',
-  })  : labelCtrl = TextEditingController(text: label),
-        valueCtrl = TextEditingController(text: value);
+  _NutritionRow({String label = '', String value = ''})
+    : labelCtrl = TextEditingController(text: label),
+      valueCtrl = TextEditingController(text: value);
 
   void dispose() {
     labelCtrl.dispose();

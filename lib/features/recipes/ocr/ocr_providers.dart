@@ -37,6 +37,7 @@ class OcrTrainingDataService {
   Future<void> saveCorrection({
     required RecipeOcrInput ocrInput,
     required RecipeDraft correctedDraft,
+    String? sourceType,
   }) async {
     try {
       await _db
@@ -47,6 +48,7 @@ class OcrTrainingDataService {
               correctedJson: jsonEncode(correctedDraft.toJson()),
               imageWidth: Value(ocrInput.imageSize.width.round()),
               imageHeight: Value(ocrInput.imageSize.height.round()),
+              sourceType: Value(sourceType ?? 'ocr'),
             ),
           );
     } catch (_) {

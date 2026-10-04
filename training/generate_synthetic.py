@@ -75,6 +75,7 @@ FEATURE_NAMES = [
 LABEL_NAMES = [
     "title",
     "servings",
+    "description",
     "section_header",
     "ingredient",
     "method_step",
@@ -404,6 +405,11 @@ def render_recipe(recipe: dict) -> list[tuple[str, str]]:
     if name:
         lines.append((name, "title"))
 
+    # Description (nullable — many recipes have one)
+    desc = recipe.get("description", "")
+    if isinstance(desc, str) and len(desc.strip()) > 10:
+        lines.append((desc.strip(), "description"))
+
     # Servings
     raw_yield = recipe.get("recipeYield", [])
     servings_text = ""
@@ -535,7 +541,7 @@ def match_ocr_to_ground_truth(
             ):
                 best_overlap = o
                 best_label = gt["label"]
-                best_label_idx = LABEL_NAMES.index(best_label) if best_label in LABEL_NAMES else 8
+                best_label_idx = LABEL_NAMES.index(best_label) if best_label in LABEL_NAMES else 9
 
         labelled.append({**ocr_line, "label": best_label, "label_idx": best_label_idx})
 

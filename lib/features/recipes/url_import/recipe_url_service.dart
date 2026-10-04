@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
 import 'package:pantry/core/recipes/recipe_text_parser.dart';
+import 'package:pantry/db/database.dart';
 import 'package:pantry/features/recipes/models/recipe_draft.dart';
 
 class UrlImportException implements Exception {
@@ -14,10 +16,16 @@ class UrlImportException implements Exception {
 }
 
 class RecipeUrlService {
+  final AppDatabase? _trainingDb;
+
+  RecipeUrlService({this._trainingDb});
+
   Future<RecipeDraft> fetchAndParse(String url) async {
     final html = await _fetchHtml(url);
     final schemaMap = _extractSchemaOrg(html);
-    return _normaliseFields(schemaMap);
+    final draft = _normaliseFields(schemaMap);
+    await _seedTrainingData(url, html, draft);
+    return draft;
   }
 
   Future<String> _fetchHtml(String url) async {
@@ -79,6 +87,7 @@ class RecipeUrlService {
     return RecipeDraft(
       name: r['name'] as String?,
       servings: RecipeTextParser.parseServings(r['recipeYield']),
+      description: _extractDescription(r),
       sections: sections,
       ingredients: unsectioned,
       steps: _parseInstructions(r['recipeInstructions']),
@@ -90,12 +99,62 @@ class RecipeUrlService {
     );
   }
 
-  /// Extract a notes‑like field from JSON-LD.
-  /// Many sites embed notes in the description, or in an extension field.
-  String? _extractNotes(Map<String, dynamic> r) {
+  /// Extract description from the schema.org `description` field.
+  String? _extractDescription(Map<String, dynamic> r) {
     final desc = r['description'] as String?;
     if (desc != null && desc.trim().isNotEmpty) return desc.trim();
     return null;
+  }
+
+  /// Extract a notes‑like field from JSON-LD extension fields.
+  /// Most sites don't expose notes separately; this is a best-effort attempt.
+  String? _extractNotes(Map<String, dynamic> r) {
+    // Some sites use an extension field for notes/tips
+    final notes = r['notes'] as String?;
+    if (notes != null && notes.trim().isNotEmpty) return notes.trim();
+    return null;
+  }
+
+  /// Seed training data from a successful URL import for future model retraining.
+  ///
+  /// Stores the HTML source as rawJson (simple text lines) and the structured
+  /// draft as correctedJson, tagged with sourceType = 'url'.
+  Future<void> _seedTrainingData(
+    String url,
+    String html,
+    RecipeDraft draft,
+  ) async {
+    final db = _trainingDb;
+    if (db == null) return;
+    try {
+      final textLines = _extractTextLines(html);
+      await db
+          .into(db.ocrTrainingData)
+          .insert(
+            OcrTrainingDataCompanion.insert(
+              rawJson: jsonEncode({
+                'url': url,
+                'sourceType': 'url',
+                'lines': textLines,
+              }),
+              correctedJson: jsonEncode(draft.toJson()),
+              sourceType: Value('url'),
+            ),
+          );
+    } catch (_) {
+      // Silently fail — training data seeding is non-critical
+    }
+  }
+
+  /// Extract meaningful text lines from HTML (stripped of markup) for training.
+  List<String> _extractTextLines(String html) {
+    final doc = html_parser.parse(html);
+    final texts = doc.body?.text ?? '';
+    return texts
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
   }
 
   /// Convert schema.org nutrition object into a list of key-value pairs.
@@ -108,9 +167,17 @@ class RecipeUrlService {
 
     // Known schema.org nutrition field names
     const nutritionFields = [
-      'calories', 'proteinContent', 'fatContent', 'carbohydrateContent',
-      'fiberContent', 'sugarContent', 'sodiumContent', 'cholesterolContent',
-      'saturatedFatContent', 'transFatContent', 'unsaturatedFatContent',
+      'calories',
+      'proteinContent',
+      'fatContent',
+      'carbohydrateContent',
+      'fiberContent',
+      'sugarContent',
+      'sodiumContent',
+      'cholesterolContent',
+      'saturatedFatContent',
+      'transFatContent',
+      'unsaturatedFatContent',
       'servingSize',
     ];
 

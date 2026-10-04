@@ -81,6 +81,7 @@ class Recipes extends Table {
   TextColumn get sourceUrl => text().nullable()();
   TextColumn get sourceType => text().withDefault(const Constant('manual'))();
   IntColumn get servings => integer().nullable()();
+  TextColumn get description => text().nullable()();
   TextColumn get nutritionJson => text().nullable()();
   TextColumn get notes => text().nullable()();
   TextColumn get prepTime => text().nullable()();
@@ -184,6 +185,7 @@ class OcrTrainingData extends Table {
   TextColumn get correctedJson => text()();
   IntColumn get imageWidth => integer().nullable()();
   IntColumn get imageHeight => integer().nullable()();
+  TextColumn get sourceType => text().withDefault(const Constant('ocr'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -217,7 +219,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.connect(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

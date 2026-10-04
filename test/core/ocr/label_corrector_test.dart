@@ -115,7 +115,7 @@ void main() {
       expect(result.labels[2].label, OcrLineLabel.methodStep); // unchanged
     });
 
-    test('long narrative line between title and ingredients → notes', () {
+    test('long narrative line between title and ingredients → description', () {
       // A 15-word description between title and ingredient blocks
       final description =
           'These fluffy pancakes are light airy and perfect for a lazy weekend breakfast treat';
@@ -133,7 +133,7 @@ void main() {
         ],
       );
       expect(result.labels.length, 3);
-      expect(result.labels[1].label, OcrLineLabel.notes);
+      expect(result.labels[1].label, OcrLineLabel.description);
     });
 
     test('section header re-labelled from ingredient', () {

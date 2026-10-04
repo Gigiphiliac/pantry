@@ -231,7 +231,7 @@ class LabelCorrector {
 
   // ── Step 4: Description ───────────────────────────────────────────────────
 
-  /// Re-label long narrative lines between title and ingredients as notes.
+  /// Re-label long narrative lines between title and ingredients as description.
   ///
   /// Recipe descriptions are typically full sentences with more than 10 words,
   /// positioned between the title block and the first ingredient block. The
@@ -275,6 +275,9 @@ class LabelCorrector {
       final wordCount = i < features.length ? features[i][_idxWordCount] : 0.0;
       if (wordCount <= 10) continue;
 
+      // Don't re-label lines that look like numbered steps (actual method content)
+      if (RegExp(r'^\d+[.)]\s').hasMatch(texts[i])) continue;
+
       final blockIdx = i < features.length
           ? features[i][_idxBlockIndex]
           : titleBlock;
@@ -283,9 +286,9 @@ class LabelCorrector {
       if (blockIdx >= titleBlock &&
           (ingredientStartBlock == null || blockIdx < ingredientStartBlock)) {
         labels[i] = OcrLineClassification(
-          label: OcrLineLabel.notes,
+          label: OcrLineLabel.description,
           confidence: 0.90,
-          labelName: 'notes',
+          labelName: 'description',
         );
       }
     }

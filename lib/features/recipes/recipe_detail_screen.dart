@@ -19,6 +19,7 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   int _servingScale = 1;
+  bool _descriptionExpanded = false;
   late Recipe _recipe;
 
   @override
@@ -69,6 +70,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         data: (ingredients) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Description (collapsible)
+            if (_recipe.description?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              _buildDescriptionSection(context),
+              const SizedBox(height: 12),
+            ],
+
             if (_recipe.servings != null) _servingsRow(),
             if (ingredients.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -94,9 +102,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Prep',
+                          Text(
+                            'Prep',
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: Colors.grey.shade600)),
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
                           Text(_recipe.prepTime!),
                         ],
                       ),
@@ -106,9 +116,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Cook',
+                          Text(
+                            'Cook',
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: Colors.grey.shade600)),
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
                           Text(_recipe.cookTime!),
                         ],
                       ),
@@ -118,9 +130,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Total',
+                          Text(
+                            'Total',
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: Colors.grey.shade600)),
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
                           Text(_recipe.totalTime!),
                         ],
                       ),
@@ -203,6 +217,53 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             icon: const Icon(Icons.shopping_cart_outlined),
             label: const Text('Add to shopping list'),
             onPressed: () => _showAddToList(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: InkWell(
+          onTap: () =>
+              setState(() => _descriptionExpanded = !_descriptionExpanded),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.description, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Description',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _descriptionExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 18,
+                  ),
+                ],
+              ),
+              if (_descriptionExpanded) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _recipe.description!,
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.start,
+                ),
+              ],
+            ],
           ),
         ),
       ),

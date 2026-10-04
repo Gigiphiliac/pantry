@@ -48,10 +48,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
       if (!mounted) return;
 
       // Step 2: Run classifier to label each line
-      final result = await service.parseWithClassifier(
-        ocrInput,
-        classifier,
-      );
+      final result = await service.parseWithClassifier(ocrInput, classifier);
       final draft = result.draft;
       final usedStub = result.usedStub;
 
@@ -158,12 +155,8 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Colors.white54,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
+                              side: const BorderSide(color: Colors.white54),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: const Text('Retake'),
                           ),
@@ -173,9 +166,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                           child: FilledButton(
                             onPressed: _extractAndReview,
                             style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: const Text('Use Photo'),
                           ),

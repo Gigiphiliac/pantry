@@ -6,6 +6,7 @@ import 'package:pantry/features/recipes/models/recipe_draft.dart';
 class AssembledRecipe {
   final String? title;
   final int? servings;
+  final String? description;
   final List<String> ingredientLines;
   final List<String> methodLines;
   final List<String> nutritionLines;
@@ -14,6 +15,7 @@ class AssembledRecipe {
   const AssembledRecipe({
     this.title,
     this.servings,
+    this.description,
     this.ingredientLines = const [],
     this.methodLines = const [],
     this.nutritionLines = const [],
@@ -40,6 +42,7 @@ class ZoneAssembler {
   ) {
     String? title;
     int? servings;
+    final descriptionParts = <String>[];
     final ingredientLines = <String>[];
     final methodLines = <String>[];
     final nutritionLines = <String>[];
@@ -55,6 +58,9 @@ class ZoneAssembler {
       switch (label) {
         case OcrLineLabel.title:
           title ??= text;
+
+        case OcrLineLabel.description:
+          descriptionParts.add(text);
 
         case OcrLineLabel.servings:
           final match = RegExp(r'\d+').firstMatch(text);
@@ -109,6 +115,9 @@ class ZoneAssembler {
     return AssembledRecipe(
       title: title,
       servings: servings,
+      description: descriptionParts.isNotEmpty
+          ? descriptionParts.join(' ')
+          : null,
       ingredientLines: ingredientLines,
       methodLines: methodLines,
       nutritionLines: nutritionLines,
@@ -138,7 +147,8 @@ class ZoneAssembler {
     if (spaceIdx > 0) {
       final candidate = trimmed.substring(0, spaceIdx).trim();
       final rest = trimmed.substring(spaceIdx + 1).trim();
-      if (candidate.isNotEmpty && rest.isNotEmpty &&
+      if (candidate.isNotEmpty &&
+          rest.isNotEmpty &&
           RegExp(r'^[A-Za-z]').hasMatch(candidate)) {
         return NutritionDraft(label: candidate, value: rest);
       }
@@ -168,14 +178,13 @@ class ZoneAssembler {
 
     // Parse nutrition lines into key-value entries
     final nutrition = assembled.nutritionLines.isNotEmpty
-        ? assembled.nutritionLines
-            .map(parseNutritionLine)
-            .toList()
+        ? assembled.nutritionLines.map(parseNutritionLine).toList()
         : null;
 
     return RecipeDraft(
       name: assembled.title,
       servings: assembled.servings,
+      description: assembled.description,
       ingredients: unsectioned,
       sections: sections,
       steps: steps,

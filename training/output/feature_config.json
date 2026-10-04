@@ -25,6 +25,7 @@
   "labels": [
     "title",
     "servings",
+    "description",
     "section_header",
     "ingredient",
     "method_step",
@@ -33,7 +34,7 @@
     "notes",
     "ignore"
   ],
-  "num_classes": 9,
+  "num_classes": 10,
   "generated_by": "train_model.py",
-  "generated_at": "2026-10-01T14:02:59.128739"
+  "generated_at": "2026-10-05T01:10:14.874895"
 }

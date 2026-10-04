@@ -41,6 +41,7 @@ class RecipeTextParser {
   ///      digit-starting lines = ingredients)
   static ({
     String? title,
+    String? description,
     List<String> ingredientLines,
     List<String> methodLines,
   })
@@ -52,7 +53,12 @@ class RecipeTextParser {
         .toList();
 
     if (lines.isEmpty) {
-      return (title: null, ingredientLines: const [], methodLines: const []);
+      return (
+        title: null,
+        description: null,
+        ingredientLines: const [],
+        methodLines: const [],
+      );
     }
 
     // Find zone boundaries
@@ -85,6 +91,7 @@ class RecipeTextParser {
 
   static ({
     String? title,
+    String? description,
     List<String> ingredientLines,
     List<String> methodLines,
   })
@@ -149,6 +156,7 @@ class RecipeTextParser {
 
     return (
       title: title,
+      description: null, // markers-based split doesn't extract description
       ingredientLines: ingredientLines,
       methodLines: methodLines,
     );
@@ -229,12 +237,18 @@ class RecipeTextParser {
   /// numbered step or the first line starting with an imperative cooking verb.
   static ({
     String? title,
+    String? description,
     List<String> ingredientLines,
     List<String> methodLines,
   })
   _splitHeuristic(List<String> lines) {
     if (lines.isEmpty) {
-      return (title: null, ingredientLines: const [], methodLines: const []);
+      return (
+        title: null,
+        description: null,
+        ingredientLines: const [],
+        methodLines: const [],
+      );
     }
 
     // Step 1: extract title — first line that doesn't start with a quantity
@@ -247,46 +261,76 @@ class RecipeTextParser {
       startIdx = 1;
     }
 
+    final descriptionParts = <String>[];
     final ingredientLines = <String>[];
     final methodLines = <String>[];
 
     // Step 2: find the first line that signals the start of instructions
-    // (numbered step or imperative verb)
-    int? splitIdx;
+    // (numbered step or imperative verb) OR the first ingredient-like line
+    int? methodSplitIdx;
+    int? ingredientSplitIdx;
     for (var i = startIdx; i < lines.length; i++) {
       final line = lines[i];
+
+      // Check for method boundary first
       if (_isNumberedStep(line)) {
-        splitIdx = i;
+        methodSplitIdx = i;
         break;
       }
       final firstWord = line.split(RegExp(r'\s+')).first.toLowerCase();
       if (imperativeVerbs.contains(firstWord)) {
-        splitIdx = i;
+        methodSplitIdx = i;
         break;
+      }
+
+      // Track first ingredient-like line (starts with quantity)
+      if (ingredientSplitIdx == null && startsWithQuantity(line)) {
+        ingredientSplitIdx = i;
       }
     }
 
-    // Step 3: split at the boundary
-    if (splitIdx != null) {
-      for (var i = startIdx; i < splitIdx; i++) {
+    // Step 3: extract description between title and first ingredient line
+    final descriptionEnd = ingredientSplitIdx ?? methodSplitIdx ?? lines.length;
+    for (var i = startIdx; i < descriptionEnd; i++) {
+      final line = lines[i];
+      // Servings/timing lines are metadata, not description
+      if (_isMetadataLine(line)) continue;
+      descriptionParts.add(line);
+    }
+
+    // Step 4: skip past description lines to get to ingredients
+    final ingredientStart = descriptionEnd;
+
+    // Step 5: split ingredients / method at the method boundary
+    if (methodSplitIdx != null) {
+      for (var i = ingredientStart; i < methodSplitIdx; i++) {
         ingredientLines.add(lines[i]);
       }
-      for (var i = splitIdx; i < lines.length; i++) {
+      for (var i = methodSplitIdx; i < lines.length; i++) {
         methodLines.add(lines[i]);
       }
     } else {
-      // No instruction signals detected — assume all remaining lines are
-      // ingredients (no method section).
-      for (var i = startIdx; i < lines.length; i++) {
+      // No method boundary — everything from ingredient start onward is ingredients
+      for (var i = ingredientStart; i < lines.length; i++) {
         ingredientLines.add(lines[i]);
       }
     }
 
     return (
       title: title,
+      description: descriptionParts.isNotEmpty
+          ? descriptionParts.join(' ')
+          : null,
       ingredientLines: ingredientLines,
       methodLines: methodLines,
     );
+  }
+
+  /// Returns true if [line] matches a servings or timing pattern (metadata).
+  static bool _isMetadataLine(String line) {
+    final lower = line.trim().toLowerCase();
+    return RegExp(r'^(serv(es|ings?)|makes|yields?)\b').hasMatch(lower) ||
+        RegExp(r'^(prep\s*time|cook\s*time|total\s*time)\b').hasMatch(lower);
   }
 
   static bool _isNumberedStep(String line) =>
