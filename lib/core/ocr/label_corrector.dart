@@ -187,8 +187,13 @@ class LabelCorrector {
           i < features.length) {
         titleBlock = features[i][_idxBlockIndex];
       }
+      // Skip lines that look like servings — the model often mislabels
+      // "Serves 4" as ingredient, which would make us use the servings
+      // line's own block as the ingredient boundary and prevent correction.
       if (firstIngredientBlock == null &&
           labels[i].label == OcrLineLabel.ingredient &&
+          i < texts.length &&
+          !_servingsPattern.hasMatch(texts[i]) &&
           i < features.length) {
         firstIngredientBlock = features[i][_idxBlockIndex];
       }

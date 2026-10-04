@@ -290,16 +290,24 @@ class RecipeTextParser {
     }
 
     // Step 3: extract description between title and first ingredient line
-    final descriptionEnd = ingredientSplitIdx ?? methodSplitIdx ?? lines.length;
-    for (var i = startIdx; i < descriptionEnd; i++) {
-      final line = lines[i];
-      // Servings/timing lines are metadata, not description
-      if (_isMetadataLine(line)) continue;
-      descriptionParts.add(line);
+    // Only if an ingredient boundary was found (quantity-starting line),
+    // otherwise all pre-method lines are treated as ingredients.
+    int descriptionEnd;
+    if (ingredientSplitIdx != null) {
+      descriptionEnd = ingredientSplitIdx;
+      for (var i = startIdx; i < descriptionEnd; i++) {
+        final line = lines[i];
+        // Servings/timing lines are metadata, not description
+        if (_isMetadataLine(line)) continue;
+        descriptionParts.add(line);
+      }
+    } else {
+      descriptionEnd = startIdx;
     }
 
-    // Step 4: skip past description lines to get to ingredients
-    final ingredientStart = descriptionEnd;
+    // Step 4: ingredient start is the ingredient boundary (if found)
+    // or where description ended
+    final ingredientStart = ingredientSplitIdx ?? descriptionEnd;
 
     // Step 5: split ingredients / method at the method boundary
     if (methodSplitIdx != null) {
