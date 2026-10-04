@@ -35,17 +35,35 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
   Future<void> _extractAndReview() async {
     setState(() {
       _scanning = true;
-      _phase = 'Extracting text…';
+      _phase = 'Analysing recipe…';
     });
 
     try {
       final service = ref.read(recipeOcrServiceProvider);
-      final rawText = await service.extractText(widget.image);
+      final classifier = ref.read(onnxClassifierProvider);
+
+      // Step 1: Run ML Kit OCR with spatial data
+      final ocrInput = await service.extractDetailed(widget.image);
 
       if (!mounted) return;
+
+      // Step 2: Run classifier to label each line
+      final result = await service.parseWithClassifier(ocrInput, classifier);
+      final draft = result.draft;
+      final usedStub = result.usedStub;
+
+      if (!mounted) return;
+
+      // Step 3: Navigate to the parsed preview screen
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => OcrReviewScreen(rawText: rawText)),
+        MaterialPageRoute(
+          builder: (_) => OcrReviewScreen(
+            ocrInput: ocrInput,
+            draft: draft,
+            usedStub: usedStub,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -55,13 +73,10 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
           duration: const Duration(seconds: 5),
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _scanning = false;
-          _phase = '';
-        });
-      }
+      setState(() {
+        _scanning = false;
+        _phase = '';
+      });
     }
   }
 
@@ -76,7 +91,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
       ),
       body: Stack(
         children: [
-          // Full-screen image preview — Positioned so Stack sizes to max
+          // Full-screen image preview
           Positioned.fill(
             child: _imageBytes != null
                 ? Image.memory(_imageBytes!, fit: BoxFit.contain)
@@ -85,7 +100,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                   ),
           ),
 
-          // Extracting overlay
+          // Scanning overlay
           if (_scanning)
             Positioned.fill(
               child: ColoredBox(
@@ -117,28 +132,46 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
               child: Container(
                 color: Colors.black.withValues(alpha: 0.8),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 36),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                    // ── Hint banner ─────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '💡 For best results, use a clean recipe image. '
+                        'On websites, the pre-print view works best.',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
                         ),
-                        child: const Text('Retake'),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _extractAndReview,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                    // ── Buttons ─────────────────────────────────────────
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white54),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Retake'),
+                          ),
                         ),
-                        child: const Text('Use Photo'),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _extractAndReview,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Use Photo'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
@@ -17,6 +19,7 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   int _servingScale = 1;
+  bool _descriptionExpanded = false;
   late Recipe _recipe;
 
   @override
@@ -67,6 +70,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         data: (ingredients) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Description (collapsible)
+            if (_recipe.description?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              _buildDescriptionSection(context),
+              const SizedBox(height: 12),
+            ],
+
             if (_recipe.servings != null) _servingsRow(),
             if (ingredients.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -77,6 +87,78 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               const SizedBox(height: 8),
               ..._buildIngredientWidgets(context, ingredients, sectionNames),
             ],
+
+            // Timing
+            if (_recipe.prepTime?.isNotEmpty == true ||
+                _recipe.cookTime?.isNotEmpty == true ||
+                _recipe.totalTime?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Timing', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (_recipe.prepTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Prep',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
+                          Text(_recipe.prepTime!),
+                        ],
+                      ),
+                    ),
+                  if (_recipe.cookTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cook',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
+                          Text(_recipe.cookTime!),
+                        ],
+                      ),
+                    ),
+                  if (_recipe.totalTime?.isNotEmpty == true)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
+                          Text(_recipe.totalTime!),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+
+            // Notes
+            if (_recipe.notes?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Notes', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(_recipe.notes!, textAlign: TextAlign.start),
+            ],
+
+            // Nutrition
+            if (_recipe.nutritionJson?.isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              _nutritionTable(_recipe.nutritionJson!),
+            ],
+
             ...steps.when(
               loading: () => const [],
               error: (_, _) => const [],
@@ -141,6 +223,53 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
+  Widget _buildDescriptionSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: InkWell(
+          onTap: () =>
+              setState(() => _descriptionExpanded = !_descriptionExpanded),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.description, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Description',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _descriptionExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 18,
+                  ),
+                ],
+              ),
+              if (_descriptionExpanded) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _recipe.description!,
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.start,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildIngredientWidgets(
     BuildContext context,
     List<RecipeIngredientRow> ingredients,
@@ -199,6 +328,39 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _nutritionTable(String json) {
+    try {
+      final parsed = jsonDecode(json) as Map<String, dynamic>;
+      if (parsed.isEmpty) return const SizedBox.shrink();
+      return Table(
+        columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(3)},
+        children: parsed.entries.map((e) {
+          final val = e.value;
+          return TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  e.key,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(val is String ? val : val.toString()),
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   void _showAddToList(BuildContext context) {

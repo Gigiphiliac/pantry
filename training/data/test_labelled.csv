@@ -1,0 +1,34 @@
+label,label_name,text,recipe_name,recipe_url,relative_top,relative_left,relative_width,relative_height,relative_font_size,block_index,lines_in_block,line_index_in_block,starts_with_digit,starts_with_unicode_fraction,ends_with_colon,word_count,char_count,starts_with_imperative_verb,contains_number,ends_with_punctuation,has_mixed_case,confidence,is_first_in_block,is_last_in_block
+0,title,Simple Pancakes,Simple Pancakes,,0.069606,0.04125,0.30625,0.067285,1.26087,1.0,13.0,0.0,0.0,0.0,0.0,2.0,15.0,0.0,0.0,0.0,1.0,0.96,1.0,0.0
+1,servings,Serves 4 servings,Simple Pancakes,,0.146172,0.04125,0.17625,0.039443,0.73913,1.0,13.0,1.0,0.0,0.0,0.0,3.0,17.0,0.0,1.0,0.0,1.0,0.9533,0.0,0.0
+2,section_header,Ingredients:,Simple Pancakes,,0.199536,0.0425,0.13875,0.046404,0.869565,1.0,13.0,2.0,0.0,0.0,1.0,1.0,12.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+3,ingredient,1 cup plain flour,Simple Pancakes,,0.259861,0.0425,0.15625,0.039443,0.73913,1.0,13.0,3.0,1.0,0.0,0.0,4.0,17.0,0.0,1.0,0.0,0.0,0.86,0.0,0.0
+3,ingredient,2 tbsp sugar,Simple Pancakes,,0.313225,0.04125,0.1225,0.039443,0.73913,1.0,13.0,4.0,1.0,0.0,0.0,3.0,12.0,0.0,1.0,0.0,0.0,0.9467,0.0,0.0
+3,ingredient,2 tsp baking powder,Simple Pancakes,,0.36891,0.04125,0.2,0.039443,0.73913,1.0,13.0,5.0,1.0,0.0,0.0,4.0,19.0,0.0,1.0,0.0,0.0,0.925,0.0,0.0
+3,ingredient,Pinch of salt,Simple Pancakes,,0.424594,0.04125,0.12125,0.030162,0.565217,1.0,13.0,6.0,0.0,0.0,0.0,3.0,13.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+3,ingredient,1 cup milk,Simple Pancakes,,0.470998,0.0425,0.09875,0.039443,0.73913,1.0,13.0,7.0,1.0,0.0,0.0,3.0,10.0,0.0,1.0,0.0,0.0,0.7733,0.0,0.0
+3,ingredient,1 egg,Simple Pancakes,,0.524362,0.0425,0.0525,0.039443,0.73913,1.0,13.0,8.0,1.0,0.0,0.0,2.0,5.0,0.0,1.0,0.0,0.0,0.45,0.0,0.0
+3,ingredient,2 tbsp butter,Simple Pancakes,,0.577726,0.04125,0.12375,0.039443,0.73913,1.0,13.0,9.0,1.0,0.0,0.0,3.0,13.0,0.0,1.0,0.0,0.0,0.8967,0.0,0.0
+2,section_header,Method:,Simple Pancakes,,0.633411,0.0425,0.09375,0.037123,0.695652,1.0,13.0,10.0,0.0,0.0,1.0,1.0,7.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+4,method_step,"Mix flour, sugar, baking powder and salt in a bowl. Add milk and egg, whisk until smooth.",Simple Pancakes,,0.684455,0.04,0.495,0.095128,1.782609,1.0,13.0,11.0,0.0,0.0,0.0,17.0,89.0,1.0,0.0,1.0,1.0,0.9588,0.0,0.0
+4,method_step,Heat a pan over medium heat and melt some butter. Pour batter and cook until bubbles form on surface. Flip and cook until golden. Serve with toppings.,Simple Pancakes,,0.795824,0.04125,0.51625,0.141531,2.652174,1.0,13.0,12.0,0.0,0.0,0.0,27.0,150.0,1.0,0.0,1.0,1.0,0.9574,0.0,1.0
+0,title,Garlic Pasta,Garlic Pasta,,0.090909,0.0425,0.2125,0.069697,0.685106,1.0,1.0,0.0,0.0,0.0,0.0,2.0,12.0,0.0,0.0,0.0,1.0,0.96,1.0,1.0
+2,section_header,Serves 2 Ingredients:,Garlic Pasta,,0.172727,0.04125,0.14,0.118182,1.161702,2.0,4.0,0.0,0.0,0.0,1.0,3.0,21.0,0.0,1.0,0.0,1.0,0.9533,1.0,0.0
+3,ingredient,200g spaghetti,Garlic Pasta,,0.309091,0.04125,0.145,0.051515,0.506383,2.0,4.0,1.0,1.0,0.0,0.0,2.0,14.0,0.0,1.0,0.0,0.0,0.96,0.0,0.0
+3,ingredient,"4 cloves garlic, minced 2 tbsp olive oil",Garlic Pasta,,0.381818,0.04,0.22625,0.121212,1.191489,2.0,4.0,2.0,1.0,0.0,0.0,8.0,40.0,0.0,1.0,0.0,0.0,0.945,0.0,0.0
+3,ingredient,1/4 cup parmesan Salt to taste,Garlic Pasta,,0.524242,0.04125,0.1775,0.109091,1.07234,2.0,4.0,3.0,1.0,0.0,0.0,6.0,30.0,0.0,1.0,0.0,1.0,0.955,0.0,1.0
+4,method_step,Method: Boil pasta in salted water until al dente.,Garlic Pasta,,0.654545,0.04125,0.3875,0.118182,1.161702,3.0,1.0,0.0,0.0,0.0,0.0,9.0,50.0,0.0,0.0,1.0,1.0,0.9589,1.0,1.0
+4,method_step,Sauté garlic in olive oil until fragrant. Toss pasta with garlic oil and parmesan. Serve immediately.,Garlic Pasta,,0.793939,0.04,0.59375,0.124242,1.221277,4.0,1.0,0.0,0.0,0.0,0.0,16.0,101.0,1.0,0.0,1.0,1.0,0.9494,1.0,1.0
+0,title,Classic Margherita Pizza Serves 1 large pizza,Classic Margherita Pizza,,0.070615,0.042394,0.435162,0.113895,2.096774,1.0,9.0,0.0,0.0,0.0,0.0,7.0,45.0,0.0,1.0,0.0,1.0,0.9429,1.0,0.0
+2,section_header,Ingredients:,Classic Margherita Pizza,,0.198178,0.043641,0.138404,0.045558,0.83871,1.0,9.0,1.0,0.0,0.0,1.0,1.0,12.0,0.0,0.0,0.0,1.0,0.96,0.0,0.0
+3,ingredient,2 1/2 cups bread flour,Classic Margherita Pizza,,0.257403,0.042394,0.215711,0.038724,0.712903,1.0,9.0,2.0,1.0,0.0,0.0,5.0,22.0,0.0,1.0,0.0,0.0,0.952,0.0,0.0
+3,ingredient,1 tsp instant yeast,Classic Margherita Pizza,,0.309795,0.043641,0.178304,0.038724,0.712903,1.0,9.0,3.0,1.0,0.0,0.0,4.0,19.0,0.0,1.0,0.0,0.0,0.885,0.0,0.0
+3,ingredient,1 tsp salt,Classic Margherita Pizza,,0.364465,0.043641,0.087282,0.038724,0.712903,1.0,9.0,4.0,1.0,0.0,0.0,3.0,10.0,0.0,1.0,0.0,0.0,0.8233,0.0,0.0
+3,ingredient,1 cup warm water,Classic Margherita Pizza,,0.419134,0.043641,0.174564,0.038724,0.712903,1.0,9.0,5.0,1.0,0.0,0.0,4.0,16.0,0.0,1.0,0.0,0.0,0.895,0.0,0.0
+3,ingredient,1/2 cup tomato sauce,Classic Margherita Pizza,,0.473804,0.043641,0.210723,0.038724,0.712903,1.0,9.0,6.0,1.0,0.0,0.0,4.0,20.0,0.0,1.0,0.0,0.0,0.9575,0.0,0.0
+3,ingredient,200g fresh mozzarella,Classic Margherita Pizza,,0.528474,0.042394,0.218204,0.038724,0.712903,1.0,9.0,7.0,1.0,0.0,0.0,3.0,21.0,0.0,1.0,0.0,0.0,0.96,0.0,0.0
+3,ingredient,Fresh basil leaves,Classic Margherita Pizza,,0.580866,0.042394,0.178304,0.029613,0.545161,1.0,9.0,8.0,0.0,0.0,0.0,3.0,18.0,0.0,0.0,0.0,1.0,0.94,0.0,1.0
+4,method_step,"Method: Mix flour, yeast and salt. Add warm water and knead 10 minutes.",Classic Margherita Pizza,,0.624146,0.042394,0.638404,0.088838,1.635484,2.0,1.0,0.0,0.0,0.0,0.0,13.0,71.0,0.0,1.0,1.0,1.0,0.9546,1.0,1.0
+4,method_step,Let dough rise for 1 hour in a warm spot.,Classic Margherita Pizza,,0.728929,0.042394,0.400249,0.041002,0.754839,3.0,3.0,0.0,0.0,0.0,0.0,10.0,41.0,0.0,1.0,1.0,1.0,0.958,1.0,0.0
+4,method_step,Preheat oven to 250°C with a pizza stone inside.,Classic Margherita Pizza,,0.774487,0.042394,0.481297,0.059226,1.090323,3.0,3.0,1.0,0.0,0.0,0.0,9.0,48.0,1.0,1.0,1.0,1.0,0.9589,0.0,0.0
+4,method_step,"Shape dough into a 12-inch circle. Spread sauce, tear mozzarella on top. Bake 8-10 minutes until crust is golden. Top with fresh basil.",Classic Margherita Pizza,,0.838269,0.041147,0.724439,0.095672,1.76129,3.0,3.0,2.0,0.0,0.0,0.0,23.0,135.0,0.0,1.0,1.0,1.0,0.9504,0.0,1.0

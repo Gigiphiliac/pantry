@@ -6,6 +6,7 @@ import 'package:pantry/features/recipes/models/recipe_draft.dart';
 class AssembledRecipe {
   final String? title;
   final int? servings;
+  final String? description;
   final List<String> ingredientLines;
   final List<String> methodLines;
   final List<String> nutritionLines;
@@ -14,6 +15,7 @@ class AssembledRecipe {
   const AssembledRecipe({
     this.title,
     this.servings,
+    this.description,
     this.ingredientLines = const [],
     this.methodLines = const [],
     this.nutritionLines = const [],
@@ -40,6 +42,7 @@ class ZoneAssembler {
   ) {
     String? title;
     int? servings;
+    final descriptionParts = <String>[];
     final ingredientLines = <String>[];
     final methodLines = <String>[];
     final nutritionLines = <String>[];
@@ -55,6 +58,9 @@ class ZoneAssembler {
       switch (label) {
         case OcrLineLabel.title:
           title ??= text;
+
+        case OcrLineLabel.description:
+          descriptionParts.add(text);
 
         case OcrLineLabel.servings:
           final match = RegExp(r'\d+').firstMatch(text);
@@ -109,11 +115,45 @@ class ZoneAssembler {
     return AssembledRecipe(
       title: title,
       servings: servings,
+      description: descriptionParts.isNotEmpty
+          ? descriptionParts.join(' ')
+          : null,
       ingredientLines: ingredientLines,
       methodLines: methodLines,
       nutritionLines: nutritionLines,
       notesLines: notesLines,
     );
+  }
+
+  /// Parse a single nutrition line into a [NutritionDraft].
+  ///
+  /// Handles common formats:
+  ///   "Calories: 250 per serving" → (calories, 250 per serving)
+  ///   "Protein 10g" → (protein, 10g)
+  /// Falls back to (raw_line, "") for unparseable lines.
+  static NutritionDraft parseNutritionLine(String line) {
+    final trimmed = line.trim();
+    // Try colon-separated: "Label: value"
+    final colonIdx = trimmed.indexOf(':');
+    if (colonIdx > 0) {
+      final label = trimmed.substring(0, colonIdx).trim();
+      final value = trimmed.substring(colonIdx + 1).trim();
+      if (label.isNotEmpty && value.isNotEmpty) {
+        return NutritionDraft(label: label, value: value);
+      }
+    }
+    // Try space-separated: "Label value" where Label starts with a letter
+    final spaceIdx = trimmed.indexOf(' ');
+    if (spaceIdx > 0) {
+      final candidate = trimmed.substring(0, spaceIdx).trim();
+      final rest = trimmed.substring(spaceIdx + 1).trim();
+      if (candidate.isNotEmpty &&
+          rest.isNotEmpty &&
+          RegExp(r'^[A-Za-z]').hasMatch(candidate)) {
+        return NutritionDraft(label: candidate, value: rest);
+      }
+    }
+    return NutritionDraft(label: trimmed, value: '');
   }
 
   /// Convert an [AssembledRecipe] into a [RecipeDraft] suitable for the
@@ -131,18 +171,25 @@ class ZoneAssembler {
     // Parse method lines into individual steps
     final steps = RecipeTextParser.parseInstructions(assembled.methodLines);
 
-    // Collate notes into a single string if any exist (stored separately;
-    // RecipeDraft currently has no dedicated notes field — future enhancement).
-    // final notesBlock = assembled.notesLines.isNotEmpty
-    //     ? assembled.notesLines.join('\n')
-    //     : null;
+    // Collate notes lines into a single text block
+    final notes = assembled.notesLines.isNotEmpty
+        ? assembled.notesLines.join('\n')
+        : null;
+
+    // Parse nutrition lines into key-value entries
+    final nutrition = assembled.nutritionLines.isNotEmpty
+        ? assembled.nutritionLines.map(parseNutritionLine).toList()
+        : null;
 
     return RecipeDraft(
       name: assembled.title,
       servings: assembled.servings,
+      description: assembled.description,
       ingredients: unsectioned,
       sections: sections,
       steps: steps,
+      notes: notes,
+      nutrition: nutrition,
     );
   }
 }

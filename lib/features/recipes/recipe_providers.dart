@@ -235,10 +235,16 @@ class RecipeOps {
     int? id,
     required String name,
     int? servings,
+    String? description,
     List<String> steps = const [],
     String? sourceUrl,
     String sourceType = 'manual',
     List<String> sections = const [],
+    String? notes,
+    String? nutritionJson,
+    String? prepTime,
+    String? cookTime,
+    String? totalTime,
     required List<RecipeIngredientDraft> ingredients,
   }) async {
     return db.transaction(() async {
@@ -250,8 +256,14 @@ class RecipeOps {
               RecipesCompanion.insert(
                 name: name,
                 servings: Value(servings),
+                description: Value(description),
                 sourceUrl: Value(sourceUrl),
                 sourceType: Value(sourceType),
+                notes: Value(notes),
+                nutritionJson: Value(nutritionJson),
+                prepTime: Value(prepTime),
+                cookTime: Value(cookTime),
+                totalTime: Value(totalTime),
               ),
             );
       } else {
@@ -260,7 +272,13 @@ class RecipeOps {
           RecipesCompanion(
             name: Value(name),
             servings: Value(servings),
+            description: Value(description),
             sourceUrl: Value(sourceUrl),
+            notes: Value(notes),
+            nutritionJson: Value(nutritionJson),
+            prepTime: Value(prepTime),
+            cookTime: Value(cookTime),
+            totalTime: Value(totalTime),
           ),
         );
         // Delete alternatives → ingredients → sections (FK order)

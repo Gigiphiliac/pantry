@@ -30,11 +30,11 @@ test:           ## Run unit tests
 
 check: format-check analyze test   ## Run all checks (format-check + analyze + tests)
 
-run:            ## Launch dev flavour on default device (flutter run --flavor dev)
-	$(FLUTTER) run --flavor dev --dart-define=FLAVOR=dev
+run:            ## Launch dev flavour (make run DEVICE=<id> to target a device)
+	$(FLUTTER) run --flavor dev --dart-define=FLAVOR=dev $(if $(DEVICE),-d $(DEVICE),)
 
-run-prod:       ## Launch prod flavour on default device
-	$(FLUTTER) run --flavor prod --dart-define=FLAVOR=prod
+run-prod:       ## Launch prod flavour (make run-prod DEVICE=<id> to target a device)
+	$(FLUTTER) run --flavor prod --dart-define=FLAVOR=prod $(if $(DEVICE),-d $(DEVICE),)
 
 build:          ## Build prod release APK (flutter build apk --release --flavor prod)
 	$(FLUTTER) build apk --release --flavor prod \

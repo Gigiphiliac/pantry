@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  meta: any
   cupertino_icons: ^1.0.8
   drift: ^2.23.0
   drift_flutter: ^0.2.4

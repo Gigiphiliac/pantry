@@ -4,6 +4,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 
 import 'package:pantry/core/ocr/feature_extractor.dart';
+import 'package:pantry/core/ocr/label_corrector.dart';
 import 'package:pantry/core/ocr/onnx_classifier.dart';
 import 'package:pantry/core/ocr/recipe_ocr_input.dart';
 import '../models/recipe_draft.dart';
@@ -102,7 +103,15 @@ class RecipeOcrService {
     final lineTexts = input.lines.map((l) => l.text).toList();
 
     final result = await classifier.classify(features, lineTexts);
-    final assembled = ZoneAssembler.assemble(lineTexts, result.lineLabels);
+
+    // Correct common misclassifications before assembling
+    final corrected = LabelCorrector.correct(
+      lineTexts: lineTexts,
+      features: features,
+      rawLabels: result.lineLabels,
+    );
+
+    final assembled = ZoneAssembler.assemble(corrected.texts, corrected.labels);
     final draft = ZoneAssembler.toRecipeDraft(assembled);
 
     return (draft: draft, usedStub: result.usedStub);

@@ -1,13 +1,18 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/core/ingredients/ingredient_name_parser.dart';
+import 'package:pantry/core/ocr/recipe_ocr_input.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/main.dart';
 import 'package:pantry/utils/ingredient_dedup.dart';
 
 import 'models/recipe_draft.dart';
+import 'ocr/ocr_providers.dart';
+import 'recipe_detail_screen.dart';
 import 'recipe_providers.dart';
 
 class RecipeFormScreen extends ConsumerStatefulWidget {
@@ -15,6 +20,7 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
   final RecipeDraft? initialDraft;
   final String? sourceUrl;
   final String? sourceType;
+  final RecipeOcrInput? ocrInput;
 
   const RecipeFormScreen({
     super.key,
@@ -22,6 +28,7 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
     this.initialDraft,
     this.sourceUrl,
     this.sourceType,
+    this.ocrInput,
   });
 
   @override
@@ -30,9 +37,19 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
 
 class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _nameCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   final _servingsCtrl = TextEditingController();
   final _sourceUrlCtrl = TextEditingController();
   final List<TextEditingController> _stepControllers = [];
+  final _notesCtrl = TextEditingController();
+
+  // Nutrition key-value entries.
+  final List<_NutritionRow> _nutritionRows = [];
+
+  // Timing (in minutes, raw strings — parsed as ISO 8601 on save).
+  final _prepTimeCtrl = TextEditingController();
+  final _cookTimeCtrl = TextEditingController();
+  final _totalTimeCtrl = TextEditingController();
 
   // Unsectioned ingredients (no section header).
   final List<_IngredientEntry> _ingredients = [];
@@ -48,14 +65,41 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final d = widget.initialDraft;
     if (r != null) {
       _nameCtrl.text = r.name;
+      _descriptionCtrl.text = r.description ?? '';
       _servingsCtrl.text = r.servings?.toString() ?? '';
       _sourceUrlCtrl.text = r.sourceUrl ?? '';
+      _notesCtrl.text = r.notes ?? '';
+      _prepTimeCtrl.text = r.prepTime ?? '';
+      _cookTimeCtrl.text = r.cookTime ?? '';
+      _totalTimeCtrl.text = r.totalTime ?? '';
+      if (r.nutritionJson != null && r.nutritionJson!.isNotEmpty) {
+        try {
+          final parsed = jsonDecode(r.nutritionJson!) as Map<String, dynamic>;
+          for (final entry in parsed.entries) {
+            final val = entry.value;
+            _nutritionRows.add(
+              _NutritionRow(
+                label: entry.key,
+                value: val is String ? val : val.toString(),
+              ),
+            );
+          }
+        } catch (_) {}
+      }
       _loadExistingIngredients();
       _loadExistingSteps();
     } else if (d != null) {
       _nameCtrl.text = d.name ?? '';
+      _descriptionCtrl.text = d.description ?? '';
       _servingsCtrl.text = d.servings?.toString() ?? '';
       _sourceUrlCtrl.text = widget.sourceUrl ?? '';
+      _notesCtrl.text = d.notes ?? '';
+      _prepTimeCtrl.text = d.prepTime ?? '';
+      _cookTimeCtrl.text = d.cookTime ?? '';
+      _totalTimeCtrl.text = d.totalTime ?? '';
+      for (final n in d.nutrition ?? []) {
+        _nutritionRows.add(_NutritionRow(label: n.label, value: n.value));
+      }
       for (final step in d.steps) {
         _stepControllers.add(TextEditingController(text: step));
       }
@@ -115,6 +159,28 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       notesCtrl: TextEditingController(text: ing.notes ?? ''),
       selectedUnit: UnitRegistry.parse(ing.unit),
       alternatives: alts,
+    );
+  }
+
+  IngredientDraft _ingredientDraftFromEntry(_IngredientEntry e) {
+    return IngredientDraft(
+      name: e.nameCtrl.text.trim(),
+      qty: double.tryParse(e.qtyCtrl.text.trim()),
+      unit: e.selectedUnit?.id,
+      notes: e.notesCtrl.text.trim().isEmpty ? null : e.notesCtrl.text.trim(),
+      alternatives: e.alternatives
+          .where((a) => a.nameCtrl.text.trim().isNotEmpty)
+          .map(
+            (a) => IngredientDraft(
+              name: a.nameCtrl.text.trim(),
+              qty: double.tryParse(a.qtyCtrl.text.trim()),
+              unit: a.selectedUnit?.id,
+              notes: a.notesCtrl.text.trim().isEmpty
+                  ? null
+                  : a.notesCtrl.text.trim(),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -201,6 +267,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
     _servingsCtrl.dispose();
     _sourceUrlCtrl.dispose();
     for (final c in _stepControllers) {
@@ -243,6 +310,18 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               labelText: 'Recipe name *',
               border: OutlineInputBorder(),
             ),
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 8),
+
+          // Description
+          TextField(
+            controller: _descriptionCtrl,
+            decoration: const InputDecoration(
+              hintText: 'A short description of the recipe…',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 16),
@@ -393,6 +472,124 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             keyboardType: TextInputType.url,
             autocorrect: false,
           ),
+          const SizedBox(height: 24),
+
+          // ── Notes ────────────────────────────────────────────────────
+          Text('Notes', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _notesCtrl,
+            decoration: const InputDecoration(
+              hintText: 'Recipe tips, variations, notes…',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 24),
+
+          // ── Timing ────────────────────────────────────────────────────
+          Text('Timing', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _prepTimeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Prep time',
+                    hintText: 'e.g. 15 min, PT15M',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _cookTimeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Cook time',
+                    hintText: 'e.g. 30 min, PT30M',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _totalTimeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Total time',
+                    hintText: 'e.g. 45 min, PT45M',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Nutrition ────────────────────────────────────────────────
+          Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ..._nutritionRows.asMap().entries.map((e) {
+            final i = e.key;
+            final row = e.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: row.labelCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Label',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 4,
+                    child: TextField(
+                      controller: row.valueCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Value',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() {
+                      _nutritionRows[i].dispose();
+                      _nutritionRows.removeAt(i);
+                    }),
+                  ),
+                ],
+              ),
+            );
+          }),
+          TextButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Add nutrition row'),
+            onPressed: () =>
+                setState(() => _nutritionRows.add(_NutritionRow())),
+          ),
           const SizedBox(height: 40),
         ],
       ),
@@ -483,11 +680,42 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           .where((s) => s.isNotEmpty)
           .toList();
 
+      final description = _nullIfEmpty(_descriptionCtrl.text.trim());
+      final notes = _notesCtrl.text.trim().isEmpty
+          ? null
+          : _notesCtrl.text.trim();
+      final nutritionJson =
+          _nutritionRows
+              .where((r) => r.labelCtrl.text.trim().isNotEmpty)
+              .isEmpty
+          ? null
+          : jsonEncode(
+              Map.fromEntries(
+                _nutritionRows
+                    .where((r) => r.labelCtrl.text.trim().isNotEmpty)
+                    .map(
+                      (r) => MapEntry(
+                        r.labelCtrl.text.trim(),
+                        r.valueCtrl.text.trim(),
+                      ),
+                    ),
+              ),
+            );
+      final prepTime = _nullIfEmpty(_prepTimeCtrl.text.trim());
+      final cookTime = _nullIfEmpty(_cookTimeCtrl.text.trim());
+      final totalTime = _nullIfEmpty(_totalTimeCtrl.text.trim());
+
       final id = await ops.saveRecipe(
         id: widget.recipe?.id,
         name: name,
         servings: servings,
+        description: description,
         steps: steps,
+        notes: notes,
+        nutritionJson: nutritionJson,
+        prepTime: prepTime,
+        cookTime: cookTime,
+        totalTime: totalTime,
         sourceUrl: _sourceUrlCtrl.text.trim().isEmpty
             ? null
             : _sourceUrlCtrl.text.trim(),
@@ -503,12 +731,72 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         final updated = await (db.select(
           db.recipes,
         )..where((t) => t.id.equals(id))).getSingleOrNull();
-        if (mounted) Navigator.pop(context, updated);
+
+        // Capture OCR training data when this recipe originated from a scan
+        if (widget.ocrInput != null && updated != null) {
+          final trainingService = ref.read(ocrTrainingDataServiceProvider);
+          final correctedDraft = RecipeDraft(
+            name: name.isEmpty ? null : name,
+            servings: servings,
+            description: description,
+            ingredients: _ingredients
+                .where((e) => e.nameCtrl.text.trim().isNotEmpty)
+                .map((e) => _ingredientDraftFromEntry(e))
+                .toList(),
+            sections: _sections
+                .where((s) => s.nameCtrl.text.trim().isNotEmpty)
+                .map((_SectionEntry s) {
+                  final secName = s.nameCtrl.text.trim();
+                  return RecipeSectionDraft(
+                    name: secName,
+                    ingredients: s.items
+                        .where((e) => e.nameCtrl.text.trim().isNotEmpty)
+                        .map((e) => _ingredientDraftFromEntry(e))
+                        .toList(),
+                  );
+                })
+                .toList(),
+            steps: steps,
+            notes: notes,
+            nutrition: _nutritionRows
+                .where((r) => r.labelCtrl.text.trim().isNotEmpty)
+                .map(
+                  (r) => NutritionDraft(
+                    label: r.labelCtrl.text.trim(),
+                    value: r.valueCtrl.text.trim(),
+                  ),
+                )
+                .toList(),
+            prepTime: prepTime,
+            cookTime: cookTime,
+            totalTime: totalTime,
+          );
+          trainingService.saveCorrection(
+            ocrInput: widget.ocrInput!,
+            correctedDraft: correctedDraft,
+            sourceType: 'ocr',
+          );
+        }
+
+        if (mounted) {
+          if (widget.sourceType == 'ocr' || widget.initialDraft != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RecipeDetailScreen(recipe: updated!),
+              ),
+            );
+          } else {
+            Navigator.pop(context, updated);
+          }
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  static String? _nullIfEmpty(String s) => s.trim().isEmpty ? null : s.trim();
 }
 
 // ── Section entry state ───────────────────────────────────────────────────────
@@ -555,6 +843,22 @@ class _IngredientEntry {
     for (final a in alternatives) {
       a.dispose();
     }
+  }
+}
+
+// ── Nutrition row state ──────────────────────────────────────────────────────
+
+class _NutritionRow {
+  final TextEditingController labelCtrl;
+  final TextEditingController valueCtrl;
+
+  _NutritionRow({String label = '', String value = ''})
+    : labelCtrl = TextEditingController(text: label),
+      valueCtrl = TextEditingController(text: value);
+
+  void dispose() {
+    labelCtrl.dispose();
+    valueCtrl.dispose();
   }
 }
 
