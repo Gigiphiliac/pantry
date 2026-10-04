@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:pantry/core/ocr/onnx_classifier.dart';
 import 'package:pantry/core/recipes/recipe_text_parser.dart';
 import 'package:pantry/features/recipes/models/recipe_draft.dart';
@@ -123,7 +122,6 @@ class ZoneAssembler {
   ///   "Calories: 250 per serving" → (calories, 250 per serving)
   ///   "Protein 10g" → (protein, 10g)
   /// Falls back to (raw_line, "") for unparseable lines.
-  @visibleForTesting
   static NutritionDraft parseNutritionLine(String line) {
     final trimmed = line.trim();
     // Try colon-separated: "Label: value"

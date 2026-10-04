@@ -134,29 +134,58 @@ class OnnxClassifier {
 
   /// Lines whose lower-cased text contains any of these substrings are
   /// extremely unlikely to be recipe content and should be ignored.
+  ///
+  /// Matched against whitespace-normalised text (multiple spaces collapsed to
+  /// one) to handle OCR spacing artefacts.
   static final Set<String> _ignorePatterns = {
+    // Times
     'prep time',
     'cook time',
     'total time',
+    // Nutrition banners
     'calories:',
+    'nutrition facts',
+    // Author / source
     'author:',
+    // Video / social
     'recipe video',
     'jump to recipe',
     'skip to recipe',
     'rate this recipe',
     'print recipe',
     'share recipe',
-    'nutrition facts',
+    // URLs and branding
+    'www.',
+    // Copyright
+    '©',
+    'copyright',
+    // Publication metadata
+    'published:',
+    // Dietary / allergen
+    'dietary:',
+    'allergen',
   };
 
   /// Matches rating lines like "4.90 from 219 votes".
-  static final RegExp _ratingPattern =
-      RegExp(r'^[\d.]+ from \d+ votes\b', caseSensitive: false);
+  static final RegExp _ratingPattern = RegExp(
+    r'^[\d.]+ from \d+ votes\b',
+    caseSensitive: false,
+  );
 
   /// Matches standalone "Print" or "Share" button labels.
-  static final RegExp _standaloneNoise =
-      RegExp(r'^(print|share|pin|tweet|email|save)\b',
-          caseSensitive: false);
+  static final RegExp _standaloneNoise = RegExp(
+    r'^(print|share|pin|tweet|email|save)\b',
+    caseSensitive: false,
+  );
+
+  /// Matches page-number lines: "Page 1", "P. 2", "1 / 2", etc.
+  static final RegExp _pageNumberPattern = RegExp(
+    r'^\s*(page\s*\d+|p\.?\s*\d+|(\d+)\s*/\s*(\d+))\s*$',
+    caseSensitive: false,
+  );
+
+  /// Matches star-rating characters: ★, ✦, ⭐, or runs of "*".
+  static final RegExp _starPattern = RegExp(r'^[\u2605\u2726\u2b50\*]{2,}\s*$');
 
   /// Stub classifier: assigns labels using heuristics from [OcrRecipeParser].
   /// Used when the model asset is not available.
@@ -173,11 +202,13 @@ class OnnxClassifier {
 
       // ---- Check for ignore patterns first ----
       if (_isNoise(text)) {
-        labels.add(OcrLineClassification(
-          label: OcrLineLabel.ignore,
-          confidence: 0.95,
-          labelName: 'ignore',
-        ));
+        labels.add(
+          OcrLineClassification(
+            label: OcrLineLabel.ignore,
+            confidence: 0.95,
+            labelName: 'ignore',
+          ),
+        );
         continue;
       }
 
@@ -223,13 +254,19 @@ class OnnxClassifier {
 
   /// Returns true if [text] looks like non-recipe noise (ratings, timers,
   /// social buttons, etc.).
+  ///
+  /// Whitespace is normalised before matching to handle OCR spacing
+  /// artefacts ("Prep  Time" → "Prep Time").
   bool _isNoise(String text) {
-    final lower = text.trim().toLowerCase();
+    final normalised = text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final lower = normalised.toLowerCase();
     for (final pattern in _ignorePatterns) {
       if (lower.contains(pattern)) return true;
     }
-    if (_ratingPattern.hasMatch(text)) return true;
-    if (_standaloneNoise.hasMatch(text.trim())) return true;
+    if (_ratingPattern.hasMatch(normalised)) return true;
+    if (_standaloneNoise.hasMatch(normalised)) return true;
+    if (_pageNumberPattern.hasMatch(normalised)) return true;
+    if (_starPattern.hasMatch(normalised)) return true;
     return false;
   }
 
