@@ -60,11 +60,12 @@ final mealSlotsForWeekProvider =
       weekStart,
     ) {
       final db = ref.watch(dbProvider);
-      final weekEnd = weekStart.add(const Duration(days: 6));
+      final start = normaliseDate(weekStart);
+      final weekEnd = start.add(const Duration(days: 6));
 
       return (db.select(
         db.mealSlots,
-      )..where((t) => t.date.isBetweenValues(weekStart, weekEnd))).watch().map(
+      )..where((t) => t.date.isBetweenValues(start, weekEnd))).watch().map(
         (rows) => {
           for (final s in rows)
             '${dateKey(s.date)}_${s.mealType}': MealSlotData.fromMealSlot(s),
