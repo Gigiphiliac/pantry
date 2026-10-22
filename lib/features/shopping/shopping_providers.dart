@@ -1,8 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/ingredients/ingredient_parser.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/pantry/pantry_ops.dart';
 import 'package:pantry/main.dart';
+import 'package:pantry/utils/ingredient_dedup.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -272,6 +275,47 @@ class ShoppingListOps {
             ingredientId: Value(ingredientId),
           ),
         );
+  }
+
+  /// Add a manually-typed item, resolving it against the ingredient dictionary
+  /// so it becomes pantry-linked (tier-gated display and qty stacking).
+  ///
+  /// If the name field itself contains a quantity ("2 eggs"), it is split out
+  /// so the pantry item name stays clean — the quantity never contaminates the
+  /// stored name.
+  Future<void> addResolvedItem(
+    int storeId, {
+    int? sectionId,
+    required String rawText,
+    double? qty,
+    String? unit,
+  }) async {
+    final parsed = IngredientParser.parse(rawText);
+    final name = parsed.name.isEmpty ? rawText.trim() : parsed.name;
+    if (name.isEmpty) return; // nothing to add — never create blank ingredients
+
+    final effectiveQty = qty ?? parsed.qty;
+    final effectiveUnit = unit ?? parsed.unit;
+
+    final ingredientId = await getOrCreateIngredient(db, name);
+    final ingredient = await (db.select(
+      db.ingredients,
+    )..where((t) => t.id.equals(ingredientId))).getSingle();
+    await PantryOps(db).autoCreatePantryItem(ingredientId);
+    await addItem(
+      storeId,
+      sectionId: sectionId,
+      rawText: ingredient.name,
+      qty: effectiveQty,
+      unit: effectiveUnit,
+      ingredientId: ingredientId,
+    );
+  }
+
+  /// Set (or clear) the quantity and unit on an existing item.
+  Future<void> setItemQty(int itemId, double? qty, String? unit) async {
+    await (db.update(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
+        .write(ShoppingListItemsCompanion(qty: Value(qty), unit: Value(unit)));
   }
 
   // ── stackOrAddItem: list-scoped add/stack, falls back to first store ──────

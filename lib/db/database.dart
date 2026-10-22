@@ -260,6 +260,8 @@ class AppDatabase extends _$AppDatabase {
   /// Non-destructive — handles any previous version:
   ///  - creates any tables that didn't exist in older schemas (no-op otherwise)
   ///  - adds missing `recipes` columns (`notes`, `description`, timings) as NULL
+  ///  - adds missing `recipe_ingredients` columns (`section_id`,
+  ///    `active_alternative_index`) as NULL
   ///  - converts legacy timing TEXT values to integer minutes and rebuilds the
   ///    `recipes` table so the timing columns have INTEGER type.
   Future<void> _upgradeTo14(Migrator m) async {
@@ -278,6 +280,20 @@ class AppDatabase extends _$AppDatabase {
     }
     if (!hasDescription) {
       await m.addColumn(recipes, recipes.description);
+    }
+
+    // Add columns to recipe_ingredients added in post-init features.
+    final riColumns = (await customSelect(
+      'PRAGMA table_info(recipe_ingredients)',
+    ).get()).map((r) => r.read<String>('name')).toSet();
+    if (!riColumns.contains('section_id')) {
+      await m.addColumn(recipeIngredients, recipeIngredients.sectionId);
+    }
+    if (!riColumns.contains('active_alternative_index')) {
+      await m.addColumn(
+        recipeIngredients,
+        recipeIngredients.activeAlternativeIndex,
+      );
     }
 
     if (!hasTiming) {

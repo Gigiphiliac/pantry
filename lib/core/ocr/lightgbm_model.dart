@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' show exp;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 /// Evaluates a LightGBM multiclass model in pure Dart.
@@ -32,20 +33,30 @@ class LightgbmModel {
   }) async {
     try {
       final jsonStr = await rootBundle.loadString(assetPath);
-      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-
-      _numClasses = (data['num_class'] as num).toInt();
-      _numTreePerIteration = (data['num_tree_per_iteration'] as num).toInt();
-      _treeInfo = (data['tree_info'] as List).cast<Map<String, dynamic>>();
-
-      labelNames = (data['_label_names'] as List?)?.cast<String>();
-      featureNames = (data['_feature_names'] as List?)?.cast<String>();
-
-      _loaded = true;
+      _parseModelJson(jsonStr);
     } catch (e) {
       _loaded = false;
       // Silently fail — caller checks [_loaded] and falls back to stub.
     }
+  }
+
+  /// Load model from an in-memory JSON string (for testing).
+  @visibleForTesting
+  void loadFromJson(String jsonStr) {
+    _parseModelJson(jsonStr);
+  }
+
+  void _parseModelJson(String jsonStr) {
+    final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+    _numClasses = (data['num_class'] as num).toInt();
+    _numTreePerIteration = (data['num_tree_per_iteration'] as num).toInt();
+    _treeInfo = (data['tree_info'] as List).cast<Map<String, dynamic>>();
+
+    labelNames = (data['_label_names'] as List?)?.cast<String>();
+    featureNames = (data['_feature_names'] as List?)?.cast<String>();
+
+    _loaded = true;
   }
 
   /// Whether the model was loaded successfully.

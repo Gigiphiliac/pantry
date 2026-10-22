@@ -283,4 +283,175 @@ void main() {
       },
     );
   });
+
+  group('v12 → v14 migration (timing TEXT, no description column)', () {
+    test(
+      'adds description column and converts timing to integer minutes',
+      () async {
+        final file = await _writeFixture(
+          version: 12,
+          statements: [
+            // Recipes with TEXT timing columns (post-notes, pre-description).
+            '''
+          CREATE TABLE "recipes" (
+            "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            "name" TEXT NOT NULL,
+            "source_url" TEXT NULL,
+            "source_type" TEXT NOT NULL DEFAULT 'manual',
+            "servings" INTEGER NULL,
+            "nutrition_json" TEXT NULL,
+            "notes" TEXT NULL,
+            "prep_time" TEXT NULL,
+            "cook_time" TEXT NULL,
+            "total_time" TEXT NULL
+          )
+        ''',
+            'INSERT INTO "recipes" (id, name, source_url, source_type, servings, '
+                'nutrition_json, notes, prep_time, cook_time, total_time) '
+                "VALUES (1, 'Pasta', 'https://example.com/pasta', 'url', 2, "
+                "'{\"cal\":\"200\"}', 'Add salt', 'PT10M', 'PT20M', 'PT30M')",
+          ],
+        );
+
+        final db = AppDatabase.connect(NativeDatabase(File(file)));
+        addTearDown(() async {
+          await db.close();
+          File(file).parent.deleteSync(recursive: true);
+        });
+
+        final version =
+            (await db.customSelect('PRAGMA user_version').getSingle())
+                .read<int>('user_version');
+        expect(version, 14);
+
+        final recipe = (await db.select(db.recipes).get()).single;
+        expect(recipe.name, 'Pasta');
+        expect(recipe.sourceUrl, 'https://example.com/pasta');
+        expect(recipe.servings, 2);
+        expect(recipe.nutritionJson, '{"cal":"200"}');
+        expect(recipe.notes, 'Add salt');
+
+        // Timing converted: TEXT → integer minutes
+        expect(recipe.prepTime, 10);
+        expect(recipe.cookTime, 20);
+        expect(recipe.totalTime, 30);
+
+        // Description added as NULL (wasn't in v12)
+        expect(recipe.description, isNull);
+      },
+    );
+  });
+
+  group(
+    'v1 → v14 migration (instructions blob, no notes/description/timing)',
+    () {
+      test('preserves instructions as a shadow column, adds all new columns as '
+          'NULL, and creates every table missing from v1', () async {
+        final file = await _writeFixture(
+          version: 1,
+          statements: [
+            // v1 recipe table — has instructions TEXT blob.
+            '''
+            CREATE TABLE "recipes" (
+              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              "name" TEXT NOT NULL,
+              "source_url" TEXT NULL,
+              "source_type" TEXT NOT NULL DEFAULT 'manual',
+              "servings" INTEGER NULL,
+              "instructions" TEXT NULL,
+              "nutrition_json" TEXT NULL
+            )
+          ''',
+            '''
+            INSERT INTO "recipes" (id, name, source_url, servings, instructions)
+            VALUES (1, 'Old Recipe', 'https://example.com/old', 2,
+                    'Step 1\nStep 2\nStep 3')
+          ''',
+            // Also create ingredients independently to test cross-table
+            // references survive.
+            '''
+            CREATE TABLE "ingredients" (
+              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              "name" TEXT NOT NULL,
+              "preferred_unit" TEXT NULL,
+              "nutrition_ref" TEXT NULL
+            )
+          ''',
+            "INSERT INTO ingredients (id, name) VALUES (1, 'salt')",
+            '''
+            CREATE TABLE "recipe_ingredients" (
+              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              "recipe_id" INTEGER NOT NULL,
+              "ingredient_id" INTEGER NOT NULL,
+              "qty" REAL NULL,
+              "unit" TEXT NULL,
+              "notes" TEXT NULL
+            )
+          ''',
+            "INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, qty, unit) "
+                "VALUES (1, 1, 1, 1.0, 'tsp')",
+          ],
+        );
+
+        final db = AppDatabase.connect(NativeDatabase(File(file)));
+        addTearDown(() async {
+          await db.close();
+          File(file).parent.deleteSync(recursive: true);
+        });
+
+        // Version advanced.
+        final version =
+            (await db.customSelect('PRAGMA user_version').getSingle())
+                .read<int>('user_version');
+        expect(version, 14);
+
+        // Recipe row survived, instructions column preserved as a shadow column
+        // (it remains in the table but is not mapped by Drift).
+        final recipe = (await db.select(db.recipes).get()).single;
+        expect(recipe.id, 1);
+        expect(recipe.name, 'Old Recipe');
+        expect(recipe.servings, 2);
+
+        // New columns added — all NULL for v1 recipes.
+        expect(recipe.notes, isNull);
+        expect(recipe.description, isNull);
+        expect(recipe.prepTime, isNull);
+        expect(recipe.cookTime, isNull);
+        expect(recipe.totalTime, isNull);
+
+        // The instructions column still physically exists (shadow).
+        final cols = (await db.customSelect('PRAGMA table_info(recipes)').get())
+            .map((r) => r.read<String>('name'))
+            .toSet();
+        expect(cols, contains('instructions'));
+        // But Drift can't read it — query via custom SQL instead.
+        final rawInstructions =
+            (await db
+                    .customSelect(
+                      'SELECT instructions FROM recipes WHERE id = 1',
+                    )
+                    .getSingle())
+                .read<String>('instructions');
+        expect(rawInstructions, 'Step 1\nStep 2\nStep 3');
+
+        // New tables were created by the createAll() safety net.
+        expect(
+          await (db.select(db.recipeSteps)).get(),
+          isEmpty,
+          reason: 'recipe_steps table was created (empty)',
+        );
+        expect(
+          await (db.select(db.pantryItems)).get(),
+          isEmpty,
+          reason: 'pantry_items table was created (empty)',
+        );
+
+        // Pre-existing ingredient/recipe-ingredient FKs survive.
+        final ri = (await db.select(db.recipeIngredients).get()).single;
+        expect(ri.recipeId, 1);
+        expect(ri.ingredientId, 1);
+        expect(ri.qty, 1.0);
+      });
+    },
+  );
 }

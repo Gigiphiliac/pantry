@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/shopping/add_item_dialog.dart';
+import 'package:pantry/features/shopping/prompt_utils.dart';
 import 'package:pantry/features/shopping/shopping_providers.dart';
 import 'package:pantry/features/shopping/shopping_item_tile.dart';
-import 'package:pantry/features/shopping/prompt_utils.dart';
 
 class ShoppingSection extends ConsumerStatefulWidget {
   final ShoppingListSection section;
@@ -144,15 +145,11 @@ class _ShoppingSectionState extends ConsumerState<ShoppingSection> {
   }
 
   Future<void> _addItem(BuildContext context) async {
-    await promptItemText(
+    await showAddItemDialog(
       context,
-      title: 'Add item',
-      hint: 'Item name',
-      onAdd: (text) => widget.ops.addItem(
-        widget.storeId,
-        sectionId: widget.section.id,
-        rawText: text,
-      ),
+      widget.ops,
+      storeId: widget.storeId,
+      sectionId: widget.section.id,
     );
   }
 }

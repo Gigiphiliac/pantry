@@ -289,6 +289,128 @@ void main() {
         expect(alts.first.ingredientName, 'sea salt');
       });
     });
+
+    group('addToShoppingList()', () {
+      late ShoppingListOps shoppingOps;
+
+      setUp(() {
+        shoppingOps = ShoppingListOps(db);
+      });
+
+      test('carries qty/unit for per-recipe items (tier 3 default)', () async {
+        final recipeId = await ops.saveRecipe(
+          name: 'Test',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 2, unit: 'tsp'),
+          ],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+
+        // "salt" has no pantry entry yet — defaults to tier 3 (per-recipe).
+        await ops.addToShoppingList(recipeId, listId, 'Test');
+
+        final items = await db.select(db.shoppingListItems).get();
+        expect(items.length, 1);
+        expect(items.single.rawText, 'salt');
+        expect(items.single.qty, 2.0);
+        expect(items.single.unit, 'tsp');
+        expect(items.single.ingredientId, isNotNull);
+        expect(items.single.checked, isFalse);
+      });
+
+      test('strips qty/unit for bulk staples (tier 2)', () async {
+        final recipeId = await ops.saveRecipe(
+          name: 'Test',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 2, unit: 'tsp'),
+          ],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+        await PantryOps(db).setTierByIngredientId(1, 2);
+
+        await ops.addToShoppingList(recipeId, listId, 'Test');
+
+        final items = await db.select(db.shoppingListItems).get();
+        expect(items.length, 1);
+        expect(items.single.rawText, 'salt');
+        expect(items.single.qty, isNull);
+        expect(items.single.unit, isNull);
+        expect(items.single.ingredientId, 1);
+      });
+
+      test('skips always-available items (tier 1)', () async {
+        final recipeId = await ops.saveRecipe(
+          name: 'Test',
+          ingredients: [RecipeIngredientDraft(rawText: 'salt')],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+        await PantryOps(db).setTierByIngredientId(1, 1);
+
+        await ops.addToShoppingList(recipeId, listId, 'Test');
+
+        expect(await db.select(db.shoppingListItems).get(), isEmpty);
+      });
+
+      test('does nothing when the recipe has no ingredients', () async {
+        final recipeId = await ops.saveRecipe(
+          name: 'Empty',
+          ingredients: const [],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+
+        await ops.addToShoppingList(recipeId, listId, 'Empty');
+
+        expect(await db.select(db.shoppingListItems).get(), isEmpty);
+      });
+
+      test('stacks a shared ingredient across multiple recipes', () async {
+        final recipeA = await ops.saveRecipe(
+          name: 'A',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 1, unit: 'tsp'),
+          ],
+        );
+        final recipeB = await ops.saveRecipe(
+          name: 'B',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 2, unit: 'tsp'),
+          ],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+
+        await ops.addToShoppingList(recipeA, listId, 'A');
+        await ops.addToShoppingList(recipeB, listId, 'B');
+
+        final items = await db.select(db.shoppingListItems).get();
+        expect(items.length, 1);
+        expect(items.single.qty, 3.0);
+      });
+
+      test('stacks cross-unit quantities within the same family', () async {
+        final recipeA = await ops.saveRecipe(
+          name: 'A',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 1, unit: 'tbsp'),
+          ],
+        );
+        final recipeB = await ops.saveRecipe(
+          name: 'B',
+          ingredients: [
+            RecipeIngredientDraft(rawText: 'salt', qty: 1, unit: 'tsp'),
+          ],
+        );
+        final listId = await shoppingOps.createListWithStore('Weekly');
+
+        await ops.addToShoppingList(recipeA, listId, 'A');
+        await ops.addToShoppingList(recipeB, listId, 'B');
+
+        final items = await db.select(db.shoppingListItems).get();
+        expect(items.length, 1);
+        // 1 tbsp + 1 tsp ≈ 1.333 tbsp, stacked in the existing unit
+        expect(items.single.qty, closeTo(1.3333, 0.001));
+        expect(items.single.unit, 'tbsp');
+      });
+    });
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -449,6 +571,67 @@ void main() {
         expect(all.first.slotName, 'Tacos');
       });
     });
+
+    group('swapSlots() — unhappy path', () {
+      test('is a no-op when the source slot does not exist', () async {
+        await ops.swapSlots(
+          sourceId: 999,
+          sourceDate: DateTime(2026, 3, 10),
+          sourceMealType: 'lunch',
+          targetDate: DateTime(2026, 3, 12),
+          targetMealType: 'dinner',
+        );
+        expect(await db.select(db.mealSlots).get(), isEmpty);
+      });
+    });
+
+    group('linkRecipe()', () {
+      test('sets and clears the recipe link on a slot', () async {
+        final slot = await ops.upsertSlot(
+          date: DateTime(2026, 3, 10),
+          mealType: 'dinner',
+          slotName: 'Test',
+        );
+
+        await ops.linkRecipe(slot.id, 42);
+        final reloaded = await (db.select(
+          db.mealSlots,
+        )..where((t) => t.id.equals(slot.id))).getSingle();
+        expect(reloaded.recipeId, 42);
+
+        await ops.linkRecipe(slot.id, null);
+        final cleared = await (db.select(
+          db.mealSlots,
+        )..where((t) => t.id.equals(slot.id))).getSingle();
+        expect(cleared.recipeId, isNull);
+      });
+
+      test('is a no-op for a non-existent slot', () async {
+        await ops.linkRecipe(999, 1);
+      });
+    });
+
+    group('updateSlotName()', () {
+      test('updates the slot name', () async {
+        final slot = await ops.upsertSlot(
+          date: DateTime(2026, 3, 10),
+          mealType: 'lunch',
+          slotName: 'Old Name',
+        );
+
+        await ops.updateSlotName(slot.id, 'New Name');
+
+        final reloaded = await (db.select(
+          db.mealSlots,
+        )..where((t) => t.id.equals(slot.id))).getSingle();
+        expect(reloaded.slotName, 'New Name');
+      });
+
+      test('is a no-op for a non-existent slot', () async {
+        await ops.updateSlotName(999, 'Ghost');
+        expect(await db.select(db.mealSlots).get(), isEmpty);
+      });
+    });
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -558,6 +741,69 @@ void main() {
         expect(items.first.rawText, 'eggs');
       });
     });
+
+    group('addResolvedItem()', () {
+      test('splits quantity out of the name and links the pantry', () async {
+        final listId = await ops.createList('Weekly');
+        final storeId = await ops.addStore(listId, 'Coles');
+
+        // Quantity typed into the name field is split out — the pantry item
+        // stays clean "eggs", never "2 eggs".
+        await ops.addResolvedItem(storeId, rawText: '2 eggs');
+
+        final items = await db.select(db.shoppingListItems).get();
+        expect(items.length, 1);
+        final item = items.single;
+        expect(item.rawText, 'eggs');
+        expect(item.qty, 2.0);
+        expect(item.unit, isNull);
+        expect(item.ingredientId, isNotNull);
+
+        // A pantry entry exists for the clean name, tier 3 (per-recipe).
+        final pantryItems = await db.select(db.pantryItems).get();
+        expect(pantryItems.length, 1);
+        expect(pantryItems.single.ingredientId, item.ingredientId);
+        expect(pantryItems.single.tier, 3);
+
+        // Re-adding the same item (qty in the qty field) stacks onto it.
+        await ops.addResolvedItem(storeId, rawText: 'eggs', qty: 3);
+
+        final stacked = await db.select(db.shoppingListItems).get();
+        expect(stacked.length, 1);
+        expect(stacked.single.qty, 5.0);
+      });
+
+      test('stores an explicit qty/unit from the form fields', () async {
+        final listId = await ops.createList('Weekly');
+        final storeId = await ops.addStore(listId, 'Coles');
+
+        await ops.addResolvedItem(
+          storeId,
+          rawText: 'tomato paste',
+          qty: 2,
+          unit: 'can',
+        );
+
+        final item = (await db.select(db.shoppingListItems).get()).single;
+        expect(item.rawText, 'tomato paste');
+        expect(item.qty, 2.0);
+        expect(item.unit, 'can');
+        expect(item.ingredientId, isNotNull);
+      });
+
+      test(
+        'is a no-op for an empty name — never creates blank ingredients',
+        () async {
+          final listId = await ops.createList('Weekly');
+          final storeId = await ops.addStore(listId, 'Coles');
+
+          await ops.addResolvedItem(storeId, rawText: '   ');
+
+          expect(await db.select(db.shoppingListItems).get(), isEmpty);
+          expect(await db.select(db.ingredients).get(), isEmpty);
+        },
+      );
+    });
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -596,6 +842,88 @@ void main() {
 
         final items = await db.select(db.pantryItems).get();
         expect(items.length, 1);
+      });
+
+      test('baseline ingredients auto-create as always available', () async {
+        // Fresh ingredients: water (baseline) vs flour (not).
+        await db
+            .into(db.ingredients)
+            .insert(IngredientsCompanion.insert(name: 'water'));
+        await db
+            .into(db.ingredients)
+            .insert(IngredientsCompanion.insert(name: 'flour'));
+        final waterId = (await (db.select(
+          db.ingredients,
+        )..where((t) => t.name.equals('water'))).getSingle()).id;
+        final flourId = (await (db.select(
+          db.ingredients,
+        )..where((t) => t.name.equals('flour'))).getSingle()).id;
+
+        await ops.autoCreatePantryItem(waterId);
+        await ops.autoCreatePantryItem(flourId);
+
+        final items = await db.select(db.pantryItems).get();
+        expect(items.length, 2);
+        final water = items.singleWhere((i) => i.ingredientId == waterId);
+        final flour = items.singleWhere((i) => i.ingredientId == flourId);
+        expect(water.tier, 1);
+        expect(flour.tier, 3);
+      });
+
+      test('baseline matches case-insensitively', () async {
+        final waterId = await db
+            .into(db.ingredients)
+            .insert(IngredientsCompanion.insert(name: 'Water'));
+        await db
+            .into(db.ingredientAliases)
+            .insert(
+              IngredientAliasesCompanion.insert(
+                alias: 'water',
+                ingredientId: waterId,
+              ),
+            );
+
+        await ops.autoCreatePantryItem(waterId);
+
+        final items = await db.select(db.pantryItems).get();
+        expect(items.single.tier, 1);
+      });
+
+      test('baseline never overrides a user-set tier', () async {
+        final waterId = await db
+            .into(db.ingredients)
+            .insert(IngredientsCompanion.insert(name: 'water'));
+
+        // Auto-created on the baseline as always available...
+        await ops.autoCreatePantryItem(waterId);
+        // ...user opts into per-recipe...
+        await ops.setTierByIngredientId(waterId, 3);
+        // ...a later recipe import must NOT downgrade it.
+        await ops.autoCreatePantryItem(waterId);
+
+        final items = await db.select(db.pantryItems).get();
+        expect(items.length, 1);
+        expect(items.single.tier, 3);
+      });
+    });
+
+    group('setTierByIngredientId()', () {
+      test('creates the pantry entry when missing', () async {
+        await ops.setTierByIngredientId(1, 2);
+
+        final items = await db.select(db.pantryItems).get();
+        expect(items.length, 1);
+        expect(items.single.ingredientId, 1);
+        expect(items.single.tier, 2);
+      });
+
+      test('updates an existing entry', () async {
+        await ops.autoCreatePantryItem(1); // tier 3
+        await ops.setTierByIngredientId(1, 2);
+
+        final items = await db.select(db.pantryItems).get();
+        expect(items.length, 1);
+        expect(items.single.tier, 2);
       });
     });
 

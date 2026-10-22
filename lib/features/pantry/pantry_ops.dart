@@ -5,15 +5,65 @@ class PantryOps {
   final AppDatabase db;
   PantryOps(this.db);
 
+  /// Baseline of ingredients that are genuinely always available — never
+  /// worth buying, and entirely redundant on a shopping list. Applied ONLY
+  /// when a pantry entry is first auto-created (never overrides an existing
+  /// user-set tier). Tier 1 remains a manual opt-in elsewhere.
+  static const Set<String> alwaysAvailableBaseline = {
+    'water',
+    'tap water',
+    'ice',
+  };
+
   // ── Library (existing) ──────────────────────────────────────────────────
 
   /// Auto-create from recipe import — no-op if pantry entry already exists.
+  /// Baseline ingredients are created as tier 1 (always available) instead of
+  /// the default tier 3 (per-recipe).
   Future<void> autoCreatePantryItem(int ingredientId) async {
+    final tier = await _baselineTierFor(ingredientId);
     await db
         .into(db.pantryItems)
         .insert(
-          PantryItemsCompanion.insert(ingredientId: ingredientId),
+          PantryItemsCompanion.insert(
+            ingredientId: ingredientId,
+            tier: Value(tier),
+          ),
           mode: InsertMode.insertOrIgnore,
+        );
+  }
+
+  /// The tier a freshly auto-created pantry entry should get: 1 if the
+  /// ingredient is on the always-available baseline, otherwise 3.
+  Future<int> _baselineTierFor(int ingredientId) async {
+    final ingredient = await (db.select(
+      db.ingredients,
+    )..where((t) => t.id.equals(ingredientId))).getSingleOrNull();
+    if (ingredient != null &&
+        alwaysAvailableBaseline.contains(ingredient.name.toLowerCase())) {
+      return 1;
+    }
+    return 3;
+  }
+
+  /// Sets tier by ingredient id, creating the pantry entry if needed.
+  /// Used by the shopping list qty toggle (2 ↔ 3).
+  Future<void> setTierByIngredientId(int ingredientId, int tier) async {
+    await db
+        .into(db.pantryItems)
+        .insert(
+          PantryItemsCompanion.insert(
+            ingredientId: ingredientId,
+            tier: Value(tier),
+            userConfirmed: const Value(true),
+          ),
+          onConflict: DoUpdate(
+            (_) => PantryItemsCompanion(
+              tier: Value(tier),
+              userConfirmed: const Value(true),
+            ),
+            target: [db.pantryItems.ingredientId],
+          ),
         );
   }
 

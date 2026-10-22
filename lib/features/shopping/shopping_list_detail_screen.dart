@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/shopping/add_item_dialog.dart';
+import 'package:pantry/features/shopping/prompt_utils.dart';
 import 'package:pantry/features/shopping/shopping_providers.dart';
 import 'package:pantry/features/shopping/shopping_store_page.dart';
-import 'package:pantry/features/shopping/prompt_utils.dart';
 
 class ShoppingListDetailScreen extends ConsumerStatefulWidget {
   final int listId;
@@ -184,12 +185,7 @@ class _ShoppingListDetailScreenState
     ShoppingListOps ops,
     int storeId,
   ) async {
-    await promptItemText(
-      context,
-      title: 'Add item',
-      hint: 'Item name',
-      onAdd: (text) => ops.addItem(storeId, rawText: text),
-    );
+    await showAddItemDialog(context, ops, storeId: storeId);
   }
 
   Future<void> _addGroup(

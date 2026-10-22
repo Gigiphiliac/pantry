@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
@@ -22,10 +23,17 @@ class RecipeUrlService {
 
   Future<RecipeDraft> fetchAndParse(String url) async {
     final html = await _fetchHtml(url);
-    final schemaMap = _extractSchemaOrg(html);
-    final draft = _normaliseFields(schemaMap);
+    final draft = parseHtml(html);
     await _seedTrainingData(url, html, draft);
     return draft;
+  }
+
+  /// Parse a pre-fetched HTML string, extracting the schema.org recipe data.
+  /// Skips the HTTP fetch and the training-data seed — useful for testing.
+  @visibleForTesting
+  RecipeDraft parseHtml(String html) {
+    final schemaMap = _extractSchemaOrg(html);
+    return _normaliseFields(schemaMap);
   }
 
   Future<String> _fetchHtml(String url) async {
