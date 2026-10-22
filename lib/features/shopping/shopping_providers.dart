@@ -106,6 +106,14 @@ class ShoppingListOps {
     return listId;
   }
 
+  /// Create a new shopping list with a single default store named "General".
+  /// Returns the new list id.
+  Future<int> createListWithStore(String name) async {
+    final listId = await createList(name);
+    await addStore(listId, 'General');
+    return listId;
+  }
+
   Future<void> renameList(int id, String name) =>
       (db.update(db.shoppingLists)..where((t) => t.id.equals(id))).write(
         ShoppingListsCompanion(name: Value(name)),
@@ -284,7 +292,7 @@ class ShoppingListOps {
 
     if (stores.isEmpty) {
       // No stores exist yet — create one with a default name.
-      final storeId = await addStore(listId, 'Default');
+      final storeId = await addStore(listId, 'General');
       await addItem(
         storeId,
         rawText: rawText,

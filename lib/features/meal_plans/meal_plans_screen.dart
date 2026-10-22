@@ -4,6 +4,10 @@ import 'package:pantry/features/meal_plans/meal_plan_providers.dart';
 import 'package:pantry/features/meal_plans/meal_slot_cell.dart';
 import 'package:pantry/features/meal_plans/slot_detail_screen.dart';
 import 'package:pantry/features/meal_plans/week_header.dart';
+import 'package:pantry/features/recipes/recipe_providers.dart';
+import 'package:pantry/features/shopping/shopping_list_detail_screen.dart';
+import 'package:pantry/features/shopping/shopping_providers.dart';
+import 'package:pantry/main.dart';
 import 'package:pantry/widgets/app_bar_logo.dart';
 
 class MealPlansScreen extends ConsumerStatefulWidget {
@@ -70,7 +74,13 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       appBar: AppBar(
         leading: const AppBarLogo(),
         title: const Text('Meal Plans'),
-        actions: [],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            tooltip: 'Add all recipes to shopping list',
+            onPressed: () => _addAllToShoppingList(context),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -140,6 +150,103 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
         );
       },
     );
+  }
+
+  Future<void> _addAllToShoppingList(BuildContext context) async {
+    final db = ref.read(dbProvider);
+
+    // Query all meal slots and filter for the current week in Dart.
+    // (Drift's extension methods for date comparisons aren't resolved by the
+    //  Dart analyzer from external files, so we avoid them here.)
+    final start = normaliseDate(_weekStart);
+    final end = start.add(const Duration(days: 6));
+    final allSlots = await db.select(db.mealSlots).get();
+    if (!context.mounted) return;
+    final slots = allSlots
+        .where((s) => !s.date.isBefore(start) && !s.date.isAfter(end))
+        .toList();
+
+    // Collect unique linked recipe ids
+    final recipeIds = slots
+        .map((s) => s.recipeId)
+        .where((id) => id != null)
+        .cast<int>()
+        .toSet()
+        .toList();
+
+    if (recipeIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No linked recipes this week'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Build week label
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final weekLabel =
+        'Week of ${start.day} ${months[start.month - 1]} ${start.year}';
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Create shopping list?'),
+        content: Text(
+          'Add ingredients from ${recipeIds.length} linked '
+          'recipe${recipeIds.length == 1 ? '' : 's'} to a new list '
+          'named "$weekLabel"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    final shoppingOps = ref.read(shoppingOpsProvider);
+    final recipeOps = ref.read(recipeOpsProvider);
+
+    // Create the list with a default store
+    final listId = await shoppingOps.createListWithStore(weekLabel);
+
+    // Add ingredients from each linked recipe
+    for (final recipeId in recipeIds) {
+      await recipeOps.addToShoppingList(recipeId, listId, weekLabel);
+    }
+
+    // Navigate to the newly created list
+    if (context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ShoppingListDetailScreen(listId: listId, listName: weekLabel),
+        ),
+      );
+    }
   }
 }
 

@@ -2073,33 +2073,33 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     'prepTime',
   );
   @override
-  late final GeneratedColumn<String> prepTime = GeneratedColumn<String>(
+  late final GeneratedColumn<int> prepTime = GeneratedColumn<int>(
     'prep_time',
     aliasedName,
     true,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _cookTimeMeta = const VerificationMeta(
     'cookTime',
   );
   @override
-  late final GeneratedColumn<String> cookTime = GeneratedColumn<String>(
+  late final GeneratedColumn<int> cookTime = GeneratedColumn<int>(
     'cook_time',
     aliasedName,
     true,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _totalTimeMeta = const VerificationMeta(
     'totalTime',
   );
   @override
-  late final GeneratedColumn<String> totalTime = GeneratedColumn<String>(
+  late final GeneratedColumn<int> totalTime = GeneratedColumn<int>(
     'total_time',
     aliasedName,
     true,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   @override
@@ -2236,6 +2236,22 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
         DriftSqlType.string,
         data['${effectivePrefix}nutrition_json'],
       ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      prepTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}prep_time'],
+      ),
+      cookTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cook_time'],
+      ),
+      totalTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_time'],
+      ),
     );
   }
 
@@ -2254,9 +2270,9 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   final String? description;
   final String? nutritionJson;
   final String? notes;
-  final String? prepTime;
-  final String? cookTime;
-  final String? totalTime;
+  final int? prepTime;
+  final int? cookTime;
+  final int? totalTime;
   const Recipe({
     required this.id,
     required this.name,
@@ -2292,13 +2308,13 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       map['notes'] = Variable<String>(notes);
     }
     if (!nullToAbsent || prepTime != null) {
-      map['prep_time'] = Variable<String>(prepTime);
+      map['prep_time'] = Variable<int>(prepTime);
     }
     if (!nullToAbsent || cookTime != null) {
-      map['cook_time'] = Variable<String>(cookTime);
+      map['cook_time'] = Variable<int>(cookTime);
     }
     if (!nullToAbsent || totalTime != null) {
-      map['total_time'] = Variable<String>(totalTime);
+      map['total_time'] = Variable<int>(totalTime);
     }
     return map;
   }
@@ -2349,9 +2365,9 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       description: serializer.fromJson<String?>(json['description']),
       nutritionJson: serializer.fromJson<String?>(json['nutritionJson']),
       notes: serializer.fromJson<String?>(json['notes']),
-      prepTime: serializer.fromJson<String?>(json['prepTime']),
-      cookTime: serializer.fromJson<String?>(json['cookTime']),
-      totalTime: serializer.fromJson<String?>(json['totalTime']),
+      prepTime: serializer.fromJson<int?>(json['prepTime']),
+      cookTime: serializer.fromJson<int?>(json['cookTime']),
+      totalTime: serializer.fromJson<int?>(json['totalTime']),
     );
   }
   @override
@@ -2366,9 +2382,9 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       'description': serializer.toJson<String?>(description),
       'nutritionJson': serializer.toJson<String?>(nutritionJson),
       'notes': serializer.toJson<String?>(notes),
-      'prepTime': serializer.toJson<String?>(prepTime),
-      'cookTime': serializer.toJson<String?>(cookTime),
-      'totalTime': serializer.toJson<String?>(totalTime),
+      'prepTime': serializer.toJson<int?>(prepTime),
+      'cookTime': serializer.toJson<int?>(cookTime),
+      'totalTime': serializer.toJson<int?>(totalTime),
     };
   }
 
@@ -2381,9 +2397,9 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     Value<String?> description = const Value.absent(),
     Value<String?> nutritionJson = const Value.absent(),
     Value<String?> notes = const Value.absent(),
-    Value<String?> prepTime = const Value.absent(),
-    Value<String?> cookTime = const Value.absent(),
-    Value<String?> totalTime = const Value.absent(),
+    Value<int?> prepTime = const Value.absent(),
+    Value<int?> cookTime = const Value.absent(),
+    Value<int?> totalTime = const Value.absent(),
   }) => Recipe(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -2430,7 +2446,11 @@ class Recipe extends DataClass implements Insertable<Recipe> {
           ..write('sourceType: $sourceType, ')
           ..write('servings: $servings, ')
           ..write('description: $description, ')
-          ..write('nutritionJson: $nutritionJson')
+          ..write('nutritionJson: $nutritionJson, ')
+          ..write('notes: $notes, ')
+          ..write('prepTime: $prepTime, ')
+          ..write('cookTime: $cookTime, ')
+          ..write('totalTime: $totalTime')
           ..write(')'))
         .toString();
   }
@@ -2444,6 +2464,10 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     servings,
     description,
     nutritionJson,
+    notes,
+    prepTime,
+    cookTime,
+    totalTime,
   );
   @override
   bool operator ==(Object other) =>
@@ -2471,9 +2495,9 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   final Value<String?> description;
   final Value<String?> nutritionJson;
   final Value<String?> notes;
-  final Value<String?> prepTime;
-  final Value<String?> cookTime;
-  final Value<String?> totalTime;
+  final Value<int?> prepTime;
+  final Value<int?> cookTime;
+  final Value<int?> totalTime;
   const RecipesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2509,9 +2533,9 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Expression<String>? description,
     Expression<String>? nutritionJson,
     Expression<String>? notes,
-    Expression<String>? prepTime,
-    Expression<String>? cookTime,
-    Expression<String>? totalTime,
+    Expression<int>? prepTime,
+    Expression<int>? cookTime,
+    Expression<int>? totalTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2537,9 +2561,9 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     Value<String?>? description,
     Value<String?>? nutritionJson,
     Value<String?>? notes,
-    Value<String?>? prepTime,
-    Value<String?>? cookTime,
-    Value<String?>? totalTime,
+    Value<int?>? prepTime,
+    Value<int?>? cookTime,
+    Value<int?>? totalTime,
   }) {
     return RecipesCompanion(
       id: id ?? this.id,
@@ -2584,13 +2608,13 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
       map['notes'] = Variable<String>(notes.value);
     }
     if (prepTime.present) {
-      map['prep_time'] = Variable<String>(prepTime.value);
+      map['prep_time'] = Variable<int>(prepTime.value);
     }
     if (cookTime.present) {
-      map['cook_time'] = Variable<String>(cookTime.value);
+      map['cook_time'] = Variable<int>(cookTime.value);
     }
     if (totalTime.present) {
-      map['total_time'] = Variable<String>(totalTime.value);
+      map['total_time'] = Variable<int>(totalTime.value);
     }
     return map;
   }
@@ -5598,7 +5622,7 @@ class $OcrTrainingDataTable extends OcrTrainingData
   late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
     'source_type',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant('ocr'),
@@ -5718,7 +5742,7 @@ class $OcrTrainingDataTable extends OcrTrainingData
       sourceType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}source_type'],
-      ),
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5739,7 +5763,7 @@ class OcrTrainingDataData extends DataClass
   final String correctedJson;
   final int? imageWidth;
   final int? imageHeight;
-  final String? sourceType;
+  final String sourceType;
   final DateTime createdAt;
   const OcrTrainingDataData({
     required this.id,
@@ -5747,7 +5771,7 @@ class OcrTrainingDataData extends DataClass
     required this.correctedJson,
     this.imageWidth,
     this.imageHeight,
-    this.sourceType,
+    required this.sourceType,
     required this.createdAt,
   });
   @override
@@ -5762,9 +5786,7 @@ class OcrTrainingDataData extends DataClass
     if (!nullToAbsent || imageHeight != null) {
       map['image_height'] = Variable<int>(imageHeight);
     }
-    if (!nullToAbsent || sourceType != null) {
-      map['source_type'] = Variable<String>(sourceType);
-    }
+    map['source_type'] = Variable<String>(sourceType);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -5780,9 +5802,7 @@ class OcrTrainingDataData extends DataClass
       imageHeight: imageHeight == null && nullToAbsent
           ? const Value.absent()
           : Value(imageHeight),
-      sourceType: sourceType == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sourceType),
+      sourceType: Value(sourceType),
       createdAt: Value(createdAt),
     );
   }
@@ -5798,7 +5818,7 @@ class OcrTrainingDataData extends DataClass
       correctedJson: serializer.fromJson<String>(json['correctedJson']),
       imageWidth: serializer.fromJson<int?>(json['imageWidth']),
       imageHeight: serializer.fromJson<int?>(json['imageHeight']),
-      sourceType: serializer.fromJson<String?>(json['sourceType']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -5811,7 +5831,7 @@ class OcrTrainingDataData extends DataClass
       'correctedJson': serializer.toJson<String>(correctedJson),
       'imageWidth': serializer.toJson<int?>(imageWidth),
       'imageHeight': serializer.toJson<int?>(imageHeight),
-      'sourceType': serializer.toJson<String?>(sourceType),
+      'sourceType': serializer.toJson<String>(sourceType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -5822,7 +5842,7 @@ class OcrTrainingDataData extends DataClass
     String? correctedJson,
     Value<int?> imageWidth = const Value.absent(),
     Value<int?> imageHeight = const Value.absent(),
-    Value<String?> sourceType = const Value.absent(),
+    String? sourceType,
     DateTime? createdAt,
   }) => OcrTrainingDataData(
     id: id ?? this.id,
@@ -5830,7 +5850,7 @@ class OcrTrainingDataData extends DataClass
     correctedJson: correctedJson ?? this.correctedJson,
     imageWidth: imageWidth.present ? imageWidth.value : this.imageWidth,
     imageHeight: imageHeight.present ? imageHeight.value : this.imageHeight,
-    sourceType: sourceType.present ? sourceType.value : this.sourceType,
+    sourceType: sourceType ?? this.sourceType,
     createdAt: createdAt ?? this.createdAt,
   );
   OcrTrainingDataData copyWithCompanion(OcrTrainingDataCompanion data) {
@@ -5896,7 +5916,7 @@ class OcrTrainingDataCompanion extends UpdateCompanion<OcrTrainingDataData> {
   final Value<String> correctedJson;
   final Value<int?> imageWidth;
   final Value<int?> imageHeight;
-  final Value<String?> sourceType;
+  final Value<String> sourceType;
   final Value<DateTime> createdAt;
   const OcrTrainingDataCompanion({
     this.id = const Value.absent(),
@@ -5943,7 +5963,7 @@ class OcrTrainingDataCompanion extends UpdateCompanion<OcrTrainingDataData> {
     Value<String>? correctedJson,
     Value<int?>? imageWidth,
     Value<int?>? imageHeight,
-    Value<String?>? sourceType,
+    Value<String>? sourceType,
     Value<DateTime>? createdAt,
   }) {
     return OcrTrainingDataCompanion(
@@ -7235,6 +7255,10 @@ typedef $$RecipesTableCreateCompanionBuilder =
       Value<int?> servings,
       Value<String?> description,
       Value<String?> nutritionJson,
+      Value<String?> notes,
+      Value<int?> prepTime,
+      Value<int?> cookTime,
+      Value<int?> totalTime,
     });
 typedef $$RecipesTableUpdateCompanionBuilder =
     RecipesCompanion Function({
@@ -7245,6 +7269,10 @@ typedef $$RecipesTableUpdateCompanionBuilder =
       Value<int?> servings,
       Value<String?> description,
       Value<String?> nutritionJson,
+      Value<String?> notes,
+      Value<int?> prepTime,
+      Value<int?> cookTime,
+      Value<int?> totalTime,
     });
 
 class $$RecipesTableFilterComposer
@@ -7281,8 +7309,33 @@ class $$RecipesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get nutritionJson => $composableBuilder(
     column: $table.nutritionJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prepTime => $composableBuilder(
+    column: $table.prepTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cookTime => $composableBuilder(
+    column: $table.cookTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalTime => $composableBuilder(
+    column: $table.totalTime,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7321,8 +7374,33 @@ class $$RecipesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get nutritionJson => $composableBuilder(
     column: $table.nutritionJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prepTime => $composableBuilder(
+    column: $table.prepTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cookTime => $composableBuilder(
+    column: $table.cookTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalTime => $composableBuilder(
+    column: $table.totalTime,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -7353,10 +7431,27 @@ class $$RecipesTableAnnotationComposer
   GeneratedColumn<int> get servings =>
       $composableBuilder(column: $table.servings, builder: (column) => column);
 
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get nutritionJson => $composableBuilder(
     column: $table.nutritionJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get prepTime =>
+      $composableBuilder(column: $table.prepTime, builder: (column) => column);
+
+  GeneratedColumn<int> get cookTime =>
+      $composableBuilder(column: $table.cookTime, builder: (column) => column);
+
+  GeneratedColumn<int> get totalTime =>
+      $composableBuilder(column: $table.totalTime, builder: (column) => column);
 }
 
 class $$RecipesTableTableManager
@@ -7394,6 +7489,10 @@ class $$RecipesTableTableManager
                 Value<int?> servings = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String?> nutritionJson = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<int?> prepTime = const Value.absent(),
+                Value<int?> cookTime = const Value.absent(),
+                Value<int?> totalTime = const Value.absent(),
               }) => RecipesCompanion(
                 id: id,
                 name: name,
@@ -7402,6 +7501,10 @@ class $$RecipesTableTableManager
                 servings: servings,
                 description: description,
                 nutritionJson: nutritionJson,
+                notes: notes,
+                prepTime: prepTime,
+                cookTime: cookTime,
+                totalTime: totalTime,
               ),
           createCompanionCallback:
               ({
@@ -7412,6 +7515,10 @@ class $$RecipesTableTableManager
                 Value<int?> servings = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String?> nutritionJson = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<int?> prepTime = const Value.absent(),
+                Value<int?> cookTime = const Value.absent(),
+                Value<int?> totalTime = const Value.absent(),
               }) => RecipesCompanion.insert(
                 id: id,
                 name: name,
@@ -7420,6 +7527,10 @@ class $$RecipesTableTableManager
                 servings: servings,
                 description: description,
                 nutritionJson: nutritionJson,
+                notes: notes,
+                prepTime: prepTime,
+                cookTime: cookTime,
+                totalTime: totalTime,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -9105,7 +9216,7 @@ typedef $$OcrTrainingDataTableCreateCompanionBuilder =
       required String correctedJson,
       Value<int?> imageWidth,
       Value<int?> imageHeight,
-      Value<String?> sourceType,
+      Value<String> sourceType,
       Value<DateTime> createdAt,
     });
 typedef $$OcrTrainingDataTableUpdateCompanionBuilder =
@@ -9115,7 +9226,7 @@ typedef $$OcrTrainingDataTableUpdateCompanionBuilder =
       Value<String> correctedJson,
       Value<int?> imageWidth,
       Value<int?> imageHeight,
-      Value<String?> sourceType,
+      Value<String> sourceType,
       Value<DateTime> createdAt,
     });
 
@@ -9150,6 +9261,11 @@ class $$OcrTrainingDataTableFilterComposer
 
   ColumnFilters<int> get imageHeight => $composableBuilder(
     column: $table.imageHeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9193,6 +9309,11 @@ class $$OcrTrainingDataTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9226,6 +9347,11 @@ class $$OcrTrainingDataTableAnnotationComposer
 
   GeneratedColumn<int> get imageHeight => $composableBuilder(
     column: $table.imageHeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
     builder: (column) => column,
   );
 
@@ -9275,7 +9401,7 @@ class $$OcrTrainingDataTableTableManager
                 Value<String> correctedJson = const Value.absent(),
                 Value<int?> imageWidth = const Value.absent(),
                 Value<int?> imageHeight = const Value.absent(),
-                Value<String?> sourceType = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OcrTrainingDataCompanion(
                 id: id,
@@ -9293,7 +9419,7 @@ class $$OcrTrainingDataTableTableManager
                 required String correctedJson,
                 Value<int?> imageWidth = const Value.absent(),
                 Value<int?> imageHeight = const Value.absent(),
-                Value<String?> sourceType = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OcrTrainingDataCompanion.insert(
                 id: id,

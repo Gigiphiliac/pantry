@@ -216,4 +216,87 @@ void main() {
       expect(result.name, 'flour');
     });
   });
+
+  group('RecipeTextParser.parseIsoDurationMinutes()', () {
+    test('parses plain minutes', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT15M'), 15);
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT45M'), 45);
+    });
+
+    test('parses hours', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT1H'), 60);
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT2H'), 120);
+    });
+
+    test('parses hours and minutes combined', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT1H30M'), 90);
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT2H15M'), 135);
+    });
+
+    test('rounds seconds to the nearest minute', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT30S'), 1);
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT90S'), 2);
+    });
+
+    test('parses days', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('P1D'), 1440);
+    });
+
+    test('is case-insensitive', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('pt15m'), 15);
+    });
+
+    test('returns null for empty, missing or non-ISO input', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes(null), isNull);
+      expect(RecipeTextParser.parseIsoDurationMinutes(''), isNull);
+      expect(RecipeTextParser.parseIsoDurationMinutes('15 min'), isNull);
+      expect(RecipeTextParser.parseIsoDurationMinutes('garbage'), isNull);
+    });
+
+    test('zero durations parse to 0', () {
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT0M'), 0);
+      expect(RecipeTextParser.parseIsoDurationMinutes('PT0S'), 0);
+    });
+  });
+
+  group('RecipeTextParser.parseDurationMinutes()', () {
+    test('parses ISO durations via delegation', () {
+      expect(RecipeTextParser.parseDurationMinutes('PT1H30M'), 90);
+    });
+
+    test('parses "X min" variants', () {
+      expect(RecipeTextParser.parseDurationMinutes('15 min'), 15);
+      expect(RecipeTextParser.parseDurationMinutes('45 mins'), 45);
+      expect(RecipeTextParser.parseDurationMinutes('30 minutes'), 30);
+      expect(RecipeTextParser.parseDurationMinutes('15m'), 15);
+    });
+
+    test('parses hours alone', () {
+      expect(RecipeTextParser.parseDurationMinutes('2 hours'), 120);
+      expect(RecipeTextParser.parseDurationMinutes('1 hr'), 60);
+      expect(RecipeTextParser.parseDurationMinutes('1h'), 60);
+    });
+
+    test('parses hours and minutes combined', () {
+      expect(RecipeTextParser.parseDurationMinutes('1 hr 30 min'), 90);
+      expect(RecipeTextParser.parseDurationMinutes('1 hour 15 minutes'), 75);
+      expect(RecipeTextParser.parseDurationMinutes('1h30m'), 90);
+    });
+
+    test('parses fractional hours', () {
+      expect(RecipeTextParser.parseDurationMinutes('1.5 hours'), 90);
+      expect(RecipeTextParser.parseDurationMinutes('0.5 hr'), 30);
+    });
+
+    test('parses bare numbers', () {
+      expect(RecipeTextParser.parseDurationMinutes('15'), 15);
+      expect(RecipeTextParser.parseDurationMinutes(' 120 '), 120);
+    });
+
+    test('returns null for unrecognised input', () {
+      expect(RecipeTextParser.parseDurationMinutes(null), isNull);
+      expect(RecipeTextParser.parseDurationMinutes(''), isNull);
+      expect(RecipeTextParser.parseDurationMinutes('as needed'), isNull);
+    });
+  });
 }

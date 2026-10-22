@@ -449,4 +449,104 @@ class RecipeTextParser {
     final match = RegExp(r'\d+').firstMatch(value.toString());
     return match != null ? int.tryParse(match.group(0)!) : null;
   }
+
+  // ── Duration (timing) parsing ──────────────────────────────────────────────
+
+  /// Parse a duration from raw text into total minutes.
+  ///
+  /// Handles ISO 8601 durations ("PT1H30M"), human text ("1 hr 30 min",
+  /// "45 mins", "2 hours") and bare numbers ("15").
+  /// Returns null when no duration can be recognised.
+  static int? parseDurationMinutes(String? raw) {
+    if (raw == null) return null;
+    final s = raw.trim().toLowerCase();
+    if (s.isEmpty) return null;
+
+    // ISO 8601 durations (e.g. "PT15M", "PT1H30M")
+    if (s.startsWith('p')) return parseIsoDurationMinutes(s);
+
+    int total = 0;
+    bool found = false;
+
+    // Hours: "2 hours", "1 hr", "1h" (also "1h30m" compact form)
+    final hMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)').firstMatch(s);
+    if (hMatch != null) {
+      total += (double.parse(hMatch.group(1)!) * 60).round();
+      found = true;
+    }
+
+    // Minutes: "45 mins", "30 minutes", "15m" (also "1h30m" compact form)
+    final mMatch = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)',
+    ).firstMatch(s);
+    if (mMatch != null) {
+      total += double.parse(mMatch.group(1)!).round();
+      found = true;
+    }
+
+    // Bare number fallback: "15"
+    if (!found) {
+      final n = RegExp(r'\d+').firstMatch(s);
+      if (n != null) {
+        total = int.parse(n.group(0)!);
+        found = true;
+      }
+    }
+
+    return found ? total : null;
+  }
+
+  /// Parse an ISO 8601 duration string (e.g. "PT15M", "PT1H30M", "P1D")
+  /// into total minutes. Returns null when the value is empty or not ISO.
+  static int? parseIsoDurationMinutes(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    final upper = trimmed.toUpperCase();
+    if (!upper.startsWith('P')) return null;
+
+    int totalMinutes = 0;
+    bool inTime = false;
+    int acc = 0;
+
+    for (int i = 1; i < upper.length; i++) {
+      final r = upper.codeUnitAt(i);
+      if (r == 84) {
+        // 'T' — start of time portion
+        inTime = true;
+        continue;
+      }
+      if (r >= 48 && r <= 57) {
+        // digit
+        acc = acc * 10 + (r - 48);
+        continue;
+      }
+      if (inTime) {
+        if (r == 72) {
+          // 'H' — hours
+          totalMinutes += acc * 60;
+        } else if (r == 77) {
+          // 'M' — minutes
+          totalMinutes += acc;
+        } else if (r == 83) {
+          // 'S' — seconds (round to nearest minute)
+          totalMinutes += (acc + 30) ~/ 60;
+        }
+      } else {
+        if (r == 68) {
+          // 'D' — days
+          totalMinutes += acc * 24 * 60;
+        }
+      }
+      acc = 0;
+    }
+
+    // If nothing meaningful was parsed, return null
+    if (totalMinutes == 0 && upper != 'PT0M' && upper != 'PT0S') {
+      return null;
+    }
+
+    return totalMinutes;
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:pantry/core/recipes/recipe_text_parser.dart';
 
 part 'database.g.dart';
 
@@ -84,9 +85,10 @@ class Recipes extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get nutritionJson => text().nullable()();
   TextColumn get notes => text().nullable()();
-  TextColumn get prepTime => text().nullable()();
-  TextColumn get cookTime => text().nullable()();
-  TextColumn get totalTime => text().nullable()();
+  // Timings stored as integer minutes.
+  IntColumn get prepTime => integer().nullable()();
+  IntColumn get cookTime => integer().nullable()();
+  IntColumn get totalTime => integer().nullable()();
 }
 
 class RecipeSteps extends Table {
@@ -219,7 +221,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.connect(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -244,36 +246,83 @@ class AppDatabase extends _$AppDatabase {
       });
     },
     onUpgrade: (m, from, to) async {
-      // Destructive reset — wipe all tables and recreate from scratch.
-      // Safe for dev: no production data exists.
-      final tables = (await customSelect(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'",
-      ).get()).map((r) => r.read<String>('name')).toList();
-      await customStatement('PRAGMA foreign_keys = OFF');
-      for (final t in tables) {
-        await customStatement('DROP TABLE IF EXISTS "$t"');
+      // Versioned, non-destructive migration chain. Each step upgrades from
+      // ANY older version to the next, so existing user data is never wiped.
+      // Add future steps as `if (from < N) await _upgradeToN(m);`.
+      if (from < 14) {
+        await _upgradeTo14(m);
       }
-      await customStatement('PRAGMA foreign_keys = ON');
-      await m.createAll();
-      // Seed default stock categories
-      await batch((b) {
-        b.insertAll(pantryStockCategories, [
-          PantryStockCategoriesCompanion.insert(
-            name: 'Fridge',
-            sortOrder: const Value(0),
-          ),
-          PantryStockCategoriesCompanion.insert(
-            name: 'Freezer',
-            sortOrder: const Value(1),
-          ),
-          PantryStockCategoriesCompanion.insert(
-            name: 'Pantry Cupboard',
-            sortOrder: const Value(2),
-          ),
-        ]);
-      });
     },
   );
+
+  /// Schema 14: timing fields become integer minutes.
+  ///
+  /// Non-destructive — handles any previous version:
+  ///  - creates any tables that didn't exist in older schemas (no-op otherwise)
+  ///  - adds missing `recipes` columns (`notes`, `description`, timings) as NULL
+  ///  - converts legacy timing TEXT values to integer minutes and rebuilds the
+  ///    `recipes` table so the timing columns have INTEGER type.
+  Future<void> _upgradeTo14(Migrator m) async {
+    // Safety net: create any tables that didn't exist in older schemas.
+    await m.createAll();
+
+    final columns = (await customSelect(
+      'PRAGMA table_info(recipes)',
+    ).get()).map((r) => r.read<String>('name')).toSet();
+    final hasNotes = columns.contains('notes');
+    final hasDescription = columns.contains('description');
+    final hasTiming = columns.contains('prep_time');
+
+    if (!hasNotes) {
+      await m.addColumn(recipes, recipes.notes);
+    }
+    if (!hasDescription) {
+      await m.addColumn(recipes, recipes.description);
+    }
+
+    if (!hasTiming) {
+      // Schemas predating the timing fields: add them as NULL.
+      await m.addColumn(recipes, recipes.prepTime);
+      await m.addColumn(recipes, recipes.cookTime);
+      await m.addColumn(recipes, recipes.totalTime);
+      return;
+    }
+
+    // Timing columns exist as TEXT. Normalise legacy values to plain integer
+    // strings first (so SQLite coerces them exactly on rebuild), then rebuild
+    // the table so the columns become INTEGER.
+    final rows = await customSelect(
+      'SELECT id, prep_time, cook_time, total_time FROM recipes',
+    ).get();
+    for (final row in rows) {
+      await customUpdate(
+        'UPDATE recipes SET prep_time = ?, cook_time = ?, total_time = ? '
+        'WHERE id = ?',
+        variables: [
+          Variable<int>(
+            RecipeTextParser.parseDurationMinutes(
+              row.read<String?>('prep_time'),
+            ),
+          ),
+          Variable<int>(
+            RecipeTextParser.parseDurationMinutes(
+              row.read<String?>('cook_time'),
+            ),
+          ),
+          Variable<int>(
+            RecipeTextParser.parseDurationMinutes(
+              row.read<String?>('total_time'),
+            ),
+          ),
+          Variable<int>(row.read<int>('id')),
+        ],
+      );
+    }
+    // Drift's documented mechanism for column-type changes (runs SQLite's
+    // 12-step procedure, preserving foreign keys, indexes and triggers).
+    // ignore: experimental_member_use
+    await m.alterTable(TableMigration(recipes));
+  }
 }
 
 QueryExecutor _openConnection() {

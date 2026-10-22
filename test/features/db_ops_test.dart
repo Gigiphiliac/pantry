@@ -198,6 +198,52 @@ void main() {
         final steps = await ops.getSteps(recipeId);
         expect(steps, ['Step B']);
       });
+
+      test('persists and reads back integer timing fields', () async {
+        final id = await ops.saveRecipe(
+          name: 'Timing Recipe',
+          prepTime: 15,
+          cookTime: 30,
+          totalTime: 45,
+          ingredients: const [],
+        );
+
+        final rows = await (db.select(
+          db.recipes,
+        )..where((t) => t.id.equals(id))).get();
+        final r = rows.first;
+        expect(r.prepTime, 15);
+        expect(r.cookTime, 30);
+        expect(r.totalTime, 45);
+      });
+
+      test('timing fields survive an edit re-save', () async {
+        final id = await ops.saveRecipe(
+          name: 'Timing Edit',
+          prepTime: 10,
+          cookTime: 20,
+          totalTime: 30,
+          ingredients: const [],
+        );
+
+        // Re-save with updated timings
+        await ops.saveRecipe(
+          id: id,
+          name: 'Timing Edit',
+          prepTime: 25,
+          cookTime: 35,
+          totalTime: 60,
+          ingredients: const [],
+        );
+
+        final rows = await (db.select(
+          db.recipes,
+        )..where((t) => t.id.equals(id))).get();
+        final r = rows.first;
+        expect(r.prepTime, 25);
+        expect(r.cookTime, 35);
+        expect(r.totalTime, 60);
+      });
     });
 
     group('deleteRecipe()', () {

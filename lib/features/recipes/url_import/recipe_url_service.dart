@@ -93,9 +93,9 @@ class RecipeUrlService {
       steps: _parseInstructions(r['recipeInstructions']),
       notes: _extractNotes(r),
       nutrition: _extractNutrition(r),
-      prepTime: _isoDuration(r['prepTime'] as String?),
-      cookTime: _isoDuration(r['cookTime'] as String?),
-      totalTime: _isoDuration(r['totalTime'] as String?),
+      prepTime: _isoDurationMinutes(r['prepTime'] as String?),
+      cookTime: _isoDurationMinutes(r['cookTime'] as String?),
+      totalTime: _isoDurationMinutes(r['totalTime'] as String?),
     );
   }
 
@@ -193,6 +193,7 @@ class RecipeUrlService {
     // Also pick up any additional non-standard fields
     for (final entry in raw.entries) {
       final key = entry.key;
+      if (key.startsWith('@')) continue; // skip JSON-LD meta-fields
       if (nutritionFields.contains(key)) continue;
       final value = entry.value;
       if (value is String && value.trim().isNotEmpty) {
@@ -205,13 +206,11 @@ class RecipeUrlService {
     return entries.isNotEmpty ? entries : null;
   }
 
-  /// Pass‑through for ISO 8601 duration strings (e.g. "PT15M").
-  /// Returns the raw string; display logic parses it for human-readable form.
-  String? _isoDuration(String? raw) {
-    if (raw == null) return null;
-    final trimmed = raw.trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
+  /// Convert an ISO 8601 duration string (e.g. "PT15M", "PT1H30M") to
+  /// total minutes (e.g. 15, 90). Returns null when the value is missing,
+  /// empty, or not an ISO duration.
+  int? _isoDurationMinutes(String? raw) =>
+      RecipeTextParser.parseIsoDurationMinutes(raw);
 
   Map<String, dynamic>? _findRecipeNode(dynamic data) {
     if (data is List) {

@@ -242,9 +242,9 @@ class RecipeOps {
     List<String> sections = const [],
     String? notes,
     String? nutritionJson,
-    String? prepTime,
-    String? cookTime,
-    String? totalTime,
+    int? prepTime,
+    int? cookTime,
+    int? totalTime,
     required List<RecipeIngredientDraft> ingredients,
   }) async {
     return db.transaction(() async {

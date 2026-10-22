@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/shopping/shopping_list_detail_screen.dart';
 import 'package:pantry/features/shopping/shopping_providers.dart';
 
 import 'recipe_providers.dart';
@@ -88,16 +89,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               ..._buildIngredientWidgets(context, ingredients, sectionNames),
             ],
 
-            // Timing
-            if (_recipe.prepTime?.isNotEmpty == true ||
-                _recipe.cookTime?.isNotEmpty == true ||
-                _recipe.totalTime?.isNotEmpty == true) ...[
+            // Timing (mins)
+            if (_recipe.prepTime != null ||
+                _recipe.cookTime != null ||
+                _recipe.totalTime != null) ...[
               const SizedBox(height: 20),
-              Text('Timing', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Timing (mins)',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  if (_recipe.prepTime?.isNotEmpty == true)
+                  if (_recipe.prepTime != null)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,11 +111,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: Colors.grey.shade600),
                           ),
-                          Text(_recipe.prepTime!),
+                          Text('${_recipe.prepTime}'),
                         ],
                       ),
                     ),
-                  if (_recipe.cookTime?.isNotEmpty == true)
+                  if (_recipe.cookTime != null)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,11 +125,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: Colors.grey.shade600),
                           ),
-                          Text(_recipe.cookTime!),
+                          Text('${_recipe.cookTime}'),
                         ],
                       ),
                     ),
-                  if (_recipe.totalTime?.isNotEmpty == true)
+                  if (_recipe.totalTime != null)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +139,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: Colors.grey.shade600),
                           ),
-                          Text(_recipe.totalTime!),
+                          Text('${_recipe.totalTime}'),
                         ],
                       ),
                     ),
@@ -535,6 +539,7 @@ class _AddToListSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lists = ref.watch(shoppingListsProvider);
     final ops = ref.watch(recipeOpsProvider);
+    final shoppingOps = ref.watch(shoppingOpsProvider);
 
     return SafeArea(
       child: Column(
@@ -547,6 +552,27 @@ class _AddToListSheet extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
+          // "Create new list…" tile — always visible
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: const Text('Create new list…'),
+            onTap: () async {
+              Navigator.pop(context);
+              final listId = await shoppingOps.createListWithStore(recipe.name);
+              await ops.addToShoppingList(recipe.id, listId, recipe.name);
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ShoppingListDetailScreen(
+                      listId: listId,
+                      listName: recipe.name,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          const Divider(height: 1),
           lists.when(
             loading: () => const CircularProgressIndicator(),
             error: (e, _) => Text('Error: $e'),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/core/ingredients/ingredient_name_parser.dart';
 import 'package:pantry/core/ocr/recipe_ocr_input.dart';
@@ -69,9 +70,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       _servingsCtrl.text = r.servings?.toString() ?? '';
       _sourceUrlCtrl.text = r.sourceUrl ?? '';
       _notesCtrl.text = r.notes ?? '';
-      _prepTimeCtrl.text = r.prepTime ?? '';
-      _cookTimeCtrl.text = r.cookTime ?? '';
-      _totalTimeCtrl.text = r.totalTime ?? '';
+      _prepTimeCtrl.text = r.prepTime?.toString() ?? '';
+      _cookTimeCtrl.text = r.cookTime?.toString() ?? '';
+      _totalTimeCtrl.text = r.totalTime?.toString() ?? '';
       if (r.nutritionJson != null && r.nutritionJson!.isNotEmpty) {
         try {
           final parsed = jsonDecode(r.nutritionJson!) as Map<String, dynamic>;
@@ -94,9 +95,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       _servingsCtrl.text = d.servings?.toString() ?? '';
       _sourceUrlCtrl.text = widget.sourceUrl ?? '';
       _notesCtrl.text = d.notes ?? '';
-      _prepTimeCtrl.text = d.prepTime ?? '';
-      _cookTimeCtrl.text = d.cookTime ?? '';
-      _totalTimeCtrl.text = d.totalTime ?? '';
+      _prepTimeCtrl.text = d.prepTime?.toString() ?? '';
+      _cookTimeCtrl.text = d.cookTime?.toString() ?? '';
+      _totalTimeCtrl.text = d.totalTime?.toString() ?? '';
       for (final n in d.nutrition ?? []) {
         _nutritionRows.add(_NutritionRow(label: n.label, value: n.value));
       }
@@ -488,8 +489,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Timing ────────────────────────────────────────────────────
-          Text('Timing', style: Theme.of(context).textTheme.titleMedium),
+          // ── Timing (mins) ──────────────────────────────────────────────────
+          Text('Timing (mins)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -498,10 +499,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                   controller: _prepTimeCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Prep time',
-                    hintText: 'e.g. 15 min, PT15M',
+                    hintText: 'e.g. 15',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ),
               const SizedBox(width: 12),
@@ -510,10 +513,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                   controller: _cookTimeCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Cook time',
-                    hintText: 'e.g. 30 min, PT30M',
+                    hintText: 'e.g. 30',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ),
               const SizedBox(width: 12),
@@ -522,10 +527,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                   controller: _totalTimeCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Total time',
-                    hintText: 'e.g. 45 min, PT45M',
+                    hintText: 'e.g. 45',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ),
             ],
@@ -701,9 +708,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                     ),
               ),
             );
-      final prepTime = _nullIfEmpty(_prepTimeCtrl.text.trim());
-      final cookTime = _nullIfEmpty(_cookTimeCtrl.text.trim());
-      final totalTime = _nullIfEmpty(_totalTimeCtrl.text.trim());
+      final prepTime = int.tryParse(_prepTimeCtrl.text.trim());
+      final cookTime = int.tryParse(_cookTimeCtrl.text.trim());
+      final totalTime = int.tryParse(_totalTimeCtrl.text.trim());
 
       final id = await ops.saveRecipe(
         id: widget.recipe?.id,
