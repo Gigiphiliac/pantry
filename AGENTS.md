@@ -31,11 +31,14 @@ All common tasks go through `make`. The Makefile is the canonical local interfac
 | `make analyze` | `flutter analyze` |
 | `make test` | `flutter test --exclude-tags=golden` |
 | `make check` | `format-check` + `analyze` + `test` — run before committing |
+| `make verify` | Preferred agent shortcut — same as `make check` but the canonical command agents should reach for before any commit or after any change |
 | `make run` | `flutter run` on default device |
 | `make build` | `flutter build apk --release` |
 | `make clean` | `flutter clean` |
 | `make tag VERSION=0.1.0` | Validate, run checks, create annotated `v0.1.0` tag |
 | `make release VERSION=0.1.0` | Tag + push branch + push tag — triggers GitHub Actions release |
+
+> **Sandbox note:** `make verify` (and its sub-commands `make format-check`, `make analyze`, `make test`) needs `danger-full-access` sandbox permission because `dart`/`flutter` write to the Flutter SDK engine stamp files outside the workspace. This escalation is pre-approved — retry with `sandbox_permissions: "danger-full-access"` when first denied.
 
 Githooks are in `githooks/` and run `make format-check && make analyze` on every commit.
 Install: `git config core.hooksPath githooks` or run `scripts/setup.sh`.
@@ -68,12 +71,14 @@ test/
 ├── core/
 │   ├── ingredients/ingredient_parser_test.dart    29 tests
 │   └── units/unit_system_test.dart                30 tests
+├── db/
+│   └── migration_test.dart                        migration chain (non-destructive upgrade coverage)
 ├── features/recipes/models/ingredient_name_parser_test.dart  14 tests
 ├── utils/ingredient_dedup_test.dart               18 tests
 └── widget_test.dart                               (placeholder)
 ```
 
-Drift-dependent tests use `AppDatabase.connect(NativeDatabase.memory())` for in-memory SQLite — no device needed.
+Drift-dependent tests use `AppDatabase.connect(NativeDatabase.memory())` for in-memory SQLite — no device needed. Migration tests instead write fixture DB files at old schema versions and open them with the real `AppDatabase` so the live migration strategy runs.
 
 ---
 
@@ -129,7 +134,7 @@ The database class exposes `AppDatabase.connect(QueryExecutor)` for testing.
 
 - **Dart style**: follow `dart format`, no trailing commas suppressed, prefer `final`
 - **File structure**: `lib/features/<feature>/` — one directory per feature (shopping, recipes, meal_plans, pantry, settings)
-- **Drift migrations**: always versioned; never modify a past migration file
+- **Drift migrations**: versioned chain in `lib/db/database.dart` — one `_upgradeToN(m)` step per schema bump, guarded by `if (from < N)`, so ANY old version upgrades through every step. Migrations are **never destructive** — real user data must survive. Each bump adds coverage in `test/db/migration_test.dart`
 - **Plans**: all plans stored in `pantry/plans/YYYY-MM-DD-<slug>.md`; append-only, never delete
 - **No org prefix**: personal project, no reverse-domain identifier
 - **Australian English**: all user-facing strings and comments use AU spelling

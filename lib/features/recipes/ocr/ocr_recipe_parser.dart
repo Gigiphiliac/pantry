@@ -139,15 +139,16 @@ class OcrRecipeParser {
       // ── Times ──────────────────────────────────────────────────────────
       if (_timePattern.hasMatch(line)) {
         final timeType = line.toLowerCase().split(RegExp(r'\s+')).first;
-        // Strip the label prefix and store the rest
+        // Strip the label prefix and normalise the remainder to minutes.
         final value = line.replaceFirst(RegExp(r'^[^:]*:?\s*'), '').trim();
         if (value.isNotEmpty) {
+          final minutes = RecipeTextParser.parseDurationMinutes(value);
           if (timeType.startsWith('prep')) {
-            meta.prepTime ??= value;
+            meta.prepTime ??= minutes;
           } else if (timeType.startsWith('cook')) {
-            meta.cookTime ??= value;
+            meta.cookTime ??= minutes;
           } else if (timeType.startsWith('total')) {
-            meta.totalTime ??= value;
+            meta.totalTime ??= minutes;
           }
         }
         continue;
@@ -192,9 +193,9 @@ class OcrRecipeParser {
 /// static method of the outer class.
 class _Metadata {
   int? servings;
-  String? prepTime;
-  String? cookTime;
-  String? totalTime;
+  int? prepTime;
+  int? cookTime;
+  int? totalTime;
   String? notes;
   final List<NutritionDraft> nutrition = [];
 }

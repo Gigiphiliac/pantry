@@ -7,7 +7,7 @@ _version := $(shell grep '^version:' pubspec.yaml | sed 's/version: *//')
 BUILD_NAME ?= $(word 1,$(subst +, ,$(_version)))
 BUILD_NUMBER ?= $(word 2,$(subst +, ,$(_version)))
 
-.PHONY: help get format format-check analyze test check run run-prod build build-dev clean tag release
+.PHONY: help get format format-check analyze test check verify run run-prod build build-dev clean tag release
 
 help:           ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | \
@@ -29,6 +29,8 @@ test:           ## Run unit tests
 	$(FLUTTER) test --exclude-tags=golden
 
 check: format-check analyze test   ## Run all checks (format-check + analyze + tests)
+
+verify: format-check analyze test  ## Alias for check — preferred agent command (same as `make check`)
 
 run:            ## Launch dev flavour (make run DEVICE=<id> to target a device)
 	$(FLUTTER) run --flavor dev --dart-define=FLAVOR=dev $(if $(DEVICE),-d $(DEVICE),)

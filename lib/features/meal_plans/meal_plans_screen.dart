@@ -4,6 +4,10 @@ import 'package:pantry/features/meal_plans/meal_plan_providers.dart';
 import 'package:pantry/features/meal_plans/meal_slot_cell.dart';
 import 'package:pantry/features/meal_plans/slot_detail_screen.dart';
 import 'package:pantry/features/meal_plans/week_header.dart';
+import 'package:pantry/features/recipes/recipe_providers.dart';
+import 'package:pantry/features/shopping/shopping_list_detail_screen.dart';
+import 'package:pantry/features/shopping/shopping_providers.dart';
+import 'package:pantry/main.dart';
 import 'package:pantry/widgets/app_bar_logo.dart';
 
 class MealPlansScreen extends ConsumerStatefulWidget {
@@ -70,7 +74,13 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       appBar: AppBar(
         leading: const AppBarLogo(),
         title: const Text('Meal Plans'),
-        actions: [],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            tooltip: 'Add all recipes to shopping list',
+            onPressed: () => _addAllToShoppingList(context),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -140,6 +150,116 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
         );
       },
     );
+  }
+
+  Future<void> _addAllToShoppingList(BuildContext context) async {
+    final db = ref.read(dbProvider);
+
+    // Query all meal slots and filter for the current week in Dart.
+    // (Drift's extension methods for date comparisons aren't resolved by the
+    //  Dart analyzer from external files, so we avoid them here.)
+    final start = normaliseDate(_weekStart);
+    final end = start.add(const Duration(days: 6));
+    final allSlots = await db.select(db.mealSlots).get();
+    if (!context.mounted) return;
+    final slots = allSlots
+        .where((s) => !s.date.isBefore(start) && !s.date.isAfter(end))
+        .toList();
+
+    // Collect unique linked recipe ids
+    final recipeIds = slots
+        .map((s) => s.recipeId)
+        .where((id) => id != null)
+        .cast<int>()
+        .toSet()
+        .toList();
+
+    if (recipeIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No linked recipes this week'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Build week label and week key
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final weekLabel =
+        'Week of ${start.day} ${months[start.month - 1]} ${start.year}';
+    final weekKey = dateKey(start);
+
+    // Check for an existing week-keyed list
+    final listOps = ShoppingListOps(db);
+    final existingList = await listOps.findListByWeekKey(weekKey);
+
+    final isNewList = existingList == null;
+    final listName = isNewList ? weekLabel : existingList.name;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context, // ignore: use_build_context_synchronously
+      builder: (_) => AlertDialog(
+        title: Text(
+          isNewList ? 'Create shopping list?' : 'Sync shopping list?',
+        ),
+        content: Text(
+          'Add ingredients from ${recipeIds.length} linked '
+          'recipe${recipeIds.length == 1 ? '' : 's'} to '
+          '${isNewList ? 'a new list named "$weekLabel"' : '"$listName"'}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isNewList ? 'Create' : 'Sync'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    final recipeOps = ref.read(recipeOpsProvider);
+
+    // Create the list or use the existing one
+    final shoppingOps = ShoppingListOps(db);
+    final listId = isNewList
+        ? await shoppingOps.createListWithStore(weekLabel, weekKey: weekKey)
+        : existingList.id;
+
+    // Add ingredients from each linked recipe (stackOrAddItem merges by
+    // ingredientId — checked items are preserved, qty stacks).
+    for (final recipeId in recipeIds) {
+      await recipeOps.addToShoppingList(recipeId, listId, weekLabel);
+    }
+
+    // Navigate to the list (new or existing)
+    if (context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ShoppingListDetailScreen(listId: listId, listName: weekLabel),
+        ),
+      );
+    }
   }
 }
 

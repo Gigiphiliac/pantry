@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
@@ -22,10 +23,17 @@ class RecipeUrlService {
 
   Future<RecipeDraft> fetchAndParse(String url) async {
     final html = await _fetchHtml(url);
-    final schemaMap = _extractSchemaOrg(html);
-    final draft = _normaliseFields(schemaMap);
+    final draft = parseHtml(html);
     await _seedTrainingData(url, html, draft);
     return draft;
+  }
+
+  /// Parse a pre-fetched HTML string, extracting the schema.org recipe data.
+  /// Skips the HTTP fetch and the training-data seed — useful for testing.
+  @visibleForTesting
+  RecipeDraft parseHtml(String html) {
+    final schemaMap = _extractSchemaOrg(html);
+    return _normaliseFields(schemaMap);
   }
 
   Future<String> _fetchHtml(String url) async {
@@ -93,9 +101,9 @@ class RecipeUrlService {
       steps: _parseInstructions(r['recipeInstructions']),
       notes: _extractNotes(r),
       nutrition: _extractNutrition(r),
-      prepTime: _isoDuration(r['prepTime'] as String?),
-      cookTime: _isoDuration(r['cookTime'] as String?),
-      totalTime: _isoDuration(r['totalTime'] as String?),
+      prepTime: _isoDurationMinutes(r['prepTime'] as String?),
+      cookTime: _isoDurationMinutes(r['cookTime'] as String?),
+      totalTime: _isoDurationMinutes(r['totalTime'] as String?),
     );
   }
 
@@ -193,6 +201,7 @@ class RecipeUrlService {
     // Also pick up any additional non-standard fields
     for (final entry in raw.entries) {
       final key = entry.key;
+      if (key.startsWith('@')) continue; // skip JSON-LD meta-fields
       if (nutritionFields.contains(key)) continue;
       final value = entry.value;
       if (value is String && value.trim().isNotEmpty) {
@@ -205,13 +214,11 @@ class RecipeUrlService {
     return entries.isNotEmpty ? entries : null;
   }
 
-  /// Pass‑through for ISO 8601 duration strings (e.g. "PT15M").
-  /// Returns the raw string; display logic parses it for human-readable form.
-  String? _isoDuration(String? raw) {
-    if (raw == null) return null;
-    final trimmed = raw.trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
+  /// Convert an ISO 8601 duration string (e.g. "PT15M", "PT1H30M") to
+  /// total minutes (e.g. 15, 90). Returns null when the value is missing,
+  /// empty, or not an ISO duration.
+  int? _isoDurationMinutes(String? raw) =>
+      RecipeTextParser.parseIsoDurationMinutes(raw);
 
   Map<String, dynamic>? _findRecipeNode(dynamic data) {
     if (data is List) {

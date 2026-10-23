@@ -97,9 +97,10 @@ class RecipeDraft {
   final List<String> steps;
   final String? notes;
   final List<NutritionDraft>? nutrition; // nullable — no nutrition parsed
-  final String? prepTime;
-  final String? cookTime;
-  final String? totalTime;
+  // Timings in integer minutes.
+  final int? prepTime;
+  final int? cookTime;
+  final int? totalTime;
 
   const RecipeDraft({
     this.name,
@@ -166,9 +167,9 @@ class RecipeDraft {
       steps: steps,
       notes: _nullIfEmpty(json['notes'] as String?),
       nutrition: nutrition,
-      prepTime: _nullIfEmpty(json['prepTime'] as String?),
-      cookTime: _nullIfEmpty(json['cookTime'] as String?),
-      totalTime: _nullIfEmpty(json['totalTime'] as String?),
+      prepTime: (json['prepTime'] as num?)?.toInt(),
+      cookTime: (json['cookTime'] as num?)?.toInt(),
+      totalTime: (json['totalTime'] as num?)?.toInt(),
     );
   }
 

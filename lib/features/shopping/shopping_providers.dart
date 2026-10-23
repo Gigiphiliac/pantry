@@ -1,8 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pantry/core/ingredients/ingredient_parser.dart';
 import 'package:pantry/core/units/unit_system.dart';
 import 'package:pantry/db/database.dart';
+import 'package:pantry/features/pantry/pantry_ops.dart';
 import 'package:pantry/main.dart';
+import 'package:pantry/utils/ingredient_dedup.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -99,11 +102,33 @@ class ShoppingListOps {
   final AppDatabase db;
   ShoppingListOps(this.db);
 
-  Future<int> createList(String name) async {
+  Future<int> createList(String name, {String? weekKey}) async {
     final listId = await db
         .into(db.shoppingLists)
-        .insert(ShoppingListsCompanion.insert(name: name));
+        .insert(
+          ShoppingListsCompanion.insert(
+            name: name,
+            weekKey: weekKey == null ? const Value.absent() : Value(weekKey),
+          ),
+        );
     return listId;
+  }
+
+  /// Create a new shopping list with a single default store named "General".
+  /// [weekKey] is an optional date-key (e.g. "2026-03-15") for meal-plan sync.
+  /// Returns the new list id.
+  Future<int> createListWithStore(String name, {String? weekKey}) async {
+    final listId = await createList(name, weekKey: weekKey);
+    await addStore(listId, 'General');
+    return listId;
+  }
+
+  /// Look up a shopping list by its week key.
+  /// Returns null when no list exists for that week.
+  Future<ShoppingList?> findListByWeekKey(String weekKey) async {
+    return (db.select(
+      db.shoppingLists,
+    )..where((t) => t.weekKey.equals(weekKey))).getSingleOrNull();
   }
 
   Future<void> renameList(int id, String name) =>
@@ -266,6 +291,47 @@ class ShoppingListOps {
         );
   }
 
+  /// Add a manually-typed item, resolving it against the ingredient dictionary
+  /// so it becomes pantry-linked (tier-gated display and qty stacking).
+  ///
+  /// If the name field itself contains a quantity ("2 eggs"), it is split out
+  /// so the pantry item name stays clean — the quantity never contaminates the
+  /// stored name.
+  Future<void> addResolvedItem(
+    int storeId, {
+    int? sectionId,
+    required String rawText,
+    double? qty,
+    String? unit,
+  }) async {
+    final parsed = IngredientParser.parse(rawText);
+    final name = parsed.name.isEmpty ? rawText.trim() : parsed.name;
+    if (name.isEmpty) return; // nothing to add — never create blank ingredients
+
+    final effectiveQty = qty ?? parsed.qty;
+    final effectiveUnit = unit ?? parsed.unit;
+
+    final ingredientId = await getOrCreateIngredient(db, name);
+    final ingredient = await (db.select(
+      db.ingredients,
+    )..where((t) => t.id.equals(ingredientId))).getSingle();
+    await PantryOps(db).autoCreatePantryItem(ingredientId);
+    await addItem(
+      storeId,
+      sectionId: sectionId,
+      rawText: ingredient.name,
+      qty: effectiveQty,
+      unit: effectiveUnit,
+      ingredientId: ingredientId,
+    );
+  }
+
+  /// Set (or clear) the quantity and unit on an existing item.
+  Future<void> setItemQty(int itemId, double? qty, String? unit) async {
+    await (db.update(db.shoppingListItems)..where((t) => t.id.equals(itemId)))
+        .write(ShoppingListItemsCompanion(qty: Value(qty), unit: Value(unit)));
+  }
+
   // ── stackOrAddItem: list-scoped add/stack, falls back to first store ──────
 
   Future<void> stackOrAddItem(
@@ -284,7 +350,7 @@ class ShoppingListOps {
 
     if (stores.isEmpty) {
       // No stores exist yet — create one with a default name.
-      final storeId = await addStore(listId, 'Default');
+      final storeId = await addStore(listId, 'General');
       await addItem(
         storeId,
         rawText: rawText,
