@@ -184,7 +184,7 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
       return;
     }
 
-    // Build week label
+    // Build week label and week key
     const months = [
       'Jan',
       'Feb',
@@ -201,16 +201,26 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
     ];
     final weekLabel =
         'Week of ${start.day} ${months[start.month - 1]} ${start.year}';
+    final weekKey = dateKey(start);
+
+    // Check for an existing week-keyed list
+    final listOps = ShoppingListOps(db);
+    final existingList = await listOps.findListByWeekKey(weekKey);
+
+    final isNewList = existingList == null;
+    final listName = isNewList ? weekLabel : existingList.name;
 
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: context, // ignore: use_build_context_synchronously
       builder: (_) => AlertDialog(
-        title: const Text('Create shopping list?'),
+        title: Text(
+          isNewList ? 'Create shopping list?' : 'Sync shopping list?',
+        ),
         content: Text(
           'Add ingredients from ${recipeIds.length} linked '
-          'recipe${recipeIds.length == 1 ? '' : 's'} to a new list '
-          'named "$weekLabel"?',
+          'recipe${recipeIds.length == 1 ? '' : 's'} to '
+          '${isNewList ? 'a new list named "$weekLabel"' : '"$listName"'}?',
         ),
         actions: [
           TextButton(
@@ -219,7 +229,7 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Create'),
+            child: Text(isNewList ? 'Create' : 'Sync'),
           ),
         ],
       ),
@@ -227,18 +237,21 @@ class _MealPlansScreenState extends ConsumerState<MealPlansScreen> {
     if (confirmed != true) return;
     if (!context.mounted) return;
 
-    final shoppingOps = ref.read(shoppingOpsProvider);
     final recipeOps = ref.read(recipeOpsProvider);
 
-    // Create the list with a default store
-    final listId = await shoppingOps.createListWithStore(weekLabel);
+    // Create the list or use the existing one
+    final shoppingOps = ShoppingListOps(db);
+    final listId = isNewList
+        ? await shoppingOps.createListWithStore(weekLabel, weekKey: weekKey)
+        : existingList.id;
 
-    // Add ingredients from each linked recipe
+    // Add ingredients from each linked recipe (stackOrAddItem merges by
+    // ingredientId — checked items are preserved, qty stacks).
     for (final recipeId in recipeIds) {
       await recipeOps.addToShoppingList(recipeId, listId, weekLabel);
     }
 
-    // Navigate to the newly created list
+    // Navigate to the list (new or existing)
     if (context.mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(

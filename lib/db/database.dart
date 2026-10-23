@@ -37,6 +37,7 @@ class ShoppingLists extends Table {
   TextColumn get name => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get archivedAt => dateTime().nullable()();
+  TextColumn get weekKey => text().nullable()();
 }
 
 class ShoppingListStores extends Table {
@@ -221,7 +222,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.connect(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -251,6 +252,9 @@ class AppDatabase extends _$AppDatabase {
       // Add future steps as `if (from < N) await _upgradeToN(m);`.
       if (from < 14) {
         await _upgradeTo14(m);
+      }
+      if (from < 15) {
+        await _upgradeTo15(m);
       }
     },
   );
@@ -338,6 +342,29 @@ class AppDatabase extends _$AppDatabase {
     // 12-step procedure, preserving foreign keys, indexes and triggers).
     // ignore: experimental_member_use
     await m.alterTable(TableMigration(recipes));
+  }
+
+  /// Schema 15: week_key for meal-plan shopping list sync.
+  Future<void> _upgradeTo15(Migrator m) async {
+    // Guard: column may already exist from createAll in an earlier migration.
+    final columns = (await customSelect(
+      'PRAGMA table_info(shopping_lists)',
+    ).get()).map((r) => r.read<String>('name')).toSet();
+    if (!columns.contains('week_key')) {
+      await m.addColumn(shoppingLists, shoppingLists.weekKey);
+    }
+    // Enforce uniqueness via a separate index (SQLite rejects ADD COLUMN with
+    // a UNIQUE constraint on a table that may already have rows).
+    // ignore: experimental_member_use
+    final existingIdx = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='index' AND name='shopping_lists_week_key_unique'",
+    ).getSingleOrNull();
+    if (existingIdx == null) {
+      customSelect(
+        'CREATE UNIQUE INDEX shopping_lists_week_key_unique '
+        'ON shopping_lists (week_key)',
+      );
+    }
   }
 }
 

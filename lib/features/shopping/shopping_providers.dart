@@ -102,19 +102,33 @@ class ShoppingListOps {
   final AppDatabase db;
   ShoppingListOps(this.db);
 
-  Future<int> createList(String name) async {
+  Future<int> createList(String name, {String? weekKey}) async {
     final listId = await db
         .into(db.shoppingLists)
-        .insert(ShoppingListsCompanion.insert(name: name));
+        .insert(
+          ShoppingListsCompanion.insert(
+            name: name,
+            weekKey: weekKey == null ? const Value.absent() : Value(weekKey),
+          ),
+        );
     return listId;
   }
 
   /// Create a new shopping list with a single default store named "General".
+  /// [weekKey] is an optional date-key (e.g. "2026-03-15") for meal-plan sync.
   /// Returns the new list id.
-  Future<int> createListWithStore(String name) async {
-    final listId = await createList(name);
+  Future<int> createListWithStore(String name, {String? weekKey}) async {
+    final listId = await createList(name, weekKey: weekKey);
     await addStore(listId, 'General');
     return listId;
+  }
+
+  /// Look up a shopping list by its week key.
+  /// Returns null when no list exists for that week.
+  Future<ShoppingList?> findListByWeekKey(String weekKey) async {
+    return (db.select(
+      db.shoppingLists,
+    )..where((t) => t.weekKey.equals(weekKey))).getSingleOrNull();
   }
 
   Future<void> renameList(int id, String name) =>

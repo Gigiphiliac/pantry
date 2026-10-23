@@ -169,7 +169,7 @@ void main() {
         final version =
             (await db.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version');
-        expect(version, 14);
+        expect(version, 15);
 
         // recipes: id/name/etc preserved, timing converted to integer minutes.
         final recipes = await db.select(db.recipes).get();
@@ -322,7 +322,7 @@ void main() {
         final version =
             (await db.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version');
-        expect(version, 14);
+        expect(version, 15);
 
         final recipe = (await db.select(db.recipes).get()).single;
         expect(recipe.name, 'Pasta');
@@ -403,7 +403,7 @@ void main() {
         final version =
             (await db.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version');
-        expect(version, 14);
+        expect(version, 15);
 
         // Recipe row survived, instructions column preserved as a shadow column
         // (it remains in the table but is not mapped by Drift).

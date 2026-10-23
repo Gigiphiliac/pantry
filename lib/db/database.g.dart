@@ -622,8 +622,25 @@ class $ShoppingListsTable extends ShoppingLists
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _weekKeyMeta = const VerificationMeta(
+    'weekKey',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, createdAt, archivedAt];
+  late final GeneratedColumn<String> weekKey = GeneratedColumn<String>(
+    'week_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    createdAt,
+    archivedAt,
+    weekKey,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -659,6 +676,12 @@ class $ShoppingListsTable extends ShoppingLists
         archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
       );
     }
+    if (data.containsKey('week_key')) {
+      context.handle(
+        _weekKeyMeta,
+        weekKey.isAcceptableOrUnknown(data['week_key']!, _weekKeyMeta),
+      );
+    }
     return context;
   }
 
@@ -684,6 +707,10 @@ class $ShoppingListsTable extends ShoppingLists
         DriftSqlType.dateTime,
         data['${effectivePrefix}archived_at'],
       ),
+      weekKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}week_key'],
+      ),
     );
   }
 
@@ -698,11 +725,13 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
   final String name;
   final DateTime createdAt;
   final DateTime? archivedAt;
+  final String? weekKey;
   const ShoppingList({
     required this.id,
     required this.name,
     required this.createdAt,
     this.archivedAt,
+    this.weekKey,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -712,6 +741,9 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || archivedAt != null) {
       map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
+    if (!nullToAbsent || weekKey != null) {
+      map['week_key'] = Variable<String>(weekKey);
     }
     return map;
   }
@@ -724,6 +756,9 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
       archivedAt: archivedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(archivedAt),
+      weekKey: weekKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weekKey),
     );
   }
 
@@ -737,6 +772,7 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
       name: serializer.fromJson<String>(json['name']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      weekKey: serializer.fromJson<String?>(json['weekKey']),
     );
   }
   @override
@@ -747,6 +783,7 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
       'name': serializer.toJson<String>(name),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'weekKey': serializer.toJson<String?>(weekKey),
     };
   }
 
@@ -755,11 +792,13 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
     String? name,
     DateTime? createdAt,
     Value<DateTime?> archivedAt = const Value.absent(),
+    Value<String?> weekKey = const Value.absent(),
   }) => ShoppingList(
     id: id ?? this.id,
     name: name ?? this.name,
     createdAt: createdAt ?? this.createdAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    weekKey: weekKey.present ? weekKey.value : this.weekKey,
   );
   ShoppingList copyWithCompanion(ShoppingListsCompanion data) {
     return ShoppingList(
@@ -769,6 +808,7 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
       archivedAt: data.archivedAt.present
           ? data.archivedAt.value
           : this.archivedAt,
+      weekKey: data.weekKey.present ? data.weekKey.value : this.weekKey,
     );
   }
 
@@ -778,13 +818,14 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('weekKey: $weekKey')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, createdAt, archivedAt);
+  int get hashCode => Object.hash(id, name, createdAt, archivedAt, weekKey);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -792,7 +833,8 @@ class ShoppingList extends DataClass implements Insertable<ShoppingList> {
           other.id == this.id &&
           other.name == this.name &&
           other.createdAt == this.createdAt &&
-          other.archivedAt == this.archivedAt);
+          other.archivedAt == this.archivedAt &&
+          other.weekKey == this.weekKey);
 }
 
 class ShoppingListsCompanion extends UpdateCompanion<ShoppingList> {
@@ -800,29 +842,34 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingList> {
   final Value<String> name;
   final Value<DateTime> createdAt;
   final Value<DateTime?> archivedAt;
+  final Value<String?> weekKey;
   const ShoppingListsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.weekKey = const Value.absent(),
   });
   ShoppingListsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.weekKey = const Value.absent(),
   }) : name = Value(name);
   static Insertable<ShoppingList> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? archivedAt,
+    Expression<String>? weekKey,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (createdAt != null) 'created_at': createdAt,
       if (archivedAt != null) 'archived_at': archivedAt,
+      if (weekKey != null) 'week_key': weekKey,
     });
   }
 
@@ -831,12 +878,14 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingList> {
     Value<String>? name,
     Value<DateTime>? createdAt,
     Value<DateTime?>? archivedAt,
+    Value<String?>? weekKey,
   }) {
     return ShoppingListsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
       archivedAt: archivedAt ?? this.archivedAt,
+      weekKey: weekKey ?? this.weekKey,
     );
   }
 
@@ -855,6 +904,9 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingList> {
     if (archivedAt.present) {
       map['archived_at'] = Variable<DateTime>(archivedAt.value);
     }
+    if (weekKey.present) {
+      map['week_key'] = Variable<String>(weekKey.value);
+    }
     return map;
   }
 
@@ -864,7 +916,8 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingList> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('weekKey: $weekKey')
           ..write(')'))
         .toString();
   }
@@ -6428,6 +6481,7 @@ typedef $$ShoppingListsTableCreateCompanionBuilder =
       required String name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<String?> weekKey,
     });
 typedef $$ShoppingListsTableUpdateCompanionBuilder =
     ShoppingListsCompanion Function({
@@ -6435,6 +6489,7 @@ typedef $$ShoppingListsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<String?> weekKey,
     });
 
 class $$ShoppingListsTableFilterComposer
@@ -6463,6 +6518,11 @@ class $$ShoppingListsTableFilterComposer
 
   ColumnFilters<DateTime> get archivedAt => $composableBuilder(
     column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get weekKey => $composableBuilder(
+    column: $table.weekKey,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6495,6 +6555,11 @@ class $$ShoppingListsTableOrderingComposer
     column: $table.archivedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get weekKey => $composableBuilder(
+    column: $table.weekKey,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ShoppingListsTableAnnotationComposer
@@ -6519,6 +6584,9 @@ class $$ShoppingListsTableAnnotationComposer
     column: $table.archivedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get weekKey =>
+      $composableBuilder(column: $table.weekKey, builder: (column) => column);
 }
 
 class $$ShoppingListsTableTableManager
@@ -6556,11 +6624,13 @@ class $$ShoppingListsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<String?> weekKey = const Value.absent(),
               }) => ShoppingListsCompanion(
                 id: id,
                 name: name,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                weekKey: weekKey,
               ),
           createCompanionCallback:
               ({
@@ -6568,11 +6638,13 @@ class $$ShoppingListsTableTableManager
                 required String name,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<String?> weekKey = const Value.absent(),
               }) => ShoppingListsCompanion.insert(
                 id: id,
                 name: name,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                weekKey: weekKey,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

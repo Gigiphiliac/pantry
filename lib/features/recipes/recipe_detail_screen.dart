@@ -1,6 +1,7 @@
 import 'dart:convert';
-
+import 'dart:io' show Process;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pantry/db/database.dart';
 import 'package:pantry/features/shopping/shopping_list_detail_screen.dart';
@@ -202,11 +203,25 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               const SizedBox(height: 20),
               Text('Source', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
-              Text(
-                _recipe.sourceUrl!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  decoration: TextDecoration.underline,
+              GestureDetector(
+                onTap: () async {
+                  await Process.run('open', [_recipe.sourceUrl!]);
+                },
+                onLongPress: () {
+                  Clipboard.setData(ClipboardData(text: _recipe.sourceUrl!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Source link copied'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Text(
+                  _recipe.sourceUrl!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ],
